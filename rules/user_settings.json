@@ -1,0 +1,90 @@
+{
+  "capital": {
+    "available_trading_capital": 5.0,
+    "max_risk_per_action_decimal": 0.01,
+    "max_daily_loss_decimal": 0.02,
+    "max_open_positions": 1
+  },
+  "asset_limits": {
+    "crypto_max_allocation_decimal": 0.2,
+    "us_equity_max_allocation_decimal": 0.2,
+    "etf_max_allocation_decimal": 0.2,
+    "option_max_allocation_decimal": 0.0
+  },
+  "data_quality": {
+    "max_quote_age_seconds_crypto": 15,
+    "max_quote_age_seconds_us_equity_regular": 15,
+    "max_quote_age_seconds_us_equity_extended": 5,
+    "max_allowed_source_price_difference_decimal": 0.002
+  },
+  "execution_quality": {
+    "max_spread_decimal_crypto": 0.002,
+    "max_spread_decimal_us_equity_regular": 0.001,
+    "max_spread_decimal_us_equity_extended": 0.0005,
+    "min_liquidity_usd": 100000
+  },
+  "broker": {
+    "brokerage_account_exists": true,
+    "name": "Robinhood",
+    "account_type": "Robinhood account connected to Claude and ChatGPT per user",
+    "agentic_mcp_server": "robinhood-trading",
+    "agentic_mcp_url": "https://agent.robinhood.com/mcp/trading",
+    "supports_crypto_24_7": true,
+    "supports_us_equity_regular": true,
+    "supports_us_equity_pre_market": "limit orders only; verify symbol/session tradability first",
+    "supports_us_equity_after_hours": "limit orders only; verify symbol/session tradability first",
+    "supports_us_equity_overnight": "limit orders only on eligible 24 Hour Market symbols",
+    "supports_fractional_shares": true,
+    "minimum_order_value_usd": 1.0,
+    "live_quotes_available": null,
+    "api_or_plugin_connected": "robinhood-trading MCP configured locally; verify get_accounts and agentic_allowed before orders",
+    "margin_approved": false,
+    "margin_minimum_portfolio_value_usd": 2000.0,
+    "explicit_execution_authorization": true,
+    "supported_order_types": [
+      "market",
+      "limit",
+      "stop_market",
+      "stop_limit",
+      "crypto_stop_loss"
+    ]
+  },
+  "risk_limits": {
+    "single_stock_all_in_blocked": true,
+    "single_stock_max_allocation_decimal": 0.2,
+    "spread_stock_allocations_required": true,
+    "single_crypto_all_in_blocked": true,
+    "single_crypto_max_allocation_decimal": 0.2,
+    "spread_crypto_allocations_required_when_possible": true
+  },
+  "operations": {
+    "mode": "EVENT_TRIGGER_ONLY_CODEX_DORMANT",
+    "system_state": "ACTIVE",
+    "freeze_reason": null,
+    "codex_usage_remaining_percent": 10.0,
+    "codex_usage_verified": true,
+    "pause_all_operations": false,
+    "destroy_stale_signals_before_resume": true,
+    "all_buys_paused": false,
+    "only_allowed_live_action": "CRYPTO_BUY_OR_SELL_WHEN_ALL_GATES_AND_PREVIEW_PASS",
+    "full_agent_default": "OFF",
+    "lightweight_watcher": "EXTERNAL_ONLY_NOT_CODEX_TIMER",
+    "resume_buying_requires_new_user_command": false,
+    "codex_timer_watcher_enabled": false,
+    "codex_minutely_activation_enabled": false,
+    "activation_rule": "Codex activates only after data/current_candidate_envelope.json is freshly written by an external scanner and passes VIABLE true gate. After low-usage resume, stale signals must be destroyed, live market data refreshed, candidates rebuilt, and every APEX gate rerun.",
+    "no_order_preview_until_viable_true": true,
+    "no_order_placement_until_viable_true": true
+  },
+  "sell_recovery": {
+    "enabled": true,
+    "symbol": "BTC",
+    "allowed_side": "sell",
+    "allowed_asset_class": "CRYPTO",
+    "allowed_venue": "Robinhood Crypto",
+    "requires_live_robinhood_preview": true,
+    "place_only_if_preview_recovers_capital_or_positive_net_profit": true,
+    "never_sell_below_recovery_threshold": true,
+    "never_buy_during_recovery_lockdown": true
+  }
+}

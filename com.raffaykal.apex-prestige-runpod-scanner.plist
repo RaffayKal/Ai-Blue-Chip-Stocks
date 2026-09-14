@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.raffaykal.apex-prestige-runpod-scanner</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/raffaykal/AI BLUE CHIP STOCKS/scripts/start_runpod_scanner_24_7.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/raffaykal/AI BLUE CHIP STOCKS</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>RUNPOD_SCANNER_INTERVAL_SECONDS</key>
+    <string>300</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/raffaykal/AI BLUE CHIP STOCKS/logs/runpod_lightweight_scanner.launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/raffaykal/AI BLUE CHIP STOCKS/logs/runpod_lightweight_scanner.launchd.err.log</string>
+</dict>
+</plist>

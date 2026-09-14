@@ -1,0 +1,83 @@
+{
+  "architecture": "ABSOLUTE INFINITE +775% TACTICAL APPRECIATION OPERATIONS COMPOUNDING \u2014 APEX PRESTIGE ARCHITECTURE",
+  "authority": {
+    "plugins_execute_trades": false,
+    "scanner_plugins_are_execution_authority": false,
+    "missing_trade_critical_plugin_result": "NO ACTION",
+    "conflicting_trade_critical_plugin_result": "NO ACTION"
+  },
+  "always_on_lightweight_layer": {
+    "controller": "Runpod",
+    "allowed_operations": [
+      "24/7 watching",
+      "deterministic market scanning",
+      "calculations",
+      "projections",
+      "cooldowns",
+      "deduplication",
+      "candidate-readiness checks",
+      "health and status logging"
+    ],
+    "forbidden_operations": [
+      "order preview",
+      "order placement",
+      "broker mutation",
+      "unbounded heavy model loops",
+      "continuous graph rebuilds",
+      "continuous TradingCursor analysis",
+      "continuous NVIDIA-heavy workflows"
+    ]
+  },
+  "burst_only_stack_order": [
+    "Superpowers",
+    "Runpod",
+    "Blue Chip Stocks",
+    "Longbridge",
+    "Finances",
+    "2+2 Calculator",
+    "Precise Special Functions",
+    "TradingCursor",
+    "Stocktwits",
+    "OpenAI Developers",
+    "NVIDIA Skills",
+    "Cloudflare",
+    "Amplitude",
+    "Notion",
+    "Carta CRM",
+    "Rosalind Workbench",
+    "Figma",
+    "productivity",
+    "cowork-plugin-management",
+    "Ace Knowledge Graph"
+  ],
+  "verified_current_session_surfaces": {
+    "Blue Chip Stocks": {
+      "status": "CALLABLE",
+      "verified_call": "get_scans",
+      "scan_title": "Blue Chip 24/7 Core",
+      "scan_id": "6e34ac05-5d41-42de-bd73-fa87dd1e6a81"
+    },
+    "Longbridge": {
+      "status": "CALLABLE",
+      "verified_call": "market_temperature",
+      "market": "US"
+    },
+    "Stocktwits": {
+      "status": "CALLABLE_AFTER_AUTH",
+      "verified_call": "get_symbol_pulse",
+      "symbol": "NVDA"
+    },
+    "TradingCursor": {
+      "status": "CALLABLE",
+      "verified_call": "request_analysis",
+      "symbol": "NVDA",
+      "exchange": "NASDAQ",
+      "interval": "1D"
+    }
+  },
+  "codex_usage_rule": {
+    "runpod_scanner_on_when_codex_usage_unknown_or_below_2_percent": true,
+    "codex_heavy_wakeups_allowed_only_when_verified_usage_above_2_percent": true,
+    "pre_pause_execution_survives": false
+  }
+}

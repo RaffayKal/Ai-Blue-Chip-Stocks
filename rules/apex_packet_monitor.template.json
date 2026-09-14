@@ -1,0 +1,36 @@
+{
+  "scanner_output_path": "/Users/raffaykal/AI BLUE CHIP STOCKS/data/current_candidate_envelope.json",
+  "state_path": "/Users/raffaykal/AI BLUE CHIP STOCKS/data/apex_packet_monitor_state.json",
+  "log_path": "/Users/raffaykal/AI BLUE CHIP STOCKS/logs/apex_packet_monitor.jsonl",
+  "transport": {
+    "type": "local_file",
+    "inbox_dir": "/Users/raffaykal/AI BLUE CHIP STOCKS/data/codex_inbox"
+  },
+  "loop": {
+    "interval_seconds": 300,
+    "max_iterations": null
+  },
+  "freshness": {
+    "max_quote_age_seconds": 180,
+    "max_provenance_age_seconds": 300
+  },
+  "viability": {
+    "min_apex_score": 75,
+    "min_confidence": 0.65
+  },
+  "retry": {
+    "max_attempts": 3,
+    "base_backoff_seconds": 1.0,
+    "max_backoff_seconds": 30.0
+  },
+  "rate_limit": {
+    "min_emit_interval_seconds": 300
+  },
+  "circuit_breaker": {
+    "failure_threshold": 3,
+    "cooldown_seconds": 900
+  },
+  "heartbeat": {
+    "path": "/Users/raffaykal/AI BLUE CHIP STOCKS/data/apex_packet_monitor_health.json"
+  }
+}

@@ -1,0 +1,59 @@
+{
+  "brokerage_account_exists": true,
+  "broker_name": "Robinhood",
+  "account_type": "Robinhood MCP verified account set",
+  "agentic_mcp_server": "robinhood-trading",
+  "agentic_mcp_url": "https://agent.robinhood.com/mcp/trading",
+  "reported_cash_waiting_usd": 5.0,
+  "last_mcp_verification_utc": "2026-09-12T14:59:40Z",
+  "verified_accounts": [
+    {
+      "account_number": "619376361",
+      "rhs_account_number": "619376361",
+      "rhc_account_number": "311025970963",
+      "nickname": null,
+      "brokerage_account_type": "individual",
+      "brokerage_trading_type": "margin",
+      "is_default": true,
+      "accessible_to_this_agent": false,
+      "state": "active"
+    },
+    {
+      "account_number": "411926553",
+      "rhs_account_number": "411926553",
+      "rhc_account_number": "311266205533",
+      "nickname": "Claude",
+      "brokerage_account_type": "individual",
+      "brokerage_trading_type": "limited_margin",
+      "is_default": false,
+      "accessible_to_this_agent": true,
+      "state": "active"
+    }
+  ],
+  "verified_agentic_account": {
+    "account_number": "411926553",
+    "rhs_account_number": "411926553",
+    "rhc_account_number": "311266205533",
+    "nickname": "Claude",
+    "portfolio_value_usd": 5.0,
+    "cash_usd": 5.0,
+    "buying_power_usd": 5.0,
+    "crypto_buying_power_usd": 5.0,
+    "equity_value_usd": 0.0,
+    "crypto_value_usd": 0.0,
+    "options_value_usd": 0.0
+  },
+  "supports_crypto_24_7": true,
+  "supports_us_equity_regular": true,
+  "supports_us_equity_pre_market": "limit orders only; verify symbol/session tradability first",
+  "supports_us_equity_after_hours": "limit orders only; verify symbol/session tradability first",
+  "supports_us_equity_overnight": "limit orders only on eligible 24 Hour Market symbols",
+  "supports_fractional_shares": true,
+  "minimum_order_value_usd": 1.0,
+  "supported_order_types": ["market", "limit"],
+  "live_quotes_available": null,
+  "api_or_plugin_connected": "robinhood-trading MCP configured locally and verified through get_accounts plus get_portfolio on 2026-09-12T14:59:40Z",
+  "margin_approved": false,
+  "margin_minimum_portfolio_value_usd": 2000.0,
+  "explicit_execution_authorization": true
+}

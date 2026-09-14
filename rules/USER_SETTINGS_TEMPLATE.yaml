@@ -1,0 +1,30 @@
+capital:
+  available_trading_capital: null
+  max_risk_per_action_decimal: null
+  max_daily_loss_decimal: null
+  max_open_positions: null
+
+asset_limits:
+  crypto_max_allocation_decimal: null
+  us_equity_max_allocation_decimal: null
+  etf_max_allocation_decimal: null
+  option_max_allocation_decimal: null
+
+data_quality:
+  max_quote_age_seconds_crypto: null
+  max_quote_age_seconds_us_equity_regular: null
+  max_quote_age_seconds_us_equity_extended: null
+  max_allowed_source_price_difference_decimal: null
+
+execution_quality:
+  max_spread_decimal_crypto: null
+  max_spread_decimal_us_equity_regular: null
+  max_spread_decimal_us_equity_extended: null
+  min_liquidity_usd: null
+
+broker:
+  name: null
+  supports_crypto_24_7: null
+  supports_us_equity_after_hours: null
+  supports_us_equity_overnight: null
+  supported_order_types: []

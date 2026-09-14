@@ -1,0 +1,17 @@
+.DS_Store
+.env
+*.env
+*.key
+*.pem
+*secret*
+logs/
+data/*.json
+data/*.pid
+data/*.lock
+data/atomic_snapshots/
+data/stale_signals/
+__pycache__/
+*.py[cod]
+*.zip
+data:*/
+~$*
