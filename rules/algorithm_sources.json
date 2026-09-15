@@ -1,5 +1,5 @@
 {
-  "root": "/Users/raffaykal/AI BLUE CHIP STOCKS",
+  "root": ".",
   "required_algorithm_files": [
     "AGENTS.md",
     "COMMANDS.md",

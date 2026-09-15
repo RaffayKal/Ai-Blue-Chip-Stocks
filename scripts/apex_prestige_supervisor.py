@@ -8,8 +8,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from project_root import ROOT
 
-ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 CONFIG = ROOT / "rules" / "apex_packet_monitor.template.json"
 LOCK = ROOT / "data" / "apex_prestige_supervisor.lock"
 STATUS = ROOT / "data" / "apex_prestige_supervisor_status.json"

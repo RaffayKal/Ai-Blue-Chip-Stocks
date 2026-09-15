@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-ROOT="/Users/raffaykal/AI BLUE CHIP STOCKS"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 MANIFEST="rules/algorithm_sources.json"
 
 if [ "$(pwd)" != "$ROOT" ]; then
@@ -19,7 +19,7 @@ from pathlib import Path
 
 manifest_path = Path(sys.argv[1])
 manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
-root = Path(manifest["root"])
+root = manifest_path.resolve().parents[1]
 failed = []
 
 for relative_path in manifest.get("required_algorithm_files", []):

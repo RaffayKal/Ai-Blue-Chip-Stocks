@@ -3,7 +3,7 @@ import json
 import re
 from pathlib import Path
 
-ROOT = Path('/Users/raffaykal/AI BLUE CHIP STOCKS')
+from project_root import ROOT
 DATA = ROOT / 'data'
 LOG = DATA / 'autonomous_execution_log.json'
 ALGORITHM_ID = 'APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING'

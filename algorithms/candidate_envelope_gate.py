@@ -3,8 +3,8 @@ import sys
 from pathlib import Path
 
 from capital_engine import evaluate, load_json
+from project_root import ROOT
 
-ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 ALLOWED_SCANNER_DECISIONS = {
     "NO ACTION",

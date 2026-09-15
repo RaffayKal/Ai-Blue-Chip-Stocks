@@ -14,7 +14,9 @@
   <key>EnvironmentVariables</key>
   <dict>
     <key>RUNPOD_SCANNER_INTERVAL_SECONDS</key>
-    <string>300</string>
+    <string>60</string>
+    <key>CODEX_HEAVY_HEARTBEAT_SECONDS</key>
+    <string>1800</string>
   </dict>
   <key>RunAtLoad</key>
   <true/>

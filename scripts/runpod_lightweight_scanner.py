@@ -8,8 +8,8 @@ import time
 from datetime import datetime, timezone
 from pathlib import Path
 
+from project_root import ROOT
 
-ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 STATUS = ROOT / "data" / "runpod_lightweight_scanner_status.json"
 LOCK = ROOT / "data" / "runpod_lightweight_scanner.lock"
 LOG = ROOT / "logs" / "runpod_lightweight_scanner.jsonl"
@@ -271,7 +271,7 @@ def scan_once(codex_heavy_state):
 def main():
     parser = argparse.ArgumentParser(description="Runpod 24/7 lightweight scanner heartbeat.")
     parser.add_argument("--once", action="store_true")
-    parser.add_argument("--interval-seconds", type=float, default=300)
+    parser.add_argument("--interval-seconds", type=float, default=60)
     parser.add_argument("--codex-heavy-state", default="UNKNOWN_OR_FROZEN")
     parser.add_argument("--no-lock", action="store_true")
     args = parser.parse_args()

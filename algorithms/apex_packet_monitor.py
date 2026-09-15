@@ -12,13 +12,14 @@ from pathlib import Path
 from typing import Any
 
 from capital_engine import evaluate, load_json
+from project_root import ROOT
 
-ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 DEFAULT_CONFIG = ROOT / "rules" / "apex_packet_monitor.template.json"
 DEFAULT_STATE = ROOT / "data" / "apex_packet_monitor_state.json"
 DEFAULT_SCANNER_OUTPUT = ROOT / "data" / "current_candidate_envelope.json"
 DEFAULT_LOCAL_INBOX = ROOT / "data" / "codex_inbox"
 DEFAULT_LOG = ROOT / "logs" / "apex_packet_monitor.jsonl"
+LEGACY_MAC_ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 
 USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 ALLOWED_DECISIONS = {
@@ -85,14 +86,34 @@ def load_config(path: Path) -> dict[str, Any]:
     config.setdefault("state_path", str(DEFAULT_STATE))
     config.setdefault("log_path", str(DEFAULT_LOG))
     config.setdefault("transport", {"type": "local_file", "inbox_dir": str(DEFAULT_LOCAL_INBOX)})
-    config.setdefault("loop", {"interval_seconds": 300, "max_iterations": None})
+    config.setdefault("loop", {"interval_seconds": 1800, "max_iterations": None})
     config.setdefault("freshness", {"max_quote_age_seconds": 180, "max_provenance_age_seconds": 300})
     config.setdefault("viability", {"min_apex_score": 75, "min_confidence": 0.65})
     config.setdefault("retry", {"max_attempts": 3, "base_backoff_seconds": 1.0, "max_backoff_seconds": 30.0})
-    config.setdefault("rate_limit", {"min_emit_interval_seconds": 300})
+    config.setdefault("rate_limit", {"min_emit_interval_seconds": 1800})
     config.setdefault("circuit_breaker", {"failure_threshold": 3, "cooldown_seconds": 900})
     config.setdefault("heartbeat", {"path": str(ROOT / "data" / "apex_packet_monitor_health.json")})
+    for key in ("scanner_output_path", "state_path", "log_path"):
+        config[key] = str(resolve_runtime_path(config[key]))
+    transport = config.get("transport")
+    if isinstance(transport, dict):
+        for key in ("inbox_dir", "queue_dir", "resource_dir"):
+            if key in transport:
+                transport[key] = str(resolve_runtime_path(transport[key]))
+    heartbeat = config.get("heartbeat")
+    if isinstance(heartbeat, dict) and "path" in heartbeat:
+        heartbeat["path"] = str(resolve_runtime_path(heartbeat["path"]))
     return config
+
+
+def resolve_runtime_path(value: Any) -> Path:
+    path = Path(str(value))
+    if path.is_absolute():
+        try:
+            return ROOT / path.relative_to(LEGACY_MAC_ROOT)
+        except ValueError:
+            return path
+    return ROOT / path
 
 
 def read_state(path: Path) -> dict[str, Any]:

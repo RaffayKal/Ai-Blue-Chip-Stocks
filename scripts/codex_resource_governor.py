@@ -6,8 +6,8 @@ import os
 from datetime import datetime, timezone
 from pathlib import Path
 
+from project_root import ROOT
 
-ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 SETTINGS = ROOT / "rules" / "user_settings.json"
 SNAPSHOT_DIR = ROOT / "data" / "atomic_snapshots"
 STATE_LOG = ROOT / "logs" / "codex_resource_governor.jsonl"

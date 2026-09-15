@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 set -u
 
-ROOT="/Users/raffaykal/AI BLUE CHIP STOCKS"
-INTERVAL_SECONDS="${RUNPOD_SCANNER_INTERVAL_SECONDS:-300}"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
+INTERVAL_SECONDS="${RUNPOD_SCANNER_INTERVAL_SECONDS:-60}"
 ONCE_ARG="${1:-}"
 
 if [ "$(pwd)" != "$ROOT" ]; then

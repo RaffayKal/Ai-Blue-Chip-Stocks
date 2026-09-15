@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-ROOT="/Users/raffaykal/AI BLUE CHIP STOCKS"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG="${1:-rules/apex_packet_monitor.template.json}"
 ONCE_ARG="${2:-}"
 

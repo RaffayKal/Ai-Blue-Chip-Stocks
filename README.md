@@ -25,6 +25,12 @@ The active code must also pass `rules/algorithm_sources.json` through `scripts/v
 
 The executable user algorithm is `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING` in `rules/APEX_INVESTING_ALGORITHM.md`. Autonomous tickets must declare this exact `user_algorithm_id`, or the gate returns `NO ACTION`.
 
+## Usage-Conserving Runtime Cadence
+
+- Lightweight market watch runs continuously at a 60-second scanner cadence.
+- Codex/APEX heavy activation checks run every 30 minutes unless a fresh viable gate event requires action.
+- Trading execution remains OFF unless every scanner, broker, Robinhood, risk, preview, idempotency, and APEX gate passes.
+
 ## Absolute Operating Truth
 
 - Crypto can trade 24/7, subject to exchange, liquidity, maintenance, wallet, and API availability.

@@ -6,8 +6,8 @@ from decimal import ROUND_DOWN
 from pathlib import Path
 
 from capital_engine import evaluate, load_json
+from project_root import ROOT
 
-ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 USER_SETTINGS = ROOT / "rules" / "user_settings.json"
 BROKERAGE_INTAKE = ROOT / "rules" / "brokerage_intake.json"
 EXECUTION_LOG = ROOT / "data" / "autonomous_execution_log.json"

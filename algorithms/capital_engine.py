@@ -4,7 +4,8 @@ import math
 import sys
 from pathlib import Path
 
-ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
+from project_root import ROOT
+
 BLUE_CHIP_WATCHLIST = ROOT / "data" / "blue_chip_watchlist.txt"
 
 VALID_ASSET_CLASSES = {"CRYPTO", "US_EQUITY", "ETF", "OPTION", "FUND"}

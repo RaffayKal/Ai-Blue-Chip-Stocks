@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 set -u
 
-ROOT="/Users/raffaykal/AI BLUE CHIP STOCKS"
+ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 
 if [ "$(pwd)" != "$ROOT" ]; then
   echo "BLOCKED: command is not running inside AI BLUE CHIP STOCKS."

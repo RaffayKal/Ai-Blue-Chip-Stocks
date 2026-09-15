@@ -3,7 +3,7 @@ import json
 import sys
 from pathlib import Path
 
-ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
+from project_root import ROOT
 USER_SETTINGS = ROOT / "rules" / "user_settings.json"
 
 
