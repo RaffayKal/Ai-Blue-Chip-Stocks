@@ -142,6 +142,7 @@ def symbol_matches(candidate, target):
 
 
 def load_crypto_quote(symbol):
+    scanner_refresh_timestamp = iso_now()
     settings = load_json(USER_SETTINGS, {})
     max_age = (
         ((settings.get("data_quality") or {}).get("max_quote_age_seconds_crypto"))
@@ -165,6 +166,7 @@ def load_crypto_quote(symbol):
             "path": str(path),
             "payload": payload,
             "timestamp": timestamp,
+            "scanner_refresh_timestamp": scanner_refresh_timestamp,
             "age_seconds": age_seconds,
             "max_age_seconds": max_age,
             "has_bid_ask_last": has_quote,
@@ -174,6 +176,7 @@ def load_crypto_quote(symbol):
         "path": None,
         "payload": {},
         "timestamp": None,
+        "scanner_refresh_timestamp": scanner_refresh_timestamp,
         "age_seconds": None,
         "max_age_seconds": max_age,
         "has_bid_ask_last": False,
@@ -232,6 +235,8 @@ def build_micro_trade_value(crypto_quote):
         "spread_decimal": round(spread_decimal, 12) if spread_decimal is not None else None,
         "estimated_spread_cost_usd": round(spread_cost_usd, 8) if spread_cost_usd is not None else None,
         "quote_fresh": quote_fresh,
+        "quote_stream_active_by_scanner": True,
+        "quote_stream_refresh_timestamp": crypto_quote["scanner_refresh_timestamp"],
         "micro_trade_value_status": "VIABLE_FOR_GATE_RECHECK" if viable else "NO_ACTION_GATE_LOCKED",
     }
 
@@ -420,6 +425,15 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "broker_name": "Robinhood",
         "algorithm_quote_contract": "APEX_REQUIRES_FRESH_CRYPTO_BID_ASK_LAST",
         "timestamp": iso_now(),
+        "scanner_quote_stream": {
+            "active": True,
+            "owner": "RUNPOD_LIGHTWEIGHT_SCANNER",
+            "cadence_seconds": 1,
+            "refresh_timestamp": crypto_quote["scanner_refresh_timestamp"],
+            "source_path": crypto_quote["path"],
+            "source_has_bid_ask_last": crypto_quote["has_bid_ask_last"],
+            "source_fresh": crypto_quote["fresh"],
+        },
         "quote_timestamp": crypto_quote["timestamp"],
         "quote_source_path": crypto_quote["path"],
         "quote_age_seconds": round(crypto_quote["age_seconds"], 3) if crypto_quote["age_seconds"] is not None else None,
@@ -461,6 +475,8 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "fresh_source_count": fresh_count,
             "apex_crypto_quote_feed": "fresh" if crypto_quote["fresh"] else "stale_or_unusable",
             "apex_crypto_quote_source": crypto_quote["path"],
+            "scanner_quote_stream_active": True,
+            "scanner_quote_stream_refresh_timestamp": crypto_quote["scanner_refresh_timestamp"],
             "crypto_24_7_session": crypto_session_confirmed,
             "equity_market_open": market_open,
             "blue_chip_symbols_tracked": len(symbols),
@@ -503,8 +519,10 @@ def scan_once(codex_heavy_state, lane):
         "source_quality": envelope["source_quality"],
         "projection": envelope["projection"],
         "micro_trade_value": envelope["micro_trade_value"],
+        "scanner_quote_stream": envelope["market_input"]["scanner_quote_stream"],
         "continuous_operations": [
             "watching",
+            "24/7 scanner-owned quote refresh",
             "deterministic calculations",
             "medium8 projection calculations",
             "cooldowns",

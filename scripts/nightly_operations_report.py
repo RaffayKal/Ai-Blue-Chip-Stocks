@@ -28,6 +28,7 @@ def main():
     candidate = load_json(CANDIDATE)
 
     scanner_active = scanner.get("scanner_active") is True
+    quote_stream = scanner.get("scanner_quote_stream") or {}
     execution_allowed = scanner.get("trade_execution_allowed") is True
     viable = candidate.get("scanner_viable") is True and candidate.get("requested_codex_activation") is True
     smooth = scanner_active and not execution_allowed
@@ -36,6 +37,8 @@ def main():
     print(f"OPERATIONS_SMOOTH: {yes_no(smooth)}")
     print(f"SCANNER_ACTIVE: {yes_no(scanner_active)}")
     print(f"SCANNER_TIMESTAMP_UTC: {scanner.get('timestamp_utc', 'missing')}")
+    print(f"MEDIUM_SCANNER_QUOTE_STREAM_ACTIVE: {yes_no(quote_stream.get('active') is True)}")
+    print(f"MEDIUM_SCANNER_QUOTE_SOURCE_FRESH: {yes_no(quote_stream.get('source_fresh') is True)}")
     print(f"SUPERVISOR_STATE: {supervisor.get('supervisor_state', 'missing')}")
     print(f"HEALTH_CHECK_ONLY: {yes_no(supervisor.get('health_check_only') is True)}")
     print("HEAVY_ACTION: NO ACTION")
