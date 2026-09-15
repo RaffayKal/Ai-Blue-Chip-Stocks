@@ -34,6 +34,7 @@ required_files=(
   "scripts/select_autonomous_side.py"
   "scripts/codex_resource_governor.py"
   "scripts/apex_prestige_supervisor.py"
+  "scripts/nightly_operations_report.py"
   "scripts/runpod_lightweight_scanner.py"
   "scripts/start_runpod_scanner_24_7.sh"
   "algorithms/candidate_envelope_gate.py"

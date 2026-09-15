@@ -21,6 +21,7 @@
     "scripts/extract_envelope_market_input.py",
     "scripts/select_autonomous_side.py",
     "scripts/codex_resource_governor.py",
+    "scripts/nightly_operations_report.py",
     "scripts/runpod_lightweight_scanner.py",
     "rules/plugin_runtime_stack.json",
     "algorithms/candidate_envelope_gate.py",

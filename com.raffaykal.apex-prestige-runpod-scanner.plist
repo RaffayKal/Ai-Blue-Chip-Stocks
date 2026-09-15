@@ -15,8 +15,8 @@
   <dict>
     <key>RUNPOD_SCANNER_INTERVAL_SECONDS</key>
     <string>60</string>
-    <key>CODEX_HEAVY_HEARTBEAT_SECONDS</key>
-    <string>1800</string>
+    <key>CODEX_LIGHT_HEALTH_SECONDS</key>
+    <string>18000</string>
   </dict>
   <key>RunAtLoad</key>
   <true/>

@@ -115,6 +115,8 @@ def supervisor_once(config_path):
         "codex_heavy_operations_active": False,
         "apex_heavy_monitor_active": False,
         "health_check_only": True,
+        "health_check_cadence": "START_OF_CODEX_USAGE_REFRESH_END_OF_USAGE_OR_EVERY_5_HOURS",
+        "night_report_required": True,
         "zero_market_operations": False,
         "monitor_interval_seconds": load_interval(config_path),
         "wrapper_restart_interval_seconds": None,

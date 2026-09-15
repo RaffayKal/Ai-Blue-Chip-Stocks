@@ -28,7 +28,10 @@ The executable user algorithm is `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING` in `rul
 ## Usage-Conserving Runtime Cadence
 
 - Lightweight market watch runs continuously at a 60-second scanner cadence.
-- A light health check runs every 30 minutes to confirm operations remain live.
+- Codex usage-refresh start: run one light health check to confirm operations are live.
+- Codex usage exhaustion/end: run one light health check and freeze/report if usage is at or below 2%.
+- Otherwise, a light operations-health check runs every 5 hours to confirm operations remain live.
+- Night report: send one concise operations report after the day session showing smooth/not-smooth status and blockers.
 - Codex/APEX heavy checks do not run on the heartbeat; they stay asleep unless a fresh viable event requires the gate workflow.
 - Trading execution remains OFF unless every scanner, broker, Robinhood, risk, preview, idempotency, and APEX gate passes.
 
