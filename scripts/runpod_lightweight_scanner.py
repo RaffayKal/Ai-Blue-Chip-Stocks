@@ -123,6 +123,61 @@ def stable_hash(data):
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
 
 
+def numeric(value):
+    return value if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+
+def clamp(value, lower=0.0, upper=100.0):
+    return max(lower, min(upper, value))
+
+
+def projection_score(value, neutral=50.0, scale=1.0):
+    number = numeric(value)
+    if number is None:
+        return neutral
+    return clamp(number * scale)
+
+
+def build_medium8_projection(source_records, market_open, sentiment, temperature, pulse):
+    fresh_count = sum(1 for item in source_records if item["status"] == "fresh")
+    freshness_score = clamp((fresh_count / max(len(source_records), 1)) * 100)
+    sentiment_score = projection_score(sentiment.get("score"))
+    temperature_score = projection_score(temperature.get("temperature"))
+    last_price = numeric(pulse.get("price"))
+    capital_fit_score = 100.0 if last_price is not None and last_price > 0 else 0.0
+    session_score = 100.0 if market_open else 0.0
+    source_depth_score = clamp(fresh_count * 20.0)
+    stale_penalty_score = clamp(100.0 - freshness_score)
+    continuation_probability = clamp(
+        (freshness_score * 0.25)
+        + (sentiment_score * 0.2)
+        + (temperature_score * 0.2)
+        + (session_score * 0.15)
+        + (capital_fit_score * 0.1)
+        + (source_depth_score * 0.1)
+    )
+    reversal_risk_score = clamp(100.0 - continuation_probability + stale_penalty_score * 0.25)
+    net_opportunity_score = clamp(continuation_probability - reversal_risk_score * 0.35)
+    medium8 = {
+        "freshness_score": round(freshness_score, 3),
+        "sentiment_score": round(sentiment_score, 3),
+        "market_temperature_score": round(temperature_score, 3),
+        "session_confirmation_score": round(session_score, 3),
+        "capital_fit_score": round(capital_fit_score, 3),
+        "source_depth_score": round(source_depth_score, 3),
+        "continuation_probability": round(continuation_probability, 3),
+        "net_opportunity_score": round(net_opportunity_score, 3),
+    }
+    return {
+        "tier": "MEDIUM8",
+        "execution_authority": False,
+        "projection_count": 8,
+        "projection_scores": medium8,
+        "reversal_risk_score": round(reversal_risk_score, 3),
+        "stale_penalty_score": round(stale_penalty_score, 3),
+    }
+
+
 def normalize_plugin_snapshot():
     snapshot = load_json(PLUGIN_SNAPSHOT, {})
     if not isinstance(snapshot, dict):
@@ -196,6 +251,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         failed.append("Stocktwits sentiment is not positive")
     if codex_heavy_state != "AVAILABLE_IF_VIABILITY_GATES_TRUE":
         failed.append("Codex heavy workflow remains frozen/dormant")
+    projection = build_medium8_projection(source_records, market_open, sentiment, temperature, pulse)
 
     market_input = {
         "symbol": symbol,
@@ -234,6 +290,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "apex_score": 0,
         "confidence": 0,
         "codex_heavy_state": codex_heavy_state,
+        "projection": projection,
         "market_input": market_input,
         "data_provenance": source_records,
         "source_quality": {
@@ -276,10 +333,11 @@ def scan_once(codex_heavy_state, lane):
         "candidate_decision": envelope["candidate_decision"],
         "scanner_viable": envelope["scanner_viable"],
         "source_quality": envelope["source_quality"],
+        "projection": envelope["projection"],
         "continuous_operations": [
             "watching",
             "deterministic calculations",
-            "projection bookkeeping",
+            "medium8 projection calculations",
             "cooldowns",
             "deduplication",
             "candidate envelope readiness checks",
