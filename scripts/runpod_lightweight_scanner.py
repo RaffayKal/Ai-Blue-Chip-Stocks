@@ -28,6 +28,7 @@ LANE_ENVELOPE_DIR = ROOT / "data" / "candidate_lanes"
 PLUGIN_STACK = ROOT / "rules" / "plugin_runtime_stack.json"
 ARCHITECTURE_NAME = "ABSOLUTE INFINITE +775% TACTICAL APPRECIATION OPERATIONS COMPOUNDING — APEX PRESTIGE ARCHITECTURE"
 USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
+APEX_VALUE_DOCTRINE = "MICRO TRADES - ABSOLUTE INFINITE +775% OPTIMALLY APPRECIATE TACTICAL COMPOUNDING OF CAPITAL"
 MAX_SOURCE_AGE_SECONDS = 300
 DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS = 15
 
@@ -217,7 +218,7 @@ def build_micro_trade_value(crypto_quote):
     quote_fresh = crypto_quote["fresh"] is True
     viable = quote_fresh and ticket_within_cap and spread_decimal is not None and spread_decimal <= 0.002
     return {
-        "doctrine": "MICRO_TRADES_TO_ABSOLUTE_INFINITE_775_TACTICAL_COMPOUNDING_OF_CAPITAL",
+        "doctrine": APEX_VALUE_DOCTRINE,
         "execution_authority": False,
         "requested_micro_notional_usd": round(requested_notional, 6),
         "available_capital_usd": round(available_capital, 6),

@@ -94,6 +94,8 @@ For each asset, continuously calculate confirmed values only:
 
 Define viable trade value as an opportunity where estimated appreciation exceeds total execution friction and produces positive expected net profit.
 
+APEX value doctrine: `MICRO TRADES - ABSOLUTE INFINITE +775% OPTIMALLY APPRECIATE TACTICAL COMPOUNDING OF CAPITAL`.
+
 If viable trade value is false, keep `FULL_AGENT = OFF` and continue lightweight monitoring only.
 
 If viable trade value is true, wake the full agent to analyze the opportunity, validate market conditions, validate net-profit potential, and decide one of: `BUY CANDIDATE`, `SELL CANDIDATE`, `HOLD`, `PARTIAL SELL CANDIDATE`, or `RE-ENTER CANDIDATE`.
