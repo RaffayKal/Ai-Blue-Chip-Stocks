@@ -21,10 +21,33 @@ LANE_ENVELOPE_DIR = ROOT / "data" / "candidate_lanes"
 PLUGIN_STACK = ROOT / "rules" / "plugin_runtime_stack.json"
 ARCHITECTURE_NAME = "ABSOLUTE INFINITE +775% TACTICAL APPRECIATION OPERATIONS COMPOUNDING — APEX PRESTIGE ARCHITECTURE"
 USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
+MAX_SOURCE_AGE_SECONDS = 300
 
 
 def iso_now():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def parse_timestamp(value):
+    if not value or not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def timestamp_age_seconds(value):
+    parsed = parse_timestamp(value)
+    if parsed is None:
+        return None
+    return (datetime.now(timezone.utc) - parsed).total_seconds()
 
 
 def write_json(path, data):
@@ -112,14 +135,20 @@ def normalize_plugin_snapshot():
 
 def source_record(name, payload):
     if not isinstance(payload, dict):
-        return {"source": name, "status": "unavailable", "timestamp": iso_now()}
+        return {"source": name, "status": "unavailable", "timestamp": iso_now(), "summary": "missing payload"}
     status = payload.get("status") or payload.get("trade_status") or payload.get("label")
     timestamp = payload.get("timestamp") or payload.get("retrieved_at") or payload.get("price_time")
+    age_seconds = timestamp_age_seconds(timestamp)
+    usable = payload.get("usable", True) is not False
+    is_fresh = timestamp and usable and age_seconds is not None and 0 <= age_seconds <= MAX_SOURCE_AGE_SECONDS
+    source_status = "fresh" if is_fresh else "stale_or_unusable"
     return {
         "source": name,
-        "status": "fresh" if timestamp and payload.get("usable", True) is not False else "unavailable",
+        "status": source_status,
         "timestamp": timestamp or iso_now(),
         "summary": status,
+        "age_seconds": round(age_seconds, 3) if age_seconds is not None else None,
+        "max_age_seconds": MAX_SOURCE_AGE_SECONDS,
     }
 
 
@@ -140,11 +169,14 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         source_record("Stocktwits.symbol_pulse", pulse),
         source_record("TradingCursor.analysis", tradingcursor.get("analysis", {"usable": False, "status": "unavailable"})),
     ]
+    source_by_name = {item["source"]: item for item in source_records}
     fresh_count = sum(1 for item in source_records if item["status"] == "fresh")
-    market_open = any(
+    raw_market_open = any(
         isinstance(item, dict) and item.get("market") == "US" and item.get("trade_status") == "Trading"
         for item in market_status.get("market_time", []) if isinstance(market_status.get("market_time"), list)
     )
+    market_status_fresh = source_by_name["Longbridge.market_status"]["status"] == "fresh"
+    market_open = raw_market_open and market_status_fresh
     sentiment_score = sentiment.get("score")
     sentiment_label = sentiment.get("label")
     temperature_value = temperature.get("temperature")
@@ -152,7 +184,9 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
 
     viable = False
     failed = []
-    if not market_open:
+    if not market_status_fresh:
+        failed.append("US market status is stale or unusable")
+    elif not market_open:
         failed.append("US market status is not verified Trading")
     if fresh_count < 2:
         failed.append("fewer than two fresh plugin source records")

@@ -7,7 +7,7 @@
   <string>com.raffaykal.apex-prestige-runpod-scanner</string>
   <key>ProgramArguments</key>
   <array>
-    <string>/Users/raffaykal/AI BLUE CHIP STOCKS/scripts/start_runpod_scanner_24_7.sh</string>
+    <string>/Users/raffaykal/AI BLUE CHIP STOCKS/scripts/start_lightweight_scanner_fleet.sh</string>
   </array>
   <key>WorkingDirectory</key>
   <string>/Users/raffaykal/AI BLUE CHIP STOCKS</string>
@@ -15,6 +15,16 @@
   <dict>
     <key>RUNPOD_SCANNER_INTERVAL_SECONDS</key>
     <string>1</string>
+    <key>RUNPOD_SCANNER_LANES</key>
+    <string>auto</string>
+    <key>RUNPOD_MIN_LIGHTWEIGHT_LANES</key>
+    <string>7</string>
+    <key>RUNPOD_SAFE_LIGHTWEIGHT_LANES</key>
+    <string>14</string>
+    <key>RUNPOD_MAX_LIGHTWEIGHT_LANES</key>
+    <string>700</string>
+    <key>RUNPOD_ALLOW_HIGH_LIGHTWEIGHT_FANOUT</key>
+    <string>false</string>
     <key>CODEX_LIGHT_HEALTH_SECONDS</key>
     <string>18000</string>
   </dict>
