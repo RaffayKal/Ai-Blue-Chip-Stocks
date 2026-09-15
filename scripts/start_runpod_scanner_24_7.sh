@@ -2,7 +2,7 @@
 set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
-INTERVAL_SECONDS="${RUNPOD_SCANNER_INTERVAL_SECONDS:-60}"
+INTERVAL_SECONDS="${RUNPOD_SCANNER_INTERVAL_SECONDS:-1}"
 ONCE_ARG="${1:-}"
 
 if [ "$(pwd)" != "$ROOT" ]; then

@@ -14,7 +14,7 @@
   <key>EnvironmentVariables</key>
   <dict>
     <key>RUNPOD_SCANNER_INTERVAL_SECONDS</key>
-    <string>60</string>
+    <string>1</string>
     <key>CODEX_LIGHT_HEALTH_SECONDS</key>
     <string>18000</string>
   </dict>

@@ -27,7 +27,7 @@ The executable user algorithm is `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING` in `rul
 
 ## Usage-Conserving Runtime Cadence
 
-- Lightweight market watch runs continuously at a 60-second scanner cadence.
+- Lightweight market watch runs continuously at a 1-second scanner cadence.
 - Codex usage-refresh start: run one light health check to confirm operations are live.
 - Codex usage exhaustion/end: run one light health check and freeze/report if usage is at or below 2%.
 - Otherwise, a light operations-health check runs every 5 hours to confirm operations remain live.
