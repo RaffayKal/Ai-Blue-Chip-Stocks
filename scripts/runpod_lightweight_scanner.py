@@ -14,6 +14,7 @@ STATUS = ROOT / "data" / "runpod_lightweight_scanner_status.json"
 LOCK = ROOT / "data" / "runpod_lightweight_scanner.lock"
 LOG = ROOT / "logs" / "runpod_lightweight_scanner.jsonl"
 WATCHLIST = ROOT / "data" / "blue_chip_watchlist.txt"
+CRYPTO_CANDIDATES = ROOT / "data" / "volatile_crypto_candidates.json"
 PLUGIN_SNAPSHOT = ROOT / "data" / "plugin_runtime_snapshot.json"
 CANDIDATE_ENVELOPE = ROOT / "data" / "current_candidate_envelope.json"
 LANE_STATUS_DIR = ROOT / "data" / "scanner_lanes"
@@ -118,6 +119,14 @@ def load_watchlist():
     return symbols
 
 
+def load_active_crypto_symbol():
+    candidates = load_json(CRYPTO_CANDIDATES, {})
+    if not isinstance(candidates, dict):
+        candidates = {}
+    symbol = str(candidates.get("active_symbol") or candidates.get("fallback_symbol") or "BTC").strip().upper()
+    return symbol or "BTC", candidates
+
+
 def stable_hash(data):
     body = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
@@ -138,14 +147,14 @@ def projection_score(value, neutral=50.0, scale=1.0):
     return clamp(number * scale)
 
 
-def build_medium8_projection(source_records, market_open, sentiment, temperature, pulse):
+def build_medium8_projection(source_records, session_confirmed, sentiment, temperature, pulse, tier):
     fresh_count = sum(1 for item in source_records if item["status"] == "fresh")
     freshness_score = clamp((fresh_count / max(len(source_records), 1)) * 100)
     sentiment_score = projection_score(sentiment.get("score"))
     temperature_score = projection_score(temperature.get("temperature"))
     last_price = numeric(pulse.get("price"))
     capital_fit_score = 100.0 if last_price is not None and last_price > 0 else 0.0
-    session_score = 100.0 if market_open else 0.0
+    session_score = 100.0 if session_confirmed else 0.0
     source_depth_score = clamp(fresh_count * 20.0)
     stale_penalty_score = clamp(100.0 - freshness_score)
     continuation_probability = clamp(
@@ -169,7 +178,7 @@ def build_medium8_projection(source_records, market_open, sentiment, temperature
         "net_opportunity_score": round(net_opportunity_score, 3),
     }
     return {
-        "tier": "MEDIUM8",
+        "tier": tier,
         "execution_authority": False,
         "projection_count": 8,
         "projection_scores": medium8,
@@ -208,6 +217,7 @@ def source_record(name, payload):
 
 
 def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
+    crypto_symbol, crypto_candidates = load_active_crypto_symbol()
     longbridge = sources.get("Longbridge", {})
     stocktwits = sources.get("Stocktwits", {})
     tradingcursor = sources.get("TradingCursor", {})
@@ -216,8 +226,16 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     sentiment = stocktwits.get("sentiment", {})
     pulse = stocktwits.get("symbol_pulse", {})
 
-    symbol = str(pulse.get("symbol") or sentiment.get("symbol") or (symbols[0] if symbols else "WATCHLIST")).upper()
+    symbol = crypto_symbol
     source_records = [
+        {
+            "source": "volatile_crypto_candidates.active_symbol",
+            "status": "fresh",
+            "timestamp": iso_now(),
+            "summary": crypto_candidates.get("active_symbol_reason"),
+            "age_seconds": 0,
+            "max_age_seconds": MAX_SOURCE_AGE_SECONDS,
+        },
         source_record("Longbridge.market_status", market_status),
         source_record("Longbridge.market_temperature", temperature),
         source_record("Stocktwits.sentiment", sentiment),
@@ -232,6 +250,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     )
     market_status_fresh = source_by_name["Longbridge.market_status"]["status"] == "fresh"
     market_open = raw_market_open and market_status_fresh
+    crypto_session_confirmed = True
     sentiment_score = sentiment.get("score")
     sentiment_label = sentiment.get("label")
     temperature_value = temperature.get("temperature")
@@ -239,10 +258,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
 
     viable = False
     failed = []
-    if not market_status_fresh:
-        failed.append("US market status is stale or unusable")
-    elif not market_open:
-        failed.append("US market status is not verified Trading")
+    failed.append("live crypto bid/ask/last feed not verified")
     if fresh_count < 2:
         failed.append("fewer than two fresh plugin source records")
     if tradingcursor_rejected:
@@ -251,25 +267,51 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         failed.append("Stocktwits sentiment is not positive")
     if codex_heavy_state != "AVAILABLE_IF_VIABILITY_GATES_TRUE":
         failed.append("Codex heavy workflow remains frozen/dormant")
-    projection = build_medium8_projection(source_records, market_open, sentiment, temperature, pulse)
+    crypto_projection = build_medium8_projection(
+        source_records,
+        crypto_session_confirmed,
+        sentiment,
+        temperature,
+        pulse,
+        "MEDIUM8_CRYPTO_24_7",
+    )
+    blue_chip_projection = build_medium8_projection(
+        source_records,
+        market_open,
+        sentiment,
+        temperature,
+        pulse,
+        "MEDIUM8_BLUE_CHIPS_MARKET_HOURS",
+    )
+    projection = {
+        "mode": "MEDIUM_WEIGHT_DUAL_LANE",
+        "execution_authority": False,
+        "active_lane": "CRYPTO_24_7",
+        "crypto": crypto_projection,
+        "blue_chips": blue_chip_projection,
+        "blue_chip_status": "ACTIVE_WHEN_EQUITY_MARKET_VERIFIED_OPEN" if market_open else "WATCH_ONLY_UNTIL_EQUITY_MARKET_VERIFIED_OPEN",
+    }
 
     market_input = {
         "symbol": symbol,
-        "asset_class": "US_EQUITY",
-        "session": "REGULAR" if market_open else "UNKNOWN",
-        "venue": pulse.get("exchange") or "UNKNOWN",
+        "asset_class": "CRYPTO",
+        "session": "CRYPTO_24_7",
+        "venue": "Robinhood Crypto",
         "broker_name": "Robinhood",
         "timestamp": iso_now(),
-        "quote_timestamp": pulse.get("price_time") or iso_now(),
-        "last": pulse.get("price"),
-        "data_status": "fresh" if fresh_count >= 2 else "unusable",
+        "quote_timestamp": None,
+        "bid": None,
+        "ask": None,
+        "last": None,
+        "data_status": "unusable",
         "risk_status": "fail",
         "source_count": fresh_count,
         "source_conflict": False,
         "available_trading_capital": 5.0,
         "requested_notional_usd": 1.0,
-        "fractional_shares_supported": True,
-        "fractional_asset_eligible": True,
+        "crypto_account_confirmed": False,
+        "maintenance_active": None,
+        "account_restricted": None,
         "margin_requested": False,
         "margin_approved": False,
         "account_net_worth_usd": 5.0,
@@ -295,14 +337,16 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "data_provenance": source_records,
         "source_quality": {
             "fresh_source_count": fresh_count,
-            "market_open": market_open,
+            "crypto_24_7_session": crypto_session_confirmed,
+            "equity_market_open": market_open,
+            "blue_chip_symbols_tracked": len(symbols),
             "sentiment_label": sentiment_label,
             "sentiment_score": sentiment_score,
             "market_temperature": temperature_value,
             "tradingcursor_available": not tradingcursor_rejected,
         },
         "failed_checks": failed,
-        "next_allowed_step": "continue Runpod 24/7 scanning; do not wake Codex unless a new fresh non-duplicate envelope passes every APEX gate",
+        "next_allowed_step": "continue crypto 24/7 medium8 scanning; do not wake Codex unless a new fresh non-duplicate crypto envelope passes every APEX gate",
     }
     return envelope
 
