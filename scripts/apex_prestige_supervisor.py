@@ -104,16 +104,17 @@ def supervisor_once(config_path):
         "scripts/runpod_lightweight_scanner.py",
         "--once",
         "--codex-heavy-state",
-        "AVAILABLE_IF_VIABILITY_GATES_TRUE",
+        "ASLEEP_HEALTH_CHECK_ONLY",
     ])
-    mon_code, mon_output = run_command([sys.executable, "algorithms/apex_packet_monitor.py", "--config", str(config_path), "--once"])
     status = {
         "timestamp_utc": iso_now(),
         "architecture": ARCHITECTURE_NAME,
-        "supervisor_state": "ACTIVE",
+        "supervisor_state": "LIGHT_HEALTH_CHECK_ONLY",
         "operations_active": True,
         "runpod_lightweight_scanner_active": True,
         "codex_heavy_operations_active": False,
+        "apex_heavy_monitor_active": False,
+        "health_check_only": True,
         "zero_market_operations": False,
         "monitor_interval_seconds": load_interval(config_path),
         "wrapper_restart_interval_seconds": None,
@@ -122,15 +123,15 @@ def supervisor_once(config_path):
         "all_apex_gates_rerun_before_resume": True,
         "last_governor_exit": gov_code,
         "last_scanner_exit": scan_code,
-        "last_monitor_exit": mon_code,
+        "last_monitor_exit": None,
     }
     write_json(STATUS, status)
-    log("monitor_once", governor_exit=gov_code, scanner_exit=scan_code, monitor_exit=mon_code, scanner_output=scan_output, monitor_output=mon_output)
+    log("light_health_check_only", governor_exit=gov_code, scanner_exit=scan_code, scanner_output=scan_output)
     print(gov_output, end="")
     print(scan_output, end="")
-    print(mon_output, end="")
-    print("APEX_PRESTIGE_SUPERVISOR: ACTIVE")
-    return "ACTIVE"
+    print("APEX_PRESTIGE_SUPERVISOR: LIGHT_HEALTH_CHECK_ONLY")
+    print("HEAVY_ACTION: NO ACTION")
+    return "LIGHT_HEALTH_CHECK_ONLY"
 
 
 def main():
