@@ -16,6 +16,7 @@ LOG = ROOT / "logs" / "runpod_lightweight_scanner.jsonl"
 WATCHLIST = ROOT / "data" / "blue_chip_watchlist.txt"
 CRYPTO_CANDIDATES = ROOT / "data" / "volatile_crypto_candidates.json"
 CRYPTO_QUOTE_INPUTS = [
+    ROOT / "data" / "robinhood_crypto_quote_snapshot.json",
     ROOT / "data" / "sample_robinhood_volatile_crypto_input.json",
     ROOT / "data" / "sample_robinhood_crypto_input.json",
     ROOT / "data" / "sample_crypto_input.json",
@@ -152,6 +153,7 @@ def load_crypto_quote(symbol):
     if not isinstance(max_age, (int, float)) or max_age <= 0:
         max_age = DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS
 
+    quote_sources = []
     for path in CRYPTO_QUOTE_INPUTS:
         payload = load_json(path, {})
         if not isinstance(payload, dict) or payload.get("asset_class") != "CRYPTO":
@@ -162,7 +164,7 @@ def load_crypto_quote(symbol):
         age_seconds = timestamp_age_seconds(timestamp)
         has_quote = all(numeric(payload.get(field)) is not None for field in ("bid", "ask", "last"))
         is_fresh = has_quote and age_seconds is not None and 0 <= age_seconds <= max_age
-        return {
+        quote_sources.append({
             "path": str(path),
             "payload": payload,
             "timestamp": timestamp,
@@ -171,7 +173,20 @@ def load_crypto_quote(symbol):
             "max_age_seconds": max_age,
             "has_bid_ask_last": has_quote,
             "fresh": is_fresh,
-        }
+            "bid": numeric(payload.get("bid")),
+            "ask": numeric(payload.get("ask")),
+            "last": numeric(payload.get("last")),
+        })
+
+    primary = next((source for source in quote_sources if source["fresh"]), quote_sources[0] if quote_sources else None)
+    source_conflict = quote_sources_conflict(quote_sources, settings)
+    if primary is not None:
+        primary = {**primary}
+        primary["quote_sources"] = quote_sources
+        primary["fresh_quote_source_count"] = sum(1 for source in quote_sources if source["fresh"])
+        primary["quote_source_count"] = len(quote_sources)
+        primary["source_conflict"] = source_conflict
+        return primary
     return {
         "path": None,
         "payload": {},
@@ -181,7 +196,38 @@ def load_crypto_quote(symbol):
         "max_age_seconds": max_age,
         "has_bid_ask_last": False,
         "fresh": False,
+        "quote_sources": quote_sources,
+        "fresh_quote_source_count": 0,
+        "quote_source_count": 0,
+        "source_conflict": source_conflict,
     }
+
+
+def quotes_percent_difference(a, b):
+    if a is None or b is None:
+        return None
+    midpoint = (a + b) / 2
+    if midpoint <= 0:
+        return None
+    return abs(a - b) / midpoint
+
+
+def quote_sources_conflict(quote_sources, settings):
+    max_difference = (
+        ((settings.get("data_quality") or {}).get("max_allowed_source_price_difference_decimal"))
+        if isinstance(settings, dict)
+        else None
+    )
+    if not isinstance(max_difference, (int, float)) or max_difference <= 0:
+        max_difference = 0.002
+    usable = [source for source in quote_sources if source["fresh"]]
+    for index, left in enumerate(usable):
+        for right in usable[index + 1:]:
+            for field in ("bid", "ask", "last"):
+                difference = quotes_percent_difference(left.get(field), right.get(field))
+                if difference is not None and difference > max_difference:
+                    return True
+    return False
 
 
 def stable_hash(data):
@@ -341,6 +387,9 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "summary": crypto_quote["path"],
             "age_seconds": round(crypto_quote["age_seconds"], 3) if crypto_quote["age_seconds"] is not None else None,
             "max_age_seconds": crypto_quote["max_age_seconds"],
+            "quote_source_count": crypto_quote["quote_source_count"],
+            "fresh_quote_source_count": crypto_quote["fresh_quote_source_count"],
+            "source_conflict": crypto_quote["source_conflict"],
         },
         source_record("Longbridge.market_status", market_status),
         source_record("Longbridge.market_temperature", temperature),
@@ -370,6 +419,10 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         failed.append("APEX crypto bid/ask/last feed is stale")
     if fresh_count < 2:
         failed.append("fewer than two fresh plugin source records")
+    if crypto_quote["fresh_quote_source_count"] < 2:
+        failed.append("fewer than two fresh crypto quote sources")
+    if crypto_quote["source_conflict"]:
+        failed.append("crypto quote sources conflict")
     if tradingcursor_rejected:
         failed.append("TradingCursor unavailable due to plan or cooldown")
     if sentiment_label == "BEARISH" or (isinstance(sentiment_score, (int, float)) and sentiment_score < 50):
@@ -431,11 +484,16 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "cadence_seconds": 1,
             "refresh_timestamp": crypto_quote["scanner_refresh_timestamp"],
             "source_path": crypto_quote["path"],
+            "quote_source_count": crypto_quote["quote_source_count"],
+            "fresh_quote_source_count": crypto_quote["fresh_quote_source_count"],
             "source_has_bid_ask_last": crypto_quote["has_bid_ask_last"],
             "source_fresh": crypto_quote["fresh"],
+            "source_conflict": crypto_quote["source_conflict"],
         },
         "quote_timestamp": crypto_quote["timestamp"],
         "quote_source_path": crypto_quote["path"],
+        "quote_source_count": crypto_quote["quote_source_count"],
+        "fresh_quote_source_count": crypto_quote["fresh_quote_source_count"],
         "quote_age_seconds": round(crypto_quote["age_seconds"], 3) if crypto_quote["age_seconds"] is not None else None,
         "quote_max_age_seconds": crypto_quote["max_age_seconds"],
         "data_status": "fresh" if crypto_quote["fresh"] and fresh_count >= 2 else "stale" if crypto_quote["has_bid_ask_last"] else "unusable",
@@ -475,6 +533,9 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "fresh_source_count": fresh_count,
             "apex_crypto_quote_feed": "fresh" if crypto_quote["fresh"] else "stale_or_unusable",
             "apex_crypto_quote_source": crypto_quote["path"],
+            "crypto_quote_source_count": crypto_quote["quote_source_count"],
+            "fresh_crypto_quote_source_count": crypto_quote["fresh_quote_source_count"],
+            "crypto_quote_source_conflict": crypto_quote["source_conflict"],
             "scanner_quote_stream_active": True,
             "scanner_quote_stream_refresh_timestamp": crypto_quote["scanner_refresh_timestamp"],
             "crypto_24_7_session": crypto_session_confirmed,
