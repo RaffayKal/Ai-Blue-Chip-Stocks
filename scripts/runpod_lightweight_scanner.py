@@ -15,6 +15,12 @@ LOCK = ROOT / "data" / "runpod_lightweight_scanner.lock"
 LOG = ROOT / "logs" / "runpod_lightweight_scanner.jsonl"
 WATCHLIST = ROOT / "data" / "blue_chip_watchlist.txt"
 CRYPTO_CANDIDATES = ROOT / "data" / "volatile_crypto_candidates.json"
+CRYPTO_QUOTE_INPUTS = [
+    ROOT / "data" / "sample_robinhood_volatile_crypto_input.json",
+    ROOT / "data" / "sample_robinhood_crypto_input.json",
+    ROOT / "data" / "sample_crypto_input.json",
+]
+USER_SETTINGS = ROOT / "rules" / "user_settings.json"
 PLUGIN_SNAPSHOT = ROOT / "data" / "plugin_runtime_snapshot.json"
 CANDIDATE_ENVELOPE = ROOT / "data" / "current_candidate_envelope.json"
 LANE_STATUS_DIR = ROOT / "data" / "scanner_lanes"
@@ -23,6 +29,7 @@ PLUGIN_STACK = ROOT / "rules" / "plugin_runtime_stack.json"
 ARCHITECTURE_NAME = "ABSOLUTE INFINITE +775% TACTICAL APPRECIATION OPERATIONS COMPOUNDING — APEX PRESTIGE ARCHITECTURE"
 USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 MAX_SOURCE_AGE_SECONDS = 300
+DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS = 15
 
 
 def iso_now():
@@ -127,6 +134,52 @@ def load_active_crypto_symbol():
     return symbol or "BTC", candidates
 
 
+def symbol_matches(candidate, target):
+    candidate = str(candidate or "").strip().upper()
+    target = str(target or "").strip().upper()
+    return candidate == target or candidate == f"{target}USD" or candidate == f"{target}-USD"
+
+
+def load_crypto_quote(symbol):
+    settings = load_json(USER_SETTINGS, {})
+    max_age = (
+        ((settings.get("data_quality") or {}).get("max_quote_age_seconds_crypto"))
+        if isinstance(settings, dict)
+        else None
+    )
+    if not isinstance(max_age, (int, float)) or max_age <= 0:
+        max_age = DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS
+
+    for path in CRYPTO_QUOTE_INPUTS:
+        payload = load_json(path, {})
+        if not isinstance(payload, dict) or payload.get("asset_class") != "CRYPTO":
+            continue
+        if not symbol_matches(payload.get("symbol"), symbol):
+            continue
+        timestamp = payload.get("quote_timestamp") or payload.get("timestamp")
+        age_seconds = timestamp_age_seconds(timestamp)
+        has_quote = all(numeric(payload.get(field)) is not None for field in ("bid", "ask", "last"))
+        is_fresh = has_quote and age_seconds is not None and 0 <= age_seconds <= max_age
+        return {
+            "path": str(path),
+            "payload": payload,
+            "timestamp": timestamp,
+            "age_seconds": age_seconds,
+            "max_age_seconds": max_age,
+            "has_bid_ask_last": has_quote,
+            "fresh": is_fresh,
+        }
+    return {
+        "path": None,
+        "payload": {},
+        "timestamp": None,
+        "age_seconds": None,
+        "max_age_seconds": max_age,
+        "has_bid_ask_last": False,
+        "fresh": False,
+    }
+
+
 def stable_hash(data):
     body = json.dumps(data, sort_keys=True, separators=(",", ":"), ensure_ascii=True)
     return hashlib.sha256(body.encode("utf-8")).hexdigest()
@@ -218,6 +271,7 @@ def source_record(name, payload):
 
 def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     crypto_symbol, crypto_candidates = load_active_crypto_symbol()
+    crypto_quote = load_crypto_quote(crypto_symbol)
     longbridge = sources.get("Longbridge", {})
     stocktwits = sources.get("Stocktwits", {})
     tradingcursor = sources.get("TradingCursor", {})
@@ -235,6 +289,14 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "summary": crypto_candidates.get("active_symbol_reason"),
             "age_seconds": 0,
             "max_age_seconds": MAX_SOURCE_AGE_SECONDS,
+        },
+        {
+            "source": "APEX.crypto_quote_file",
+            "status": "fresh" if crypto_quote["fresh"] else "stale_or_unusable",
+            "timestamp": crypto_quote["timestamp"] or iso_now(),
+            "summary": crypto_quote["path"],
+            "age_seconds": round(crypto_quote["age_seconds"], 3) if crypto_quote["age_seconds"] is not None else None,
+            "max_age_seconds": crypto_quote["max_age_seconds"],
         },
         source_record("Longbridge.market_status", market_status),
         source_record("Longbridge.market_temperature", temperature),
@@ -258,7 +320,10 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
 
     viable = False
     failed = []
-    failed.append("APEX crypto bid/ask/last feed required but not populated")
+    if not crypto_quote["has_bid_ask_last"]:
+        failed.append("APEX crypto bid/ask/last feed required but not populated")
+    elif not crypto_quote["fresh"]:
+        failed.append("APEX crypto bid/ask/last feed is stale")
     if fresh_count < 2:
         failed.append("fewer than two fresh plugin source records")
     if tradingcursor_rejected:
@@ -293,6 +358,19 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     }
 
     market_input = {
+        **{
+            key: crypto_quote["payload"].get(key)
+            for key in (
+                "bid",
+                "ask",
+                "last",
+                "liquidity_usd",
+                "crypto_account_confirmed",
+                "maintenance_active",
+                "account_restricted",
+            )
+            if key in crypto_quote["payload"]
+        },
         "symbol": symbol,
         "asset_class": "CRYPTO",
         "session": "CRYPTO_24_7",
@@ -300,19 +378,19 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "broker_name": "Robinhood",
         "algorithm_quote_contract": "APEX_REQUIRES_FRESH_CRYPTO_BID_ASK_LAST",
         "timestamp": iso_now(),
-        "quote_timestamp": None,
-        "bid": None,
-        "ask": None,
-        "last": None,
-        "data_status": "unusable",
+        "quote_timestamp": crypto_quote["timestamp"],
+        "quote_source_path": crypto_quote["path"],
+        "quote_age_seconds": round(crypto_quote["age_seconds"], 3) if crypto_quote["age_seconds"] is not None else None,
+        "quote_max_age_seconds": crypto_quote["max_age_seconds"],
+        "data_status": "fresh" if crypto_quote["fresh"] and fresh_count >= 2 else "stale" if crypto_quote["has_bid_ask_last"] else "unusable",
         "risk_status": "fail",
         "source_count": fresh_count,
         "source_conflict": False,
         "available_trading_capital": 5.0,
         "requested_notional_usd": 1.0,
-        "crypto_account_confirmed": False,
-        "maintenance_active": None,
-        "account_restricted": None,
+        "crypto_account_confirmed": crypto_quote["payload"].get("crypto_account_confirmed", False),
+        "maintenance_active": crypto_quote["payload"].get("maintenance_active"),
+        "account_restricted": crypto_quote["payload"].get("account_restricted"),
         "margin_requested": False,
         "margin_approved": False,
         "account_net_worth_usd": 5.0,
@@ -338,7 +416,8 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "data_provenance": source_records,
         "source_quality": {
             "fresh_source_count": fresh_count,
-            "apex_crypto_quote_feed": "required_not_populated",
+            "apex_crypto_quote_feed": "fresh" if crypto_quote["fresh"] else "stale_or_unusable",
+            "apex_crypto_quote_source": crypto_quote["path"],
             "crypto_24_7_session": crypto_session_confirmed,
             "equity_market_open": market_open,
             "blue_chip_symbols_tracked": len(symbols),
