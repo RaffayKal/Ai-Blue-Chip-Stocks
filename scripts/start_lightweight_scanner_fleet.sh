@@ -76,19 +76,45 @@ echo "LIGHTWEIGHT_SCANNER_LANE_RANGE: ${MIN_LIGHTWEIGHT_LANES}-${MAX_LIGHTWEIGHT
 echo "LIGHTWEIGHT_SCANNER_LANES_SELECTED: $SCANNER_LANES"
 echo "HEAVY_ACTION: NO ACTION"
 
+lane_names=()
+lane_pids=()
+
+start_lane() {
+  lane_name="$1"
+  python3 scripts/runpod_lightweight_scanner.py \
+    --interval-seconds "$INTERVAL_SECONDS" \
+    --lane "$lane_name" \
+    --codex-heavy-state "FROZEN_UNTIL_VERIFIED_USAGE_AND_VIABILITY_GATES_TRUE" \
+    > "logs/runpod_lightweight_scanner_${lane_name}.out.log" 2>&1 &
+  echo "$!"
+}
+
 lane=1
 while [ "$lane" -le "$SCANNER_LANES" ]; do
   lane_name="lane_${lane}"
   if [ "$lane" -eq 1 ]; then
     lane_name="primary"
   fi
-  python3 scripts/runpod_lightweight_scanner.py \
-    --interval-seconds "$INTERVAL_SECONDS" \
-    --lane "$lane_name" \
-    --codex-heavy-state "FROZEN_UNTIL_VERIFIED_USAGE_AND_VIABILITY_GATES_TRUE" \
-    > "logs/runpod_lightweight_scanner_${lane_name}.out.log" 2>&1 &
+  lane_pid="$(start_lane "$lane_name")"
   echo "STARTED_LIGHTWEIGHT_SCANNER_LANE: $lane_name"
+  echo "LIGHTWEIGHT_SCANNER_LANE_PID: $lane_pid"
+  lane_names+=("$lane_name")
+  lane_pids+=("$lane_pid")
   lane=$((lane + 1))
 done
 
-wait
+while true; do
+  index=0
+  while [ "$index" -lt "${#lane_names[@]}" ]; do
+    lane_name="${lane_names[$index]}"
+    lane_pid="${lane_pids[$index]}"
+    if ! kill -0 "$lane_pid" 2>/dev/null; then
+      echo "RESTARTING_LIGHTWEIGHT_SCANNER_LANE: $lane_name"
+      lane_pid="$(start_lane "$lane_name")"
+      echo "LIGHTWEIGHT_SCANNER_LANE_PID: $lane_pid"
+      lane_pids[$index]="$lane_pid"
+    fi
+    index=$((index + 1))
+  done
+  sleep 5
+done
