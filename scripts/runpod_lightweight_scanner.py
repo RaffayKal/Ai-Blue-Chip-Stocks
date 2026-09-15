@@ -258,7 +258,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
 
     viable = False
     failed = []
-    failed.append("live crypto bid/ask/last feed not verified")
+    failed.append("APEX crypto bid/ask/last feed required but not populated")
     if fresh_count < 2:
         failed.append("fewer than two fresh plugin source records")
     if tradingcursor_rejected:
@@ -298,6 +298,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "session": "CRYPTO_24_7",
         "venue": "Robinhood Crypto",
         "broker_name": "Robinhood",
+        "algorithm_quote_contract": "APEX_REQUIRES_FRESH_CRYPTO_BID_ASK_LAST",
         "timestamp": iso_now(),
         "quote_timestamp": None,
         "bid": None,
@@ -337,6 +338,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "data_provenance": source_records,
         "source_quality": {
             "fresh_source_count": fresh_count,
+            "apex_crypto_quote_feed": "required_not_populated",
             "crypto_24_7_session": crypto_session_confirmed,
             "equity_market_open": market_open,
             "blue_chip_symbols_tracked": len(symbols),
