@@ -3,6 +3,7 @@ set -u
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INTERVAL_SECONDS="${RUNPOD_SCANNER_INTERVAL_SECONDS:-1}"
+SCANNER_LANES="${RUNPOD_SCANNER_LANES:-7}"
 ONCE_ARG="${1:-}"
 
 if [ "$(pwd)" != "$ROOT" ]; then
@@ -21,4 +22,5 @@ fi
 
 exec python3 scripts/runpod_lightweight_scanner.py \
   --interval-seconds "$INTERVAL_SECONDS" \
+  --lane "primary" \
   --codex-heavy-state "FROZEN_UNTIL_VERIFIED_USAGE_AND_VIABILITY_GATES_TRUE"

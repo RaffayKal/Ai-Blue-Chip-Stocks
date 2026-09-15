@@ -16,6 +16,8 @@ LOG = ROOT / "logs" / "runpod_lightweight_scanner.jsonl"
 WATCHLIST = ROOT / "data" / "blue_chip_watchlist.txt"
 PLUGIN_SNAPSHOT = ROOT / "data" / "plugin_runtime_snapshot.json"
 CANDIDATE_ENVELOPE = ROOT / "data" / "current_candidate_envelope.json"
+LANE_STATUS_DIR = ROOT / "data" / "scanner_lanes"
+LANE_ENVELOPE_DIR = ROOT / "data" / "candidate_lanes"
 PLUGIN_STACK = ROOT / "rules" / "plugin_runtime_stack.json"
 ARCHITECTURE_NAME = "ABSOLUTE INFINITE +775% TACTICAL APPRECIATION OPERATIONS COMPOUNDING — APEX PRESTIGE ARCHITECTURE"
 USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
@@ -44,17 +46,33 @@ def load_json(path, default):
         return default
 
 
-def append_log(event, **fields):
-    LOG.parent.mkdir(parents=True, exist_ok=True)
+def lane_slug(lane):
+    return "".join(char if char.isalnum() or char in ("-", "_") else "_" for char in lane)
+
+
+def lane_paths(lane):
+    slug = lane_slug(lane)
+    if lane == "primary":
+        return STATUS, CANDIDATE_ENVELOPE, LOCK, LOG
+    return (
+        LANE_STATUS_DIR / f"{slug}_status.json",
+        LANE_ENVELOPE_DIR / f"{slug}_candidate_envelope.json",
+        ROOT / "data" / f"runpod_lightweight_scanner_{slug}.lock",
+        ROOT / "logs" / f"runpod_lightweight_scanner_{slug}.jsonl",
+    )
+
+
+def append_log(path, event, **fields):
+    path.parent.mkdir(parents=True, exist_ok=True)
     record = {"timestamp_utc": iso_now(), "architecture": ARCHITECTURE_NAME, "event": event, **fields}
-    with LOG.open("a", encoding="utf-8") as handle:
+    with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(record, sort_keys=True) + "\n")
     return record
 
 
-def acquire_lock():
-    LOCK.parent.mkdir(parents=True, exist_ok=True)
-    handle = LOCK.open("w", encoding="utf-8")
+def acquire_lock(path):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    handle = path.open("w", encoding="utf-8")
     try:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
@@ -105,7 +123,7 @@ def source_record(name, payload):
     }
 
 
-def build_non_executable_envelope(symbols, sources, codex_heavy_state):
+def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     longbridge = sources.get("Longbridge", {})
     stocktwits = sources.get("Stocktwits", {})
     tradingcursor = sources.get("TradingCursor", {})
@@ -172,6 +190,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state):
         "envelope_id": f"runpod-scan-{stable_hash({'symbol': symbol, 'sources': source_records})[:16]}",
         "idempotency_key": f"{symbol}:{stable_hash({'sources': source_records})[:24]}",
         "created_by": "RUNPOD_LIGHTWEIGHT_SCANNER",
+        "scanner_lane": lane,
         "user_algorithm_id": USER_ALGORITHM_ID,
         "scanner_viable": viable,
         "requested_codex_activation": viable,
@@ -197,15 +216,19 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state):
     return envelope
 
 
-def scan_once(codex_heavy_state):
+def scan_once(codex_heavy_state, lane):
+    status_path, envelope_path, _lock_path, log_path = lane_paths(lane)
     symbols = load_watchlist()
     plugin_snapshot, sources = normalize_plugin_snapshot()
-    envelope = build_non_executable_envelope(symbols, sources, codex_heavy_state)
-    write_json(CANDIDATE_ENVELOPE, envelope)
+    envelope = build_non_executable_envelope(symbols, sources, codex_heavy_state, lane)
+    write_json(envelope_path, envelope)
+    if lane == "primary":
+        write_json(CANDIDATE_ENVELOPE, envelope)
     status = {
         "timestamp_utc": iso_now(),
         "architecture": ARCHITECTURE_NAME,
         "runtime": "RUNPOD_24_7_LIGHTWEIGHT_SCANNER",
+        "scanner_lane": lane,
         "scanner_active": True,
         "codex_heavy_state": codex_heavy_state,
         "heavy_operations_default": "ASLEEP",
@@ -215,7 +238,7 @@ def scan_once(codex_heavy_state):
         "watchlist_symbols": symbols[:100],
         "plugin_snapshot_path": str(PLUGIN_SNAPSHOT),
         "plugin_stack_path": str(PLUGIN_STACK),
-        "candidate_envelope_path": str(CANDIDATE_ENVELOPE),
+        "candidate_envelope_path": str(envelope_path),
         "candidate_decision": envelope["candidate_decision"],
         "scanner_viable": envelope["scanner_viable"],
         "source_quality": envelope["source_quality"],
@@ -250,9 +273,13 @@ def scan_once(codex_heavy_state):
         "plugin_execution_authority": "NONE",
         "next_allowed_step": "continue scanning; wake heavy workflow only after fresh non-duplicate viability gates are true",
     }
-    write_json(STATUS, status)
+    write_json(status_path, status)
+    if lane == "primary":
+        write_json(STATUS, status)
     append_log(
+        log_path,
         "scan_once",
+        scanner_lane=lane,
         codex_heavy_state=codex_heavy_state,
         watchlist_symbol_count=len(symbols),
         candidate_decision=envelope["candidate_decision"],
@@ -260,6 +287,7 @@ def scan_once(codex_heavy_state):
         source_quality=envelope["source_quality"],
     )
     print("RUNPOD_LIGHTWEIGHT_SCANNER: ACTIVE")
+    print(f"SCANNER_LANE: {lane}")
     print(f"CODEX_HEAVY_STATE: {codex_heavy_state}")
     print(f"CANDIDATE_DECISION: {envelope['candidate_decision']}")
     print(f"SCANNER_VIABLE: {str(envelope['scanner_viable']).lower()}")
@@ -273,6 +301,7 @@ def main():
     parser.add_argument("--once", action="store_true")
     parser.add_argument("--interval-seconds", type=float, default=1)
     parser.add_argument("--codex-heavy-state", default="UNKNOWN_OR_FROZEN")
+    parser.add_argument("--lane", default="primary")
     parser.add_argument("--no-lock", action="store_true")
     args = parser.parse_args()
 
@@ -283,14 +312,15 @@ def main():
 
     lock = None
     if not args.once and not args.no_lock:
-        lock = acquire_lock()
+        lock_path = lane_paths(args.lane)[2]
+        lock = acquire_lock(lock_path)
         if lock is None:
             print("RUNPOD_LIGHTWEIGHT_SCANNER: DUPLICATE_BLOCKED")
-            print(f"LOCK_FILE: {LOCK}")
+            print(f"LOCK_FILE: {lock_path}")
             return
 
     while True:
-        scan_once(args.codex_heavy_state)
+        scan_once(args.codex_heavy_state, args.lane)
         if args.once:
             return
         time.sleep(args.interval_seconds)

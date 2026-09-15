@@ -10,6 +10,8 @@ data/*.pid
 data/*.lock
 data/atomic_snapshots/
 data/stale_signals/
+data/candidate_lanes/
+data/scanner_lanes/
 __pycache__/
 *.py[cod]
 *.zip

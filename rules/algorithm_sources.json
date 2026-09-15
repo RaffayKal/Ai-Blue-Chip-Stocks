@@ -23,6 +23,7 @@
     "scripts/codex_resource_governor.py",
     "scripts/nightly_operations_report.py",
     "scripts/runpod_lightweight_scanner.py",
+    "scripts/start_lightweight_scanner_fleet.sh",
     "rules/plugin_runtime_stack.json",
     "algorithms/candidate_envelope_gate.py",
     "data/sample_qualified_candidate_envelope.json",
