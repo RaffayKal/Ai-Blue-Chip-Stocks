@@ -28,6 +28,7 @@ The executable user algorithm is `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING` in `rul
 ## Usage-Conserving Runtime Cadence
 
 - Lightweight market watch runs continuously at a 1-second scanner cadence.
+- Default lightweight scanner fleet is 7 lanes and may expand to 70+ lanes when needed, only while lanes remain lightweight and do not run Codex/APEX heavy checks.
 - Codex usage-refresh start: run one light health check to confirm operations are live.
 - Codex usage exhaustion/end: run one light health check and freeze/report if usage is at or below 2%.
 - Otherwise, a light operations-health check runs every 5 hours to confirm operations remain live.
