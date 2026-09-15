@@ -200,12 +200,47 @@ def projection_score(value, neutral=50.0, scale=1.0):
     return clamp(number * scale)
 
 
-def build_medium8_projection(source_records, session_confirmed, sentiment, temperature, pulse, tier):
+def build_micro_trade_value(crypto_quote):
+    payload = crypto_quote["payload"]
+    bid = numeric(payload.get("bid"))
+    ask = numeric(payload.get("ask"))
+    last = numeric(payload.get("last"))
+    available_capital = numeric(payload.get("available_trading_capital")) or 5.0
+    requested_notional = numeric(payload.get("requested_notional_usd")) or 1.0
+    max_allocation_decimal = 0.2
+    max_micro_notional = available_capital * max_allocation_decimal
+    spread = ask - bid if bid is not None and ask is not None else None
+    mid = (ask + bid) / 2 if bid is not None and ask is not None else None
+    spread_decimal = spread / mid if spread is not None and mid and mid > 0 else None
+    spread_cost_usd = requested_notional * spread_decimal if spread_decimal is not None else None
+    ticket_within_cap = requested_notional <= max_micro_notional
+    quote_fresh = crypto_quote["fresh"] is True
+    viable = quote_fresh and ticket_within_cap and spread_decimal is not None and spread_decimal <= 0.002
+    return {
+        "doctrine": "MICRO_TRADES_TO_ABSOLUTE_INFINITE_775_TACTICAL_COMPOUNDING_OF_CAPITAL",
+        "execution_authority": False,
+        "requested_micro_notional_usd": round(requested_notional, 6),
+        "available_capital_usd": round(available_capital, 6),
+        "max_allocation_decimal": max_allocation_decimal,
+        "max_micro_notional_usd": round(max_micro_notional, 6),
+        "ticket_within_cap": ticket_within_cap,
+        "bid": bid,
+        "ask": ask,
+        "last": last,
+        "spread": round(spread, 12) if spread is not None else None,
+        "spread_decimal": round(spread_decimal, 12) if spread_decimal is not None else None,
+        "estimated_spread_cost_usd": round(spread_cost_usd, 8) if spread_cost_usd is not None else None,
+        "quote_fresh": quote_fresh,
+        "micro_trade_value_status": "VIABLE_FOR_GATE_RECHECK" if viable else "NO_ACTION_GATE_LOCKED",
+    }
+
+
+def build_medium8_projection(source_records, session_confirmed, sentiment, temperature, pulse, tier, micro_trade_value=None):
     fresh_count = sum(1 for item in source_records if item["status"] == "fresh")
     freshness_score = clamp((fresh_count / max(len(source_records), 1)) * 100)
     sentiment_score = projection_score(sentiment.get("score"))
     temperature_score = projection_score(temperature.get("temperature"))
-    last_price = numeric(pulse.get("price"))
+    last_price = numeric((micro_trade_value or {}).get("last")) or numeric(pulse.get("price"))
     capital_fit_score = 100.0 if last_price is not None and last_price > 0 else 0.0
     session_score = 100.0 if session_confirmed else 0.0
     source_depth_score = clamp(fresh_count * 20.0)
@@ -219,7 +254,9 @@ def build_medium8_projection(source_records, session_confirmed, sentiment, tempe
         + (source_depth_score * 0.1)
     )
     reversal_risk_score = clamp(100.0 - continuation_probability + stale_penalty_score * 0.25)
-    net_opportunity_score = clamp(continuation_probability - reversal_risk_score * 0.35)
+    spread_decimal = numeric((micro_trade_value or {}).get("spread_decimal"))
+    spread_quality_score = 100.0 if spread_decimal is not None and spread_decimal <= 0.002 else 0.0
+    net_opportunity_score = clamp(continuation_probability - reversal_risk_score * 0.35 + spread_quality_score * 0.1)
     medium8 = {
         "freshness_score": round(freshness_score, 3),
         "sentiment_score": round(sentiment_score, 3),
@@ -235,6 +272,7 @@ def build_medium8_projection(source_records, session_confirmed, sentiment, tempe
         "execution_authority": False,
         "projection_count": 8,
         "projection_scores": medium8,
+        "micro_trade_value": micro_trade_value or {},
         "reversal_risk_score": round(reversal_risk_score, 3),
         "stale_penalty_score": round(stale_penalty_score, 3),
     }
@@ -332,6 +370,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         failed.append("Stocktwits sentiment is not positive")
     if codex_heavy_state != "AVAILABLE_IF_VIABILITY_GATES_TRUE":
         failed.append("Codex heavy workflow remains frozen/dormant")
+    micro_trade_value = build_micro_trade_value(crypto_quote)
     crypto_projection = build_medium8_projection(
         source_records,
         crypto_session_confirmed,
@@ -339,6 +378,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         temperature,
         pulse,
         "MEDIUM8_CRYPTO_24_7",
+        micro_trade_value,
     )
     blue_chip_projection = build_medium8_projection(
         source_records,
@@ -347,6 +387,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         temperature,
         pulse,
         "MEDIUM8_BLUE_CHIPS_MARKET_HOURS",
+        micro_trade_value,
     )
     projection = {
         "mode": "MEDIUM_WEIGHT_DUAL_LANE",
@@ -413,6 +454,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "codex_heavy_state": codex_heavy_state,
         "projection": projection,
         "market_input": market_input,
+        "micro_trade_value": micro_trade_value,
         "data_provenance": source_records,
         "source_quality": {
             "fresh_source_count": fresh_count,
@@ -459,6 +501,7 @@ def scan_once(codex_heavy_state, lane):
         "scanner_viable": envelope["scanner_viable"],
         "source_quality": envelope["source_quality"],
         "projection": envelope["projection"],
+        "micro_trade_value": envelope["micro_trade_value"],
         "continuous_operations": [
             "watching",
             "deterministic calculations",
