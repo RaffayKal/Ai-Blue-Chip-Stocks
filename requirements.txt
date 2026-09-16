@@ -3,3 +3,5 @@ python-dotenv
 robin_stocks
 certifi
 websockets
+pynacl
+requests

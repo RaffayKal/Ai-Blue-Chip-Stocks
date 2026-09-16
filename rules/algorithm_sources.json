@@ -27,6 +27,7 @@
     "scripts/robinhood_mcp_relay.py",
     "scripts/poll_robinhood_mcp_relay.py",
     "scripts/stream_independent_crypto_market_data.py",
+    "scripts/stream_robinhood_crypto_api.py",
     "rules/plugin_runtime_stack.json",
     "algorithms/candidate_envelope_gate.py",
     "data/sample_qualified_candidate_envelope.json",
