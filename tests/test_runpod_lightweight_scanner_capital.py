@@ -146,6 +146,36 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             "robinhood.get_portfolio.crypto_buying_power.buying_power",
         )
 
+    def test_optional_alpaca_is_not_written_as_required_provenance(self):
+        quote = self.quote()
+        with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
+             patch.object(scanner, "load_crypto_quote", return_value=quote), \
+             patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
+            envelope = scanner.build_non_executable_envelope(
+                [],
+                {"Longbridge": {}, "Stocktwits": {}, "TradingCursor": {}},
+                "AVAILABLE_IF_VIABILITY_GATES_TRUE",
+                "primary",
+            )
+        self.assertEqual(
+            [record["source"] for record in envelope["data_provenance"]],
+            ["volatile_crypto_candidates.active_symbol", "Robinhood.crypto_quote"],
+        )
+
+    def test_lightweight_viability_does_not_require_heavy_lane_to_be_awake(self):
+        with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
+             patch.object(scanner, "load_crypto_quote", return_value=self.quote()), \
+             patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
+            envelope = scanner.build_non_executable_envelope(
+                [],
+                {},
+                "UNKNOWN_OR_FROZEN",
+                "primary",
+            )
+        self.assertTrue(envelope["scanner_viable"])
+        self.assertTrue(envelope["requested_codex_activation"])
+        self.assertTrue(envelope["market_input"]["explicit_execution_authorization"])
+
     def test_requested_notional_remains_null_without_quote_input_policy(self):
         quote = {
             "fresh": True,

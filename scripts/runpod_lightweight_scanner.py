@@ -725,10 +725,18 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "summary": crypto_candidates.get("active_symbol_reason"),
             "age_seconds": 0,
             "max_age_seconds": MAX_SOURCE_AGE_SECONDS,
-        },
-        required_quote_record("Alpaca.crypto_quote", crypto_quote, required_quote_sources.get("Alpaca")),
-        required_quote_record("Robinhood.crypto_quote", crypto_quote, required_quote_sources.get("Robinhood")),
+        }
     ]
+    # Robinhood is broker-authoritative. Other quote feeds remain optional
+    # cross-checks and must not silently become viability gates.
+    for provider in REQUIRED_CRYPTO_QUOTE_PROVIDERS:
+        required_sources.append(
+            required_quote_record(
+                f"{provider}.crypto_quote",
+                crypto_quote,
+                required_quote_sources.get(provider),
+            )
+        )
     coingecko_quote = load_json(COINGECKO_CRYPTO_SNAPSHOT, {"usable": False, "status": "unavailable"})
     # NOT a hard gate: CoinGecko's free public API is rate-limited (confirmed
     # HTTP 429 in practice at <10s polling) and shared across all anonymous
@@ -778,8 +786,6 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         sentiment_label == "BEARISH" or (isinstance(sentiment_score, (int, float)) and sentiment_score < 50)
     ):
         failed.append("Stocktwits sentiment is not positive")
-    if codex_heavy_state != "AVAILABLE_IF_VIABILITY_GATES_TRUE":
-        failed.append("Codex heavy workflow remains frozen/dormant")
     micro_trade_value = build_micro_trade_value(crypto_quote)
     requested_notional, requested_notional_source, sizing_inputs = apex_requested_notional(
         crypto_quote["payload"],
@@ -823,7 +829,6 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     explicit_execution_authorization = (
         isinstance(broker_settings, dict)
         and broker_settings.get("explicit_execution_authorization") is True
-        and viable
     )
 
     market_input = {
