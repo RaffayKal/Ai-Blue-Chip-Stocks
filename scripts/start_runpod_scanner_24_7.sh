@@ -40,6 +40,10 @@ if [ "${COINGECKO_STREAM_MARKET_DATA:-true}" = "true" ]; then
   "$PYTHON3_BIN" scripts/stream_coingecko_market_data.py &
 fi
 
+if [ "${COINBASE_STREAM_MARKET_DATA:-true}" = "true" ]; then
+  "$PYTHON3_BIN" scripts/stream_coinbase_crypto_market_data.py &
+fi
+
 if [ "${ROBINHOOD_STREAM_MARKET_DATA:-false}" = "true" ]; then
   mkdir -p "$ROOT/data"
   PROJECT_ROOT="$ROOT" "$PYTHON3_BIN" - <<'PY'

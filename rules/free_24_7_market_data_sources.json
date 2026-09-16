@@ -1,0 +1,51 @@
+{
+  "policy": "Robinhood remains broker and execution authority",
+  "fanout": {
+    "logical_scanner_lanes_min": 7,
+    "logical_scanner_lanes_max": 700,
+    "transport": "multiplexed provider connections",
+    "execution_authority": false
+  },
+  "providers": [
+    {
+      "name": "Coinbase Advanced Trade",
+      "transport": "public WebSocket",
+      "url": "wss://advanced-trade-ws.coinbase.com",
+      "documentation": "https://docs.cdp.coinbase.com/coinbase-app/advanced-trade-apis/websocket/websocket-overview",
+      "status": "implemented",
+      "role": "independent crypto quote cross-check"
+    },
+    {
+      "name": "Binance",
+      "transport": "public WebSocket",
+      "url": "wss://stream.binance.com:9443",
+      "documentation": "https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md",
+      "status": "candidate",
+      "role": "independent crypto quote cross-check"
+    },
+    {
+      "name": "Kraken",
+      "transport": "public WebSocket",
+      "url": "wss://ws.kraken.com/",
+      "documentation": "https://support.kraken.com/articles/360022326871-kraken-websocket-api-frequently-asked-questions",
+      "status": "candidate",
+      "role": "independent crypto quote cross-check"
+    },
+    {
+      "name": "Gemini",
+      "transport": "public WebSocket",
+      "url": "wss://ws.gemini.com",
+      "documentation": "https://developer.gemini.com/websocket/introduction",
+      "status": "candidate",
+      "role": "independent crypto quote cross-check"
+    },
+    {
+      "name": "OKX",
+      "transport": "public WebSocket",
+      "url": "wss://ws.okx.com:8443/ws/v5/public",
+      "documentation": "https://app.okx.com/docs-v5/en/",
+      "status": "candidate",
+      "role": "independent crypto quote cross-check"
+    }
+  ]
+}

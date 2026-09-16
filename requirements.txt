@@ -2,3 +2,4 @@ alpaca-py
 python-dotenv
 robin_stocks
 certifi
+websockets
