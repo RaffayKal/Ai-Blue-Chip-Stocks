@@ -20,6 +20,8 @@ CRYPTO_QUOTE_INPUTS = [
     ROOT / "data" / "alpaca_crypto_quote_snapshot.json",
     ROOT / "data" / "robinhood_crypto_quote_snapshot.json",
     ROOT / "data" / "coinbase_crypto_quote_snapshot.json",
+    ROOT / "data" / "binance_crypto_quote_snapshot.json",
+    ROOT / "data" / "kraken_crypto_quote_snapshot.json",
     ROOT / "data" / "sample_robinhood_volatile_crypto_input.json",
     ROOT / "data" / "sample_robinhood_crypto_input.json",
     ROOT / "data" / "sample_crypto_input.json",
@@ -623,6 +625,8 @@ def source_refresh_policy():
             {"name": "Alpaca", "artifact": "data/alpaca_crypto_quote_snapshot.json", "role": "websocket quote/trade freshness"},
             {"name": "Robinhood", "artifact": "data/robinhood_crypto_quote_snapshot.json", "role": "broker-side quote/capital confirmation"},
             {"name": "Coinbase", "artifact": "data/coinbase_crypto_quote_snapshot.json", "role": "free public WebSocket independent crypto cross-check"},
+            {"name": "Binance", "artifact": "data/binance_crypto_quote_snapshot.json", "role": "free public WebSocket independent crypto cross-check"},
+            {"name": "Kraken", "artifact": "data/kraken_crypto_quote_snapshot.json", "role": "free public WebSocket independent crypto cross-check"},
             {"name": "CoinGecko", "artifact": "data/coingecko_crypto_quote_snapshot.json", "role": "independent crypto quote cross-check"},
         ],
         "plugin_context_sources": [

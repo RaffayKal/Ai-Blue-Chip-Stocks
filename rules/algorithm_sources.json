@@ -26,6 +26,7 @@
     "scripts/start_lightweight_scanner_fleet.sh",
     "scripts/robinhood_mcp_relay.py",
     "scripts/poll_robinhood_mcp_relay.py",
+    "scripts/stream_independent_crypto_market_data.py",
     "rules/plugin_runtime_stack.json",
     "algorithms/candidate_envelope_gate.py",
     "data/sample_qualified_candidate_envelope.json",

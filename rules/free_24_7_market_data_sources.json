@@ -20,7 +20,7 @@
       "transport": "public WebSocket",
       "url": "wss://stream.binance.com:9443",
       "documentation": "https://github.com/binance/binance-spot-api-docs/blob/master/web-socket-streams.md",
-      "status": "candidate",
+      "status": "implemented",
       "role": "independent crypto quote cross-check"
     },
     {
@@ -28,7 +28,7 @@
       "transport": "public WebSocket",
       "url": "wss://ws.kraken.com/",
       "documentation": "https://support.kraken.com/articles/360022326871-kraken-websocket-api-frequently-asked-questions",
-      "status": "candidate",
+      "status": "implemented",
       "role": "independent crypto quote cross-check"
     },
     {
