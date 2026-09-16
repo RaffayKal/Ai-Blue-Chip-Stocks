@@ -27,13 +27,7 @@
     "rules/plugin_runtime_stack.json",
     "algorithms/candidate_envelope_gate.py",
     "data/sample_qualified_candidate_envelope.json",
-    "data/autonomous_btc_market_buy_auto_max_active.json",
-    "data/autonomous_btc_market_sell_position_auto_active.json",
-    "data/volatile_crypto_candidates.json",
     "data/sample_robinhood_volatile_crypto_input.json",
-    "data/autonomous_crypto_market_buy_auto_max_active.json",
-    "data/autonomous_crypto_market_sell_position_auto_active.json",
-    "scripts/run_autonomous_if_viable.sh",
-    "data/current_candidate_envelope.json"
+    "scripts/run_autonomous_if_viable.sh"
   ]
 }
