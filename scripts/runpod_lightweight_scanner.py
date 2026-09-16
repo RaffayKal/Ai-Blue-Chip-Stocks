@@ -37,9 +37,9 @@ USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 APEX_VALUE_DOCTRINE = "MICRO TRADES - ABSOLUTE INFINITE +775% OPTIMALLY APPRECIATE TACTICAL COMPOUNDING OF CAPITAL"
 MAX_SOURCE_AGE_SECONDS = 90  # ceiling for optional/cross-check sources (e.g. CoinGecko); see per-provider overrides for required crypto quotes
 DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS = 15
-REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Alpaca", "Robinhood")
-MIN_LOOP_INTERVAL_SECONDS = 0.0007
-MAX_LOOP_INTERVAL_SECONDS = 7.0
+REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Robinhood",)
+MIN_LOOP_INTERVAL_SECONDS = 4.0
+MAX_LOOP_INTERVAL_SECONDS = 420.0
 
 
 def iso_now():
@@ -586,6 +586,38 @@ def online_source_coverage(sources):
     }
 
 
+def source_refresh_policy():
+    return {
+        "runs_24_7": True,
+        "medium_weight_interval_min_seconds": MIN_LOOP_INTERVAL_SECONDS,
+        "medium_weight_interval_max_seconds": MAX_LOOP_INTERVAL_SECONDS,
+        "freshness_model": "websocket/live-feed artifacts first; REST snapshots only as bounded fallback or independent cross-check",
+        "required_quote_sources": list(REQUIRED_CRYPTO_QUOTE_PROVIDERS),
+        "market_data_sources": [
+            {"name": "Alpaca", "artifact": "data/alpaca_crypto_quote_snapshot.json", "role": "websocket quote/trade freshness"},
+            {"name": "Robinhood", "artifact": "data/robinhood_crypto_quote_snapshot.json", "role": "broker-side quote/capital confirmation"},
+            {"name": "CoinGecko", "artifact": "data/coingecko_crypto_quote_snapshot.json", "role": "independent crypto quote cross-check"},
+        ],
+        "plugin_context_sources": [
+            {"name": "Longbridge", "artifact": "data/plugin_runtime_snapshot.json sources.Longbridge", "role": "market/news/report context"},
+            {"name": "Stocktwits", "artifact": "data/plugin_runtime_snapshot.json sources.Stocktwits", "role": "media/sentiment/attention context"},
+            {"name": "TradingCursor", "artifact": "data/plugin_runtime_snapshot.json sources.TradingCursor", "role": "technical/report context"},
+        ],
+        "forecasting": {
+            "continuous": True,
+            "engine": "MEDIUM8",
+            "outputs": [
+                "continuation_probability",
+                "reversal_risk_score",
+                "stale_penalty_score",
+                "net_opportunity_score",
+                "spread_quality",
+            ],
+        },
+        "execution_authority": False,
+    }
+
+
 def source_record(name, payload):
     if not isinstance(payload, dict):
         return {"source": name, "status": "unavailable", "timestamp": iso_now(), "summary": "missing payload"}
@@ -739,7 +771,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         failed.append("APEX crypto bid/ask/last feed is stale")
     if not crypto_quote.get("required_quote_quorum_ok"):
         missing = ", ".join(crypto_quote.get("missing_required_quote_sources") or [])
-        failed.append(f"required Alpaca and Robinhood crypto quote quorum not satisfied: missing {missing or 'required source freshness'}")
+        failed.append(f"required Robinhood crypto quote source not satisfied: missing {missing or 'required source freshness'}")
     if crypto_quote["source_conflict"]:
         failed.append("crypto quote sources conflict")
     if apex_requires_positive_sentiment(settings) and (
@@ -959,6 +991,7 @@ def scan_once(codex_heavy_state, lane):
         "stocktwits_widget_execution_authority": False,
         "stocktwits_fresh_scanner_input": "data/plugin_runtime_snapshot.json sources.Stocktwits with timestamped sentiment and symbol_pulse payloads",
         "online_market_media_reports_coverage": online_coverage,
+        "source_refresh_policy": source_refresh_policy(),
         "candidate_envelope_path": str(envelope_path),
         "candidate_decision": envelope["candidate_decision"],
         "scanner_viable": envelope["scanner_viable"],
