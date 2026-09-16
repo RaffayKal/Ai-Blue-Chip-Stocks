@@ -82,6 +82,10 @@ print(f"ROBINHOOD_STREAM_STATUS: {payload['status']} - {payload['reason']}")
 PY
 fi
 
+if [ -n "${ROBINHOOD_MCP_RELAY_URL:-}" ]; then
+  "$PYTHON3_BIN" scripts/poll_robinhood_mcp_relay.py &
+fi
+
 if [ "${MEDIUM_SCANNER_ENABLED:-true}" = "true" ]; then
   SCAN_INTERVAL_SECONDS="${MEDIUM_SCANNER_INTERVAL_SECONDS:-7}" "$PYTHON3_BIN" scripts/medium_market_orchestrator.py &
 fi

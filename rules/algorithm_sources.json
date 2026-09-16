@@ -24,6 +24,8 @@
     "scripts/nightly_operations_report.py",
     "scripts/runpod_lightweight_scanner.py",
     "scripts/start_lightweight_scanner_fleet.sh",
+    "scripts/robinhood_mcp_relay.py",
+    "scripts/poll_robinhood_mcp_relay.py",
     "rules/plugin_runtime_stack.json",
     "algorithms/candidate_envelope_gate.py",
     "data/sample_qualified_candidate_envelope.json",
