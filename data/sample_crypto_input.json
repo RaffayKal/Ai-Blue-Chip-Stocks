@@ -1,0 +1,16 @@
+{
+  "ask": 100.1,
+  "asset_class": "CRYPTO",
+  "bid": 100.0,
+  "data_status": "fresh",
+  "last": 100.05,
+  "liquidity_usd": 1000000,
+  "quote_timestamp": "2026-09-10T00:00:00-04:00",
+  "risk_status": "needs settings",
+  "session": "CRYPTO_24_7",
+  "source_conflict": false,
+  "source_count": 1,
+  "symbol": "BTCUSD",
+  "timestamp": "2026-09-10T00:00:00-04:00",
+  "venue": "UNCONFIRMED"
+}

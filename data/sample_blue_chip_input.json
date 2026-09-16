@@ -1,0 +1,20 @@
+{
+  "ask": 230.1,
+  "asset_class": "US_EQUITY",
+  "bid": 230.0,
+  "broker_extended_session_supported": false,
+  "buying_power_usd": null,
+  "data_status": "fresh",
+  "fractional_asset_eligible": false,
+  "fractional_shares_supported": false,
+  "last": 230.05,
+  "liquidity_usd": 1000000,
+  "quote_timestamp": "2026-09-10T09:45:00-04:00",
+  "risk_status": "pass",
+  "session": "REGULAR",
+  "source_conflict": false,
+  "source_count": 2,
+  "symbol": "AAPL",
+  "timestamp": "2026-09-10T09:45:00-04:00",
+  "venue": "UNCONFIRMED"
+}

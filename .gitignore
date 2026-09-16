@@ -6,6 +6,7 @@
 *secret*
 logs/
 data/*.json
+!data/sample_*.json
 data/*.pid
 data/*.lock
 data/atomic_snapshots/
@@ -14,6 +15,8 @@ data/candidate_lanes/
 data/scanner_lanes/
 data/alpaca_stream/
 data/.robinhood_session*
+data/*robinhood_session*
+data/*.pickle
 CRON_AUTH_TOKEN.docx
 __pycache__/
 *.py[cod]
