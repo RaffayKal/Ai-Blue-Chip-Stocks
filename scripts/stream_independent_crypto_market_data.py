@@ -15,6 +15,7 @@ ROOT = Path(os.environ.get("PROJECT_ROOT", Path(__file__).resolve().parents[1]))
 SYMBOL = os.environ.get("INDEPENDENT_CRYPTO_SYMBOL", "BTC").upper()
 BINANCE_URL = "wss://data-stream.binance.vision:443/ws/btcusdt@ticker"
 KRAKEN_URL = "wss://ws.kraken.com/v2"
+ANNOUNCED = set()
 
 
 def now_iso():
@@ -48,6 +49,9 @@ def write_snapshot(provider, venue, bid, ask, last, timestamp):
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     temporary.replace(path)
+    if provider not in ANNOUNCED:
+        ANNOUNCED.add(provider)
+        print(f"{provider.upper()}_STREAM_FRESH: symbol={SYMBOL} quote_timestamp={payload['quote_timestamp']}", flush=True)
 
 
 async def binance_loop(tls_context):
