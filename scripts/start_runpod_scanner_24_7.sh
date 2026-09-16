@@ -50,10 +50,6 @@ fi
 
 if [ "${ROBINHOOD_STREAM_MARKET_DATA:-false}" = "true" ]; then
   mkdir -p "$ROOT/data"
-  if [ -n "${ROBINHOOD_CRYPTO_API_KEY:-}" ] && [ -n "${ROBINHOOD_CRYPTO_PRIVATE_KEY_B64:-}" ]; then
-    "$PYTHON3_BIN" scripts/stream_robinhood_crypto_api.py &
-    echo "ROBINHOOD_STREAM_STATUS: OFFICIAL_CRYPTO_API"
-  else
   PROJECT_ROOT="$ROOT" "$PYTHON3_BIN" - <<'PY'
 import json
 import os
@@ -71,7 +67,6 @@ payload = {
 path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 print(f"ROBINHOOD_STREAM_STATUS: {payload['status']} - {payload['reason']}")
 PY
-  fi
 else
   mkdir -p "$ROOT/data"
   PROJECT_ROOT="$ROOT" "$PYTHON3_BIN" - <<'PY'
