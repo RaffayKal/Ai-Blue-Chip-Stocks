@@ -1,14 +1,13 @@
 # AI BLUE CHIP STOCKS
 
-This is the main working directory for Claude, Codex, and trading-support agents.
+This is the main working directory for Codex and trading-support operations.
 
 The previous directory is abandoned. Agents must treat this folder as the new root and must not borrow rules, paths, assumptions, or outputs from any older project unless the user explicitly names the file to import.
 
 ## Required Start Order
 
 1. Read `AGENTS.md`.
-2. Read `CLAUDE.md` when running Claude.
-3. Read `COMMANDS.md`.
+2. Read `COMMANDS.md`.
 4. Read `rules/MARKET_SESSION_RULES.md`.
 5. Read `rules/CAPITAL_RULES.md`.
 6. Read `algorithms/CAPITAL_ALGORITHM.md`.
@@ -27,9 +26,10 @@ The executable user algorithm is `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING` in `rul
 
 ## Usage-Conserving Runtime Cadence
 
-- Medium-weight market watch runs continuously with scanner loop intervals bounded to `0.0007` through `7` seconds. Heartbeat cadences stay as configured below.
+- Medium-weight market watch runs continuously with scanner loop intervals bounded to `4` through `420` seconds. Heartbeat cadences stay as configured below.
 - Medium-weight scanner fleet runs as `7-700+` adaptive lanes as optimally needed, only while lanes remain medium-weight and do not run Codex/APEX heavy execution checks.
 - Medium-weight scanners run forward projections/forecasting: continuation probability, reversal risk, stale penalty, spread quality, and net-opportunity scoring for crypto 24/7 and blue-chip market-hours lanes. Forecasts are scanner context, not execution authority.
+- Medium-weight scanners refresh quota/snapshot context tactically from Alpaca, Robinhood, CoinGecko, and connected plugin artifacts such as Longbridge, Stocktwits, and TradingCursor. Websocket/live-feed artifacts drive freshness; REST snapshots are bounded fallback/cross-check inputs.
 - Scanner lanes read online market/media/report context from machine-readable fresh source artifacts, including Longbridge, Stocktwits, and TradingCursor snapshots when connected. Missing or stale online context is reported and never fabricated.
 - Fanout above the safe medium-weight cap is explicitly allowed for medium-weight scanner lanes when needed, up to the configured `7-700+` range. This does not authorize heavy Codex/APEX analysis, order preview, order placement, or broker mutation.
 - Codex usage-refresh start: run one light health check to confirm operations are live. Usage remaining is live fluctuating telemetry; `rules/user_settings.json` is only a stale/manual fallback, not the source of truth.

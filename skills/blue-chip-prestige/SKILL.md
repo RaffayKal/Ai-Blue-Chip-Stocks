@@ -12,7 +12,7 @@ ABSOLUTE INFINITE +775% TACTICAL APPRECIATION OPERATIONS COMPOUNDING — APEX PR
 - No real-money trades without explicit broker authorization.
 - No stale pre-pause signal survives reset.
 - Codex lane freezes at <=2% or unknown usage.
-- Claude Code may only act as an approved backup lane.
+- Codex is the only interactive operator lane.
 - Runpod is the 24/7 supervisor.
 - Positive-volatility gate remains mandatory.
 - Duplicate-position gate remains mandatory.

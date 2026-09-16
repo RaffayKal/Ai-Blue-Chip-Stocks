@@ -1,6 +1,6 @@
 # CAPITAL_ALGORITHM.md
 
-Deterministic capital algorithm for Claude and Codex.
+Deterministic capital algorithm for Codex operations.
 
 This is a rules engine, not a promise of profit.
 

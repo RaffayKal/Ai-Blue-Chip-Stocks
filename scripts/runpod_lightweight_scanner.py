@@ -519,13 +519,27 @@ def build_medium8_projection(source_records, session_confirmed, sentiment, tempe
     session_score = 100.0 if session_confirmed else 0.0
     source_depth_score = clamp(fresh_count * 20.0)
     stale_penalty_score = clamp(100.0 - freshness_score)
+    change = pulse.get("change") if isinstance(pulse, dict) else None
+    change = float(change) if isinstance(change, (int, float)) else 0.0
+    if change >= 2.0:
+        regime = "MOMENTUM_UP"
+        weights = (0.15, 0.25, 0.2, 0.15, 0.1, 0.15)
+    elif change <= -2.0:
+        regime = "MOMENTUM_DOWN"
+        weights = (0.15, 0.1, 0.2, 0.15, 0.1, 0.3)
+    elif abs(change) < 0.5:
+        regime = "RANGE_OR_LOW_MOMENTUM"
+        weights = (0.3, 0.15, 0.2, 0.15, 0.1, 0.1)
+    else:
+        regime = "TRANSITION"
+        weights = (0.25, 0.2, 0.2, 0.15, 0.1, 0.1)
     continuation_probability = clamp(
-        (freshness_score * 0.25)
-        + (sentiment_score * 0.2)
-        + (temperature_score * 0.2)
-        + (session_score * 0.15)
-        + (capital_fit_score * 0.1)
-        + (source_depth_score * 0.1)
+        (freshness_score * weights[0])
+        + (sentiment_score * weights[1])
+        + (temperature_score * weights[2])
+        + (session_score * weights[3])
+        + (capital_fit_score * weights[4])
+        + (source_depth_score * weights[5])
     )
     reversal_risk_score = clamp(100.0 - continuation_probability + stale_penalty_score * 0.25)
     spread_decimal = numeric((micro_trade_value or {}).get("spread_decimal"))
@@ -549,6 +563,15 @@ def build_medium8_projection(source_records, session_confirmed, sentiment, tempe
         "forecast_horizon": "next viable tactical window; not a guarantee",
         "projection_count": 8,
         "projection_scores": medium8,
+        "adaptive_regime": regime,
+        "adaptive_weights": {
+            "freshness": weights[0],
+            "sentiment": weights[1],
+            "temperature": weights[2],
+            "session": weights[3],
+            "capital_fit": weights[4],
+            "source_depth": weights[5],
+        },
         "micro_trade_value": micro_trade_value or {},
         "reversal_risk_score": round(reversal_risk_score, 3),
         "stale_penalty_score": round(stale_penalty_score, 3),
@@ -1054,6 +1077,7 @@ def scan_once(codex_heavy_state, lane):
         watchlist_symbol_count=len(symbols),
         candidate_decision=envelope["candidate_decision"],
         scanner_viable=envelope["scanner_viable"],
+        quote_last=envelope["market_input"].get("last"),
         source_quality=envelope["source_quality"],
     )
     print("RUNPOD_MEDIUM_WEIGHT_SCANNER: ACTIVE")

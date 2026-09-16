@@ -20,7 +20,6 @@ echo "OK: python3 command found"
 
 required_files=(
   "AGENTS.md"
-  "CLAUDE.md"
   "COMMANDS.md"
   "rules/MARKET_SESSION_RULES.md"
   "rules/CAPITAL_RULES.md"

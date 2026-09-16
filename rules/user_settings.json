@@ -32,7 +32,7 @@
   "broker": {
     "brokerage_account_exists": true,
     "name": "Robinhood",
-    "account_type": "Robinhood account connected to Claude and ChatGPT per user",
+    "account_type": "Robinhood account connected to Codex per user",
     "agentic_mcp_server": "robinhood-trading",
     "agentic_mcp_url": "https://agent.robinhood.com/mcp/trading",
     "supports_crypto_24_7": true,
