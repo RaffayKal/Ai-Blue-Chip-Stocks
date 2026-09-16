@@ -8,19 +8,26 @@ Root directory:
 
 ## Capital
 
-Current user capital:
+Capital is dynamic and must be read from the connected broker at runtime.
 
-```text
-$5.00
-```
+For equities/options:
+use the selected account’s authoritative buying power.
 
-This is small capital. The system must protect it aggressively.
+For crypto:
+use the selected account’s crypto buying power.
+
+Never use a hard-coded capital amount or total portfolio value as spendable capital.
+
+If live buying-power data is missing, stale, contradictory, or unavailable:
+`NO ACTION`.
+
+The system must automatically adapt as deposits, withdrawals, holdings, profits, losses, and buying power change. Capital preservation outranks signal strength.
 
 ## Brokerage Account
 
 The user's primary agentic stock-market account is Robinhood.
 
-The user states Claude and ChatGPT are connected to Robinhood and `$5.00` is waiting in the account.
+The user's selected broker account and live buying power must be verified at runtime before treating any setup as actionable.
 
 Read `rules/BROKERAGE_RULES.md` and `rules/ROBINHOOD_RULES.md` before treating any setup as actionable.
 
@@ -65,7 +72,7 @@ Crypto action is blocked unless:
 - liquidity is sufficient
 - at least two source confirmations exist
 - no source conflict exists
-- capital settings pass
+- live broker buying-power checks pass
 
 ## Blue-Chip Lane
 
@@ -75,13 +82,13 @@ Blue-chip stocks are only possible when:
 - session is confirmed as supported
 - broker supports that session
 - bid/ask/last are fresh
-- fractional-share support is confirmed if price is above available capital
+- fractional-share support is confirmed if price is above authoritative live buying power
 - risk limits pass
 
-With `$5.00` capital, most blue-chip full shares are not possible. Blue-chip sessions use ET: pre-market 4:00 AM to 9:30 AM, regular 9:30 AM to 4:00 PM Monday through Friday, after-hours 4:00 PM to 8:00 PM, and overnight only when a broker such as Robinhood or Interactive Brokers offers and confirms support. Robinhood fractional/dollar-based stock and ETF trading starts at `$1.00` for eligible securities during regular market hours. Outside regular hours, equity orders must be limit orders on eligible symbols, not fractional/dollar market orders.
+Blue-chip sessions use ET: pre-market 4:00 AM to 9:30 AM, regular 9:30 AM to 4:00 PM Monday through Friday, after-hours 4:00 PM to 8:00 PM, and overnight only when a broker such as Robinhood or Interactive Brokers offers and confirms support. Robinhood fractional/dollar-based stock and ETF trading starts at the broker minimum for eligible securities during regular market hours. Outside regular hours, equity orders must be limit orders on eligible symbols, not fractional/dollar market orders.
 
 ## Default Output Rule
 
 If a check fails, output `NO ACTION` with failed checks.
 
-If a setup is interesting but cannot be acted on with `$5.00`, output `WATCHLIST ONLY`.
+If a setup is interesting but cannot be acted on because live buying power, broker support, source freshness, or risk facts are incomplete, output `WATCHLIST ONLY` or `NO ACTION` as the local gate requires.

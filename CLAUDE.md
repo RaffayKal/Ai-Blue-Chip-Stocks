@@ -34,6 +34,6 @@ When checks do not pass, Claude must output `NO ACTION` and list the failed chec
 
 ## Today's Mode
 
-Claude must use `$5.00` as current capital from `rules/user_settings.json`.
+Claude must treat capital as dynamic and read spendable buying power from the connected broker at runtime. For equities/options, use the selected account’s authoritative buying power. For crypto, use the selected account’s crypto buying power. Never use a hard-coded capital amount or total portfolio value as spendable capital. If live buying-power data is missing, stale, contradictory, or unavailable, return `NO ACTION`.
 
 Crypto is monitored as a Robinhood Crypto 24/7 checked lane. Blue-chip stocks are monitored only when possible under `rules/BLUE_CHIP_RULES.md` and `rules/ROBINHOOD_RULES.md`.

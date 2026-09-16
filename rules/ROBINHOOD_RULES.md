@@ -11,7 +11,7 @@ robinhood-trading
 https://agent.robinhood.com/mcp/trading
 ```
 
-The user states Claude and ChatGPT are connected and `$5.00` is waiting in the Robinhood account.
+Robinhood buying power must be verified from the connected broker at runtime.
 
 ## Confirmed Robinhood Facts
 
@@ -26,32 +26,31 @@ The user states Claude and ChatGPT are connected and `$5.00` is waiting in the R
 - Robinhood margin access is not automatic.
 - Robinhood margin requires eligibility and at least `$2,000` portfolio value.
 
-## Current Capital
+## Dynamic Capital
 
-Current account cash stated by user:
+Capital is dynamic and must be read from the connected broker at runtime.
 
-```text
-$5.00
-```
+For equities/options:
+use the selected account’s authoritative buying power.
 
-Allowed order-size scan range:
+For crypto:
+use the selected account’s crypto buying power.
 
-```text
-$1.00 to $5.00 cash-backed only
-```
+Never use a hard-coded capital amount or total portfolio value as spendable capital.
 
-Anything above `$5.00` requires margin. With `$5.00`, margin is blocked.
+If live buying-power data is missing, stale, contradictory, or unavailable:
+`NO ACTION`.
 
 ## Trillion-Scale Rule
 
 The user's range "fractions of a dollar to trillions if the margins allow for it" means the algorithm must be scalable, not reckless.
 
-At current `$5.00` capital:
+At runtime:
 
-- minimum live order evaluation is `$1.00`
-- maximum cash-backed order evaluation is `$5.00`
-- margin is blocked
-- trillion-scale notional is `NO ACTION`
+- minimum live order evaluation must satisfy the broker minimum
+- maximum cash-backed order evaluation is the selected account’s authoritative live buying power
+- margin is blocked unless verified margin approval and margin buying power are live-confirmed
+- trillion-scale notional is `NO ACTION` unless verified margin buying power, maintenance requirements, liquidity, risk limits, and explicit user authorization all support it
 
 Only when a future account has verified margin approval, verified margin buying power, verified maintenance requirements, verified liquidity, and explicit user authorization may larger notional sizes be evaluated.
 

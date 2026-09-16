@@ -4,7 +4,7 @@
   "account_type": "Robinhood MCP verified account set",
   "agentic_mcp_server": "robinhood-trading",
   "agentic_mcp_url": "https://agent.robinhood.com/mcp/trading",
-  "reported_cash_waiting_usd": 5.0,
+  "reported_cash_waiting_usd": null,
   "last_mcp_verification_utc": "2026-09-12T14:59:40Z",
   "verified_accounts": [
     {
@@ -35,10 +35,10 @@
     "rhs_account_number": "411926553",
     "rhc_account_number": "311266205533",
     "nickname": "Claude",
-    "portfolio_value_usd": 5.0,
-    "cash_usd": 5.0,
-    "buying_power_usd": 5.0,
-    "crypto_buying_power_usd": 5.0,
+    "portfolio_value_usd": null,
+    "cash_usd": null,
+    "buying_power_usd": null,
+    "crypto_buying_power_usd": null,
     "equity_value_usd": 0.0,
     "crypto_value_usd": 0.0,
     "options_value_usd": 0.0

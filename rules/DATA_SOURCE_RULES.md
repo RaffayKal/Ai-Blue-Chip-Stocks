@@ -34,6 +34,16 @@ Ace Knowledge Graph is always last for final synthesis mapping. Missing plugin o
 
 No single plugin is final authority.
 
+## Stocktwits Widget Rule
+
+`widgets/stocktwits_cards_widget.html` is a browser display surface for fresh Stocktwits cards and market-pricing context. The live loader fetches the widget manifest with no-store behavior, so the widget may display fresh pricing and sentiment cards in a browser.
+
+The scanner must not treat the widget HTML or script tag alone as verified scanner-ingested data. Rendered widget prices become scanner input only after a separate browser/DOM capture step records symbol, asset class, price, retrieval timestamp, timezone, and source into a machine-readable project artifact.
+
+Mediumweight blue-chip/crypto scanning may use Stocktwits only from a timestamped machine-readable payload under `data/plugin_runtime_snapshot.json` at `sources.Stocktwits.sentiment` and `sources.Stocktwits.symbol_pulse`.
+
+If the Stocktwits payload is missing, untimestamped, stale, contradictory, or unavailable, mark it `STALE_OR_UNUSABLE` or `PLUGIN_UNAVAILABLE`. Sentiment remains non-executable context and never authorizes order preview, order placement, or broker mutation.
+
 `rules/plugin_runtime_stack.json` is the runtime plugin map for the APEX Prestige Runpod-first controller. It records which plugins are always-on eligible, burst-only, callable in the current session, and explicitly non-authoritative for trade execution.
 
 ## Timestamp Requirement

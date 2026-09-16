@@ -1,0 +1,18 @@
+# Non-blue-chip / non-crypto markets for Apex viability checks.
+# These are scanner candidates only, not approved trade targets.
+SPY
+QQQ
+IWM
+DIA
+XLF
+XLK
+XLE
+XLV
+TLT
+GLD
+SLV
+USO
+ARKK
+SOXL
+TQQQ
+SQQQ

@@ -147,15 +147,22 @@ Before any autonomous placement:
 
 Any failed check returns `NO ACTION`.
 
-## Current Capital Boundary
+## Dynamic Capital Boundary
 
-With verified capital of `$5.00` and crypto max allocation of `0.20`, the current autonomous selected crypto order cap is:
+Capital is dynamic and must be read from the connected broker at runtime.
 
-```text
-$1.00
-```
+For equities/options:
+use the selected account’s authoritative buying power.
 
-That means the current autonomous selected crypto ticket may evaluate only a `$1.00` market buy.
+For crypto:
+use the selected account’s crypto buying power.
+
+Never use a hard-coded capital amount or total portfolio value as spendable capital.
+
+If live buying-power data is missing, stale, contradictory, or unavailable:
+`NO ACTION`.
+
+The autonomous selected crypto order cap is calculated at runtime from verified crypto buying power and configured allocation limits.
 
 ## Unlimited Sell Ticket Generation
 

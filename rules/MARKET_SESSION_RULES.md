@@ -15,6 +15,14 @@ Every symbol must be classified before action:
 
 `UNKNOWN` always returns `NO ACTION`.
 
+## Apex Expansion Market Rule
+
+Non-blue-chip / non-crypto symbols may be checked only when they are explicitly listed in `data/apex_expansion_watchlist.txt` and the market input declares `market_focus: APEX_EXPANSION`.
+
+Expansion checks are viability discovery only. They do not inherit blue-chip approval and do not authorize order preview, order placement, broker mutation, or all-in allocation.
+
+Expansion candidates must still confirm asset class, venue, session, bid, ask, last/mark, spread, volume or liquidity, timestamp, source freshness, broker/API capability, and risk limits. Missing or stale facts return `NO ACTION`.
+
 ## Crypto Session Rule
 
 Crypto is normally a 24/7 market, but an action is valid only when all checks are true:

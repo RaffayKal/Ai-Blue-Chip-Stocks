@@ -62,7 +62,7 @@ Use:
 ./scripts/start_agentic_cycle.sh
 ```
 
-This is the first command for the current `$5.00` crypto 24/7 and blue-chip-when-possible mode.
+This is the first command for dynamic-capital crypto 24/7 and blue-chip-when-possible mode. Spendable capital must be read from live broker buying power at runtime.
 
 The live autonomous activation bridge is:
 

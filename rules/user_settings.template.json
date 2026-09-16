@@ -1,6 +1,8 @@
 {
   "capital": {
-    "available_trading_capital": null,
+    "buying_power_usd": null,
+    "crypto_buying_power_usd": null,
+    "capital_source": "CONNECTED_BROKER_RUNTIME_ONLY",
     "max_risk_per_action_decimal": null,
     "max_daily_loss_decimal": null,
     "max_open_positions": null

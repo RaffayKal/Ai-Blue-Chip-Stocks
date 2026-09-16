@@ -24,6 +24,17 @@ try:
 except ImportError:  # pragma: no cover
     certifi = None
 
+from project_root import ROOT
+
+try:
+    from dotenv import load_dotenv
+    load_dotenv(ROOT / ".env")
+except ImportError:  # pragma: no cover
+    pass
+if certifi is not None:
+    os.environ.setdefault("SSL_CERT_FILE", certifi.where())
+    os.environ.setdefault("REQUESTS_CA_BUNDLE", certifi.where())
+
 
 STOCK_URL = "https://data.alpaca.markets/v2/stocks/quotes/latest"
 STOCK_TRADE_URL = "https://data.alpaca.markets/v2/stocks/trades/latest"
@@ -34,7 +45,21 @@ ALPACA_CLOCK_URL = os.getenv("ALPACA_CLOCK_URL", "https://paper-api.alpaca.marke
 WATCHLIST = Path(os.getenv("WATCHLIST_FILE", "data/blue_chip_watchlist.txt"))
 CRYPTO_WATCHLIST = Path(os.getenv("CRYPTO_WATCHLIST_FILE", "data/crypto_watchlist.txt"))
 MAX_AGE = float(os.getenv("QUOTE_MAX_AGE_SECONDS", "120"))
-INTERVAL = float(os.getenv("SCAN_INTERVAL_SECONDS", "300"))
+MIN_LOOP_INTERVAL_SECONDS = 4.0
+MAX_LOOP_INTERVAL_SECONDS = 420.0
+
+
+def bounded_loop_interval(value):
+    try:
+        parsed = float(value)
+    except (TypeError, ValueError):
+        parsed = MAX_LOOP_INTERVAL_SECONDS
+    if parsed <= 0:
+        parsed = MAX_LOOP_INTERVAL_SECONDS
+    return max(MIN_LOOP_INTERVAL_SECONDS, min(MAX_LOOP_INTERVAL_SECONDS, parsed))
+
+
+INTERVAL = bounded_loop_interval(os.getenv("SCAN_INTERVAL_SECONDS", "7"))
 PORT = int(os.getenv("PORT", "8080"))
 AUTH_TOKEN = os.getenv("CRON_AUTH_TOKEN", "")
 PLUGIN_INPUT_FILE = os.getenv("PLUGIN_INPUT_FILE", "")

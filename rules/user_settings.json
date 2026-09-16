@@ -1,6 +1,8 @@
 {
   "capital": {
-    "available_trading_capital": 5.0,
+    "buying_power_usd": null,
+    "crypto_buying_power_usd": null,
+    "capital_source": "CONNECTED_BROKER_RUNTIME_ONLY",
     "max_risk_per_action_decimal": 0.01,
     "max_daily_loss_decimal": 0.02,
     "max_open_positions": 1
@@ -13,6 +15,10 @@
   },
   "data_quality": {
     "max_quote_age_seconds_crypto": 15,
+    "max_quote_age_seconds_by_provider": {
+      "Alpaca": 15,
+      "Robinhood": 420
+    },
     "max_quote_age_seconds_us_equity_regular": 15,
     "max_quote_age_seconds_us_equity_extended": 5,
     "max_allowed_source_price_difference_decimal": 0.002

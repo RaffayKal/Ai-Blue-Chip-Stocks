@@ -12,8 +12,10 @@ SETTINGS = ROOT / "rules" / "user_settings.json"
 SNAPSHOT_DIR = ROOT / "data" / "atomic_snapshots"
 STATE_LOG = ROOT / "logs" / "codex_resource_governor.jsonl"
 RUNTIME_STATE = ROOT / "data" / "apex_prestige_runtime_state.json"
+LIVE_USAGE_STATUS = ROOT / "data" / "codex_usage_status.json"
 STALE_SIGNAL_DIR = ROOT / "data" / "stale_signals"
 FREEZE_THRESHOLD_PERCENT = 2.0
+LIVE_USAGE_MAX_AGE_SECONDS = 600
 ARCHITECTURE_NAME = "ABSOLUTE INFINITE +775% TACTICAL APPRECIATION OPERATIONS COMPOUNDING — APEX PRESTIGE ARCHITECTURE"
 
 
@@ -24,6 +26,28 @@ def load_json(path):
 
 def iso_now():
     return datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z")
+
+
+def parse_timestamp(value):
+    if not value or not isinstance(value, str):
+        return None
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        return parsed.replace(tzinfo=timezone.utc)
+    return parsed.astimezone(timezone.utc)
+
+
+def age_seconds(value):
+    parsed = parse_timestamp(value)
+    if parsed is None:
+        return None
+    return (datetime.now(timezone.utc) - parsed).total_seconds()
 
 
 def emit(line):
@@ -53,10 +77,25 @@ def read_usage(settings):
         verified = str(env_verified or "").strip().lower() in {"1", "true", "yes", "verified"}
         remaining = env_remaining
         source = "environment"
+    elif LIVE_USAGE_STATUS.exists():
+        try:
+            usage = load_json(LIVE_USAGE_STATUS)
+        except (OSError, json.JSONDecodeError):
+            usage = {}
+        timestamp = usage.get("timestamp_utc")
+        usage_age = age_seconds(timestamp)
+        if usage_age is not None and 0 <= usage_age <= LIVE_USAGE_MAX_AGE_SECONDS:
+            verified = usage.get("codex_usage_verified") is True
+            remaining = usage.get("codex_usage_remaining_percent")
+            source = "data/codex_usage_status.json"
+        else:
+            verified = operations.get("codex_usage_verified")
+            remaining = operations.get("codex_usage_remaining_percent")
+            source = "rules/user_settings.json_stale_fallback"
     else:
         verified = operations.get("codex_usage_verified")
         remaining = operations.get("codex_usage_remaining_percent")
-        source = "rules/user_settings.json"
+        source = "rules/user_settings.json_stale_fallback"
     return verified, remaining, source
 
 
@@ -93,7 +132,7 @@ def snapshot(reason, settings):
         "codex_usage_remaining_percent": settings.get("operations", {}).get("codex_usage_remaining_percent"),
         "codex_usage_verified": settings.get("operations", {}).get("codex_usage_verified"),
         "zero_heavy_market_operations": True,
-        "runpod_lightweight_scanner_active": True,
+        "runpod_medium_weight_scanner_active": True,
         "resume_requires": [
             "verified usage reset above 2 percent",
             "restore state from snapshot only if still current",
@@ -157,7 +196,7 @@ def freeze(reason, settings):
         "snapshot": str(snap),
         "stale_signals_destroyed": stale,
         "zero_heavy_market_operations": True,
-        "runpod_lightweight_scanner_active": True,
+        "runpod_medium_weight_scanner_active": True,
     }
     write_json(RUNTIME_STATE, record)
     write_log(record)
@@ -168,19 +207,19 @@ def freeze(reason, settings):
     emit(f"ATOMIC_SNAPSHOT: {snap}")
     emit("STALE_SIGNALS_DESTROYED: true")
     emit("ZERO_HEAVY_MARKET_OPERATIONS: true")
-    emit("RUNPOD_LIGHTWEIGHT_MARKET_OPERATIONS: ACTIVE")
-    emit("RUNPOD_MARKET_SCANNING: ACTIVE_LIGHTWEIGHT_24_7")
-    emit("RUNPOD_CALCULATIONS: ACTIVE_LIGHTWEIGHT_24_7")
-    emit("RUNPOD_PROJECTIONS: ACTIVE_LIGHTWEIGHT_24_7")
-    emit("APEX_QUALIFICATION: LIGHTWEIGHT_ONLY")
-    emit("CANDIDATE_GENERATION: LIGHTWEIGHT_ONLY")
+    emit("RUNPOD_MEDIUM_WEIGHT_MARKET_OPERATIONS: ACTIVE")
+    emit("RUNPOD_MARKET_SCANNING: ACTIVE_MEDIUM_WEIGHT_24_7")
+    emit("RUNPOD_CALCULATIONS: ACTIVE_MEDIUM_WEIGHT_24_7")
+    emit("RUNPOD_PROJECTIONS: ACTIVE_MEDIUM_WEIGHT_24_7")
+    emit("APEX_QUALIFICATION: MEDIUM_WEIGHT_ONLY")
+    emit("CANDIDATE_GENERATION: MEDIUM_WEIGHT_ONLY")
     emit("CONNECTOR_MARKET_ANALYSIS: PAUSED")
     emit("TRADE_ANALYSIS: PAUSED")
     emit("EXECUTION_REQUESTS: PAUSED")
     emit("COMPOUNDING_ACTIONS: PAUSED")
     emit("QUEUED_EXECUTION: PAUSED")
     emit("CODEX_HEAVY_OPERATIONS: FROZEN")
-    emit("NEXT_ALLOWED_STEP: keep Runpod lightweight scanner alive; wait for verified reset above 2 percent before Codex-heavy wakeups; refresh live market data; destroy stale signals; rebuild candidates; rerun every APEX gate")
+    emit("NEXT_ALLOWED_STEP: keep Runpod medium-weight scanner alive; wait for verified reset above 2 percent before Codex-heavy wakeups; refresh live market data; destroy stale signals; rebuild candidates; rerun every APEX gate")
     return 0
 
 
@@ -190,7 +229,7 @@ def main():
         emit("CODEX_RESOURCE_GOVERNOR: BLOCKED")
         emit("FAILED_CHECKS: command is not running inside AI BLUE CHIP STOCKS")
         emit("ZERO_HEAVY_MARKET_OPERATIONS: true")
-        emit("RUNPOD_LIGHTWEIGHT_MARKET_OPERATIONS: ACTIVE")
+        emit("RUNPOD_MEDIUM_WEIGHT_MARKET_OPERATIONS: ACTIVE")
         return 0
 
     if not SETTINGS.exists():
@@ -198,7 +237,7 @@ def main():
         emit("CODEX_RESOURCE_GOVERNOR: BLOCKED")
         emit("FAILED_CHECKS: user_settings.json missing; telemetry unknown")
         emit("ZERO_HEAVY_MARKET_OPERATIONS: true")
-        emit("RUNPOD_LIGHTWEIGHT_MARKET_OPERATIONS: ACTIVE")
+        emit("RUNPOD_MEDIUM_WEIGHT_MARKET_OPERATIONS: ACTIVE")
         return 0
 
     settings = load_json(SETTINGS)
@@ -248,7 +287,7 @@ def main():
     emit(f"CODEX_USAGE_REMAINING_PERCENT: {remaining_float}")
     emit(f"CODEX_USAGE_SOURCE: {usage_source}")
     emit("PRE_PAUSE_EXECUTION_SURVIVES: false")
-    emit("RUNPOD_MARKET_SCANNING: ACTIVE_LIGHTWEIGHT_24_7")
+    emit("RUNPOD_MARKET_SCANNING: ACTIVE_MEDIUM_WEIGHT_24_7")
     emit("RESUME_REQUIRES_FRESH_MARKET_DATA_AND_ALL_APEX_GATES: true")
     emit("NEXT_ALLOWED_STEP: continue only through live-data and APEX gates")
     return 0

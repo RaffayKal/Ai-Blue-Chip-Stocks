@@ -7,6 +7,7 @@ from pathlib import Path
 from project_root import ROOT
 
 BLUE_CHIP_WATCHLIST = ROOT / "data" / "blue_chip_watchlist.txt"
+APEX_EXPANSION_WATCHLIST = ROOT / "data" / "apex_expansion_watchlist.txt"
 
 VALID_ASSET_CLASSES = {"CRYPTO", "US_EQUITY", "ETF", "OPTION", "FUND"}
 VALID_SESSIONS = {
@@ -86,6 +87,8 @@ def evaluate(data: dict) -> dict:
     data_status = str(data.get("data_status") or "missing").strip().lower()
     risk_status = str(data.get("risk_status") or "needs settings").strip().lower()
     watchlist = load_watchlist(BLUE_CHIP_WATCHLIST)
+    expansion_watchlist = load_watchlist(APEX_EXPANSION_WATCHLIST)
+    market_focus = str(data.get("market_focus") or "").strip().upper()
 
     if not symbol:
         failed.append("missing symbol")
@@ -102,8 +105,13 @@ def evaluate(data: dict) -> dict:
     if asset_class in {"US_EQUITY", "ETF", "OPTION"} and session in EXTENDED_EQUITY_SESSIONS:
         if data.get("broker_extended_session_supported") is not True:
             failed.append("extended equity session not confirmed by broker")
-    if asset_class == "US_EQUITY" and watchlist and symbol not in watchlist:
+    if asset_class == "US_EQUITY" and watchlist and symbol not in watchlist and market_focus != "APEX_EXPANSION":
         failed.append("symbol not in blue-chip watchlist")
+    if market_focus == "APEX_EXPANSION":
+        if asset_class in {"CRYPTO"}:
+            failed.append("crypto cannot use APEX_EXPANSION market focus")
+        if expansion_watchlist and symbol not in expansion_watchlist:
+            failed.append("symbol not in Apex expansion watchlist")
 
     bid = number(data.get("bid"), "bid", failed)
     ask = number(data.get("ask"), "ask", failed)
@@ -122,12 +130,15 @@ def evaluate(data: dict) -> dict:
     if liquidity is not None and liquidity <= 0:
         failed.append("liquidity_usd must be positive")
 
-    available_capital = number(data.get("available_trading_capital", 5.0), "available_trading_capital", failed)
-    requested_notional = number(data.get("requested_notional_usd", data.get("available_trading_capital", 5.0)), "requested_notional_usd", failed)
+    if asset_class == "CRYPTO":
+        buying_power = number(data.get("crypto_buying_power_usd"), "crypto_buying_power_usd", failed)
+    else:
+        buying_power = number(data.get("buying_power_usd"), "buying_power_usd", failed)
+    requested_notional = number(data.get("requested_notional_usd"), "requested_notional_usd", failed)
     broker_name = str(data.get("broker_name") or "Robinhood").strip().lower()
     margin_requested = data.get("margin_requested") is True
     margin_approved = data.get("margin_approved") is True
-    account_net_worth = number(data.get("account_net_worth_usd", available_capital), "account_net_worth_usd", failed)
+    account_net_worth = number(data.get("account_net_worth_usd"), "account_net_worth_usd", failed) if data.get("account_net_worth_usd") is not None else None
     explicit_execution_authorization = data.get("explicit_execution_authorization") is True
 
     broker_minimum = BROKER_MINIMUM_ORDER_USD.get(broker_name)
@@ -151,17 +162,17 @@ def evaluate(data: dict) -> dict:
         broker_margin_minimum = BROKER_MARGIN_MINIMUM_USD.get(broker_name, 2000.0)
         if account_net_worth is not None and account_net_worth < broker_margin_minimum:
             failed.append(f"{broker_name.title()} margin minimum not met")
-    if requested_notional is not None and available_capital is not None:
-        if requested_notional > available_capital and not margin_requested:
-            failed.append("requested notional exceeds available cash without margin")
+    if requested_notional is not None and buying_power is not None:
+        if requested_notional > buying_power and not margin_requested:
+            failed.append("requested notional exceeds live buying power without margin")
 
-    if asset_class == "US_EQUITY" and ask is not None and available_capital is not None:
-        if ask > available_capital:
+    if asset_class == "US_EQUITY" and ask is not None and buying_power is not None:
+        if ask > buying_power:
             if data.get("fractional_shares_supported") is True and data.get("fractional_asset_eligible") is True:
-                if requested_notional is None or requested_notional > available_capital:
-                    watch_only.append("full share above capital; fractional notional exceeds available capital")
+                if requested_notional is None or requested_notional > buying_power:
+                    watch_only.append("full share above live buying power; fractional notional exceeds live buying power")
             else:
-                watch_only.append("full share above $5 capital and fractional support not confirmed")
+                watch_only.append("full share above live buying power and fractional support not confirmed")
 
     if data_status != "fresh":
         failed.append("data not fresh")

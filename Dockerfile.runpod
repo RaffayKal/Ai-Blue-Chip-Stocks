@@ -1,0 +1,29 @@
+# RunPod deployment for the always-on lightweight layer: live market data
+# (Alpaca, CoinGecko, Robinhood) + deterministic projection/forecast math.
+# Read-only market data and scanning only -- no order placement lives in
+# this image; codex_heavy_state stays FROZEN, matching
+# rules/RUNPOD_FIRST_TRADING_ARCHITECTURE.md.
+#
+# Build:  docker build -f Dockerfile.runpod -t aibluechipstocks-runpod .
+# Run:    provide ALPACA_API_KEY_ID, ALPACA_API_SECRET_KEY as RunPod secrets.
+#         Provide ROBINHOOD_USERNAME, ROBINHOOD_PASSWORD (and
+#         ROBINHOOD_MFA_CODE for the first boot only) as RunPod secrets if
+#         ROBINHOOD_STREAM_MARKET_DATA=true. Never bake credentials into the
+#         image or commit them to the repo.
+
+FROM python:3.13-slim
+
+WORKDIR /app
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY . .
+
+ENV ROBINHOOD_STREAM_MARKET_DATA=true
+ENV ALPACA_STREAM_MARKET_DATA=true
+ENV COINGECKO_STREAM_MARKET_DATA=true
+ENV MEDIUM_SCANNER_ENABLED=true
+ENV RUNPOD_SCANNER_INTERVAL_SECONDS=7
+
+CMD ["./scripts/start_runpod_scanner_24_7.sh"]

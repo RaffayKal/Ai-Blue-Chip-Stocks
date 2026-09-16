@@ -296,7 +296,8 @@ def build_packet(envelope: dict[str, Any], gate: GateResult, freshness: str) -> 
         "capital": {
             "required": envelope.get("capital_required", market_input.get("requested_notional_usd")),
             "at_risk": envelope.get("capital_at_risk", market_input.get("requested_notional_usd")),
-            "available_trading_capital": market_input.get("available_trading_capital"),
+            "buying_power_usd": market_input.get("buying_power_usd"),
+            "crypto_buying_power_usd": market_input.get("crypto_buying_power_usd"),
         },
         "projection": {
             "continuation_estimate": envelope.get("continuation_estimate", envelope.get("continuation_probability")),

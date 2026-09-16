@@ -44,9 +44,20 @@ Agents must not treat stock after-hours failures as crypto failures, and must no
 
 Capital preservation outranks signal strength.
 
-Current user capital is `$5.00` unless the user updates `rules/user_settings.json`.
+Capital is dynamic and must be read from the connected broker at runtime.
 
-With `$5.00`, agents must prefer watchlist mode and must block full-share blue-chip purchases above available capital. Fractional-share blue-chip action requires broker and asset eligibility confirmation.
+For equities/options:
+use the selected account’s authoritative buying power.
+
+For crypto:
+use the selected account’s crypto buying power.
+
+Never use a hard-coded capital amount or total portfolio value as spendable capital.
+
+If live buying-power data is missing, stale, contradictory, or unavailable:
+`NO ACTION`.
+
+Agents must automatically adapt as deposits, withdrawals, holdings, profits, losses, and buying power change. Full-share and fractional-share action requires broker, buying-power, and asset eligibility confirmation.
 
 The user's primary agentic stock-market account is Robinhood. Robinhood-specific rules live in `rules/ROBINHOOD_RULES.md`. Broker capabilities that remain account-specific are not confirmed until `rules/brokerage_intake.json` is filled or verified by the Robinhood MCP/API connection.
 

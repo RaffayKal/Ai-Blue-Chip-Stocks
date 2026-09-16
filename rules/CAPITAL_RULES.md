@@ -13,6 +13,23 @@ Capital rules for the user's capital algorithm.
 
 Signal strength never overrides risk failure.
 
+## Dynamic Capital Rule
+
+Capital is dynamic and must be read from the connected broker at runtime.
+
+For equities/options:
+use the selected account’s authoritative buying power.
+
+For crypto:
+use the selected account’s crypto buying power.
+
+Never use a hard-coded capital amount or total portfolio value as spendable capital.
+
+If live buying-power data is missing, stale, contradictory, or unavailable:
+`NO ACTION`.
+
+The system must automatically adapt as deposits, withdrawals, holdings, profits, losses, and buying power change.
+
 ## Hard Stops
 
 Return `NO ACTION` when any item is true:
@@ -29,7 +46,7 @@ Return `NO ACTION` when any item is true:
 - trade route is unavailable
 - order type is unsupported
 - plugin/tool results conflict
-- user capital amount is unknown for a sizing calculation
+- live buying power is unknown for a sizing calculation
 
 
 ## Retained Growth and Exposure Rules

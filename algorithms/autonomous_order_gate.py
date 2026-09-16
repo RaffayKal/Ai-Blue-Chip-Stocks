@@ -147,7 +147,6 @@ def main() -> None:
     ticket_amount = None
     broker_minimum = None
     buying_power = None
-    capital = None
     allocation = None
     if has_dollar_amount or has_dollar_amount_mode:
         broker_minimum = decimal_value(brokerage_intake.get("minimum_order_value_usd", "1.00"), "minimum_order_value_usd", failed)
@@ -156,7 +155,6 @@ def main() -> None:
             buying_power = decimal_value(verified_account.get("crypto_buying_power_usd"), "crypto_buying_power_usd", failed)
         elif asset_class in EQUITY_ASSET_CLASSES:
             buying_power = decimal_value(verified_account.get("buying_power_usd"), "buying_power_usd", failed)
-        capital = decimal_value(user_settings.get("capital", {}).get("available_trading_capital"), "available_trading_capital", failed)
         allocation_key = "crypto_max_allocation_decimal" if asset_class == "CRYPTO" else "us_equity_max_allocation_decimal"
         allocation = decimal_value(user_settings.get("asset_limits", {}).get(allocation_key), allocation_key, failed)
     if has_dollar_amount:
@@ -166,8 +164,8 @@ def main() -> None:
             failed.append("unsupported dollar_amount_mode")
         max_ticket_amount = decimal_value(order_ticket.get("max_dollar_amount"), "max_dollar_amount", failed)
         min_ticket_amount = decimal_value(order_ticket.get("min_dollar_amount", "1.00"), "min_dollar_amount", failed)
-        if buying_power is not None and capital is not None and allocation is not None and max_ticket_amount is not None:
-            ticket_amount = money(min(buying_power, capital * allocation, max_ticket_amount))
+        if buying_power is not None and allocation is not None and max_ticket_amount is not None:
+            ticket_amount = money(min(buying_power, buying_power * allocation, max_ticket_amount))
         if ticket_amount is not None and min_ticket_amount is not None and ticket_amount < min_ticket_amount:
             failed.append("calculated ticket amount below minimum ticket amount")
         if ticket_amount is not None:
@@ -192,8 +190,8 @@ def main() -> None:
             failed.append("ticket amount below broker minimum")
         if ticket_amount is not None and buying_power is not None and ticket_amount > buying_power:
             failed.append("ticket amount above verified buying power")
-        if ticket_amount is not None and capital is not None and allocation is not None:
-            max_allocation_amount = capital * allocation
+        if ticket_amount is not None and buying_power is not None and allocation is not None:
+            max_allocation_amount = buying_power * allocation
             if ticket_amount > max_allocation_amount:
                 failed.append("ticket amount above configured allocation cap")
             if order_ticket.get("side") == "buy":
@@ -206,7 +204,7 @@ def main() -> None:
             all_in_key = "single_crypto_all_in_blocked" if asset_class == "CRYPTO" else "single_stock_all_in_blocked"
             if user_settings.get("risk_limits", {}).get(all_in_key) is True and order_ticket.get("side") == "buy":
                 current_symbol_exposure = logged_net_symbol_notional(executions, order_ticket.get("symbol"))
-                if current_symbol_exposure + ticket_amount >= capital:
+                if buying_power is not None and current_symbol_exposure + ticket_amount >= buying_power:
                     failed.append("single asset all-in exposure blocked")
 
     if failed:

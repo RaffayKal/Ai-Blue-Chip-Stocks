@@ -14,7 +14,7 @@ The previous directory is abandoned. Agents must treat this folder as the new ro
 6. Read `algorithms/CAPITAL_ALGORITHM.md`.
 7. Run `./scripts/verify_environment.sh`.
 8. Run executable checks with `python3 algorithms/capital_engine.py <input.json>` when a structured market input exists.
-9. For the current $5 start mode, read `START_TODAY.md` and run `./scripts/start_agentic_cycle.sh`.
+9. Read `START_TODAY.md` and run `./scripts/start_agentic_cycle.sh`.
 10. Because the user's primary agentic stock-market account is Robinhood, read `rules/BROKERAGE_RULES.md` and `rules/ROBINHOOD_RULES.md`, then fill or verify `rules/brokerage_intake.json` before treating anything as actionable.
 
 No reports, summaries, dashboards, alerts, trades, scans, or recommendations are valid until this start order is complete.
@@ -27,10 +27,12 @@ The executable user algorithm is `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING` in `rul
 
 ## Usage-Conserving Runtime Cadence
 
-- Lightweight market watch runs continuously at a 1-second scanner cadence.
-- Lightweight scanner fleet runs as `7-700+` adaptive lanes as optimally needed, only while lanes remain lightweight and do not run Codex/APEX heavy checks.
-- Fanout above the safe lightweight cap is blocked unless no-heavy-usage operation is explicitly confirmed.
-- Codex usage-refresh start: run one light health check to confirm operations are live.
+- Medium-weight market watch runs continuously with scanner loop intervals bounded to `0.0007` through `7` seconds. Heartbeat cadences stay as configured below.
+- Medium-weight scanner fleet runs as `7-700+` adaptive lanes as optimally needed, only while lanes remain medium-weight and do not run Codex/APEX heavy execution checks.
+- Medium-weight scanners run forward projections/forecasting: continuation probability, reversal risk, stale penalty, spread quality, and net-opportunity scoring for crypto 24/7 and blue-chip market-hours lanes. Forecasts are scanner context, not execution authority.
+- Scanner lanes read online market/media/report context from machine-readable fresh source artifacts, including Longbridge, Stocktwits, and TradingCursor snapshots when connected. Missing or stale online context is reported and never fabricated.
+- Fanout above the safe medium-weight cap is explicitly allowed for medium-weight scanner lanes when needed, up to the configured `7-700+` range. This does not authorize heavy Codex/APEX analysis, order preview, order placement, or broker mutation.
+- Codex usage-refresh start: run one light health check to confirm operations are live. Usage remaining is live fluctuating telemetry; `rules/user_settings.json` is only a stale/manual fallback, not the source of truth.
 - Codex usage exhaustion/end: run one light health check and freeze/report if usage is at or below 2%.
 - Otherwise, a light operations-health check runs every 5 hours to confirm operations remain live.
 - Night report: send one concise operations report after the day session showing smooth/not-smooth status and blockers.
@@ -41,6 +43,7 @@ The executable user algorithm is `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING` in `rul
 
 - Crypto can trade 24/7, subject to exchange, liquidity, maintenance, wallet, and API availability.
 - U.S. stocks do not trade like crypto. Regular, pre-market, after-hours, overnight, holiday, halted, and closed sessions must be handled separately.
+- Capital is dynamic and must be read from the connected broker at runtime. Equities/options use the selected account’s authoritative buying power. Crypto uses the selected account’s crypto buying power. Never use a hard-coded capital amount or total portfolio value as spendable capital. Missing, stale, contradictory, or unavailable live buying-power data returns `NO ACTION`.
 - If a session, data source, broker route, order type, or timestamp cannot be verified, execution returns `NO ACTION`; operations continue until Codex usage is less than or equal to `2%` or telemetry is unknown.
 - Use `python3` only. Never use the `python` command.
 - No agent may promise profit, certainty, or guaranteed optimality.
@@ -52,6 +55,37 @@ python3 algorithms/capital_engine.py data/sample_crypto_input.json
 ```
 
 The sample intentionally returns `NO ACTION` until source confirmations and capital settings are supplied.
+
+## Alpaca Market Data Stream
+
+```bash
+python3 scripts/stream_alpaca_market_data.py
+```
+
+This optional 24/7 feed reads `ALPACA_API_KEY_ID`/`ALPACA_API_SECRET_KEY` or `APCA_API_KEY_ID`/`APCA_API_SECRET_KEY` from `.env`, plus `ALPACA_STOCK_FEED`, `ALPACA_BLUE_CHIPS`, and `ALPACA_CRYPTO_PAIRS`. It writes non-executing stock/crypto stream artifacts under `data/alpaca_stream/` and a latest crypto quote artifact at `data/alpaca_crypto_quote_snapshot.json`. Freshness is driven by Alpaca websocket quote/trade event timestamps, not REST snapshot polling. It does not preview, place, or authorize trades.
+
+```bash
+python3 scripts/verify_alpaca_market_access.py --stock-feed iex --limit 5
+python3 scripts/scan_apex_expansion_viability.py
+```
+
+The verifier checks Alpaca paper account status plus latest blue-chip, crypto, and Apex expansion quotes without order mutation. The expansion scanner evaluates non-blue-chip / non-crypto candidates from `data/apex_expansion_watchlist.txt` and records whether Apex viability is true or false under the same fail-closed capital rules.
+
+## Alpaca Read-Only Adapter
+
+```bash
+python3 scripts/alpaca_market_data_adapter.py --rest-once
+python3 scripts/alpaca_market_data_adapter.py --serve
+```
+
+This adapter reads credentials from `ALPACA_API_KEY_ID`/`ALPACA_API_SECRET_KEY` or the Alpaca-native `APCA_API_KEY_ID`/`APCA_API_SECRET_KEY`, which can be injected as environment variables or RunPod secrets. It normalizes stock and crypto quotes as `provider`, `symbol`, `asset_class`, `bid`, `ask`, `last`, and `timestamp`; rejects stale quotes using `QUOTE_MAX_AGE_SECONDS`; and keeps `scanner_viable` separate from `execution_allowed`. `--rest-once` is a preflight/fallback heartbeat only; fresh scanning should use `--stream`.
+
+The Cloudflare-facing read-only interface is authenticated with `CLOUDFLARE_SCAN_TOKEN` or `SCAN_INTERFACE_TOKEN` and exposes:
+
+- `GET /health`
+- `GET /scan?mode=medium`
+
+It returns JSON with `last_event_at`, `symbols_ok`, `stale_count`, `scanner_viable`, `execution_allowed`, and `capital_status`. It does not place orders or change Robinhood execution authority.
 
 ## Start Today
 

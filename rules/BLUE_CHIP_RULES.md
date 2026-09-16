@@ -41,17 +41,25 @@ Blue-chip stock checks are allowed only when the equity session is known:
 - `OVERNIGHT`: watch or action only if broker support is confirmed.
 - `CLOSED`, `HOLIDAY`, `HALTED`, `UNKNOWN`: `NO ACTION`.
 
-## $5 Capital Rule
+## Dynamic Capital Rule
 
-Current user capital is `$5.00`.
+Capital is dynamic and must be read from the connected broker at runtime.
 
-Full-share blue-chip positions are blocked when the ask price is above `$5.00`.
+For equities/options:
+use the selected account’s authoritative buying power.
+
+Never use a hard-coded capital amount or total portfolio value as spendable capital.
+
+If live buying-power data is missing, stale, contradictory, or unavailable:
+`NO ACTION`.
+
+Full-share blue-chip positions are blocked when the ask price is above authoritative live buying power.
 
 Fractional-share action is blocked unless all are confirmed:
 
 - broker supports fractional shares
 - asset is fractional eligible
-- minimum order value is less than or equal to `$5.00`
+- minimum order value is less than or equal to authoritative live buying power
 - fees do not make the order irrational
 - spread and liquidity checks pass
 

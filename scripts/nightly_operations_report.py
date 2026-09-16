@@ -29,6 +29,12 @@ def main():
 
     scanner_active = scanner.get("scanner_active") is True
     quote_stream = scanner.get("scanner_quote_stream") or {}
+    online_coverage = scanner.get("online_market_media_reports_coverage") or {}
+    projection = scanner.get("projection") or {}
+    crypto_projection = projection.get("crypto") or {}
+    blue_projection = projection.get("blue_chips") or {}
+    crypto_scores = crypto_projection.get("projection_scores") or {}
+    blue_scores = blue_projection.get("projection_scores") or {}
     execution_allowed = scanner.get("trade_execution_allowed") is True
     viable = candidate.get("scanner_viable") is True and candidate.get("requested_codex_activation") is True
     smooth = scanner_active and not execution_allowed
@@ -42,6 +48,17 @@ def main():
     print(f"MEDIUM_SCANNER_QUOTE_SOURCE_COUNT: {quote_stream.get('quote_source_count', 'missing')}")
     print(f"MEDIUM_SCANNER_FRESH_QUOTE_SOURCE_COUNT: {quote_stream.get('fresh_quote_source_count', 'missing')}")
     print(f"MEDIUM_SCANNER_QUOTE_SOURCE_CONFLICT: {yes_no(quote_stream.get('source_conflict') is True)}")
+    print(f"ONLINE_MARKET_MEDIA_REPORTS_ALL_FRESH: {yes_no(online_coverage.get('all_online_sources_fresh') is True)}")
+    print(f"ONLINE_MARKET_MEDIA_REPORTS_FRESH_COUNT: {online_coverage.get('fresh_online_source_count', 'missing')}")
+    print(f"ONLINE_MARKET_MEDIA_REPORTS_SOURCE_COUNT: {online_coverage.get('online_source_count', 'missing')}")
+    print(f"FORECASTING_ENABLED: {yes_no(projection.get('forecasting_enabled') is True)}")
+    print(f"FORECASTING_MODE: {projection.get('mode', 'missing')}")
+    print(f"CRYPTO_CONTINUATION_PROBABILITY: {crypto_scores.get('continuation_probability', 'missing')}")
+    print(f"CRYPTO_NET_OPPORTUNITY_SCORE: {crypto_scores.get('net_opportunity_score', 'missing')}")
+    print(f"CRYPTO_REVERSAL_RISK_SCORE: {crypto_projection.get('reversal_risk_score', 'missing')}")
+    print(f"BLUE_CHIP_CONTINUATION_PROBABILITY: {blue_scores.get('continuation_probability', 'missing')}")
+    print(f"BLUE_CHIP_NET_OPPORTUNITY_SCORE: {blue_scores.get('net_opportunity_score', 'missing')}")
+    print(f"BLUE_CHIP_REVERSAL_RISK_SCORE: {blue_projection.get('reversal_risk_score', 'missing')}")
     print(f"SUPERVISOR_STATE: {supervisor.get('supervisor_state', 'missing')}")
     print(f"HEALTH_CHECK_ONLY: {yes_no(supervisor.get('health_check_only') is True)}")
     print("HEAVY_ACTION: NO ACTION")
@@ -53,7 +70,7 @@ def main():
         print("BLOCKERS: " + "; ".join(str(item) for item in failed))
     else:
         print("BLOCKERS: none")
-    print("NEXT_SAFE_ACTION: keep lightweight market watch running; do not execute unless every live gate passes")
+    print("NEXT_SAFE_ACTION: keep medium-weight market watch running; do not execute unless every live gate passes")
 
 
 if __name__ == "__main__":

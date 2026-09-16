@@ -68,13 +68,13 @@ def viable_envelope() -> dict:
             "risk_status": "pass",
             "source_count": 2,
             "source_conflict": False,
-            "available_trading_capital": 5.0,
+            "buying_power_usd": 25.0,
             "requested_notional_usd": 1.0,
             "fractional_shares_supported": True,
             "fractional_asset_eligible": True,
             "margin_requested": False,
             "margin_approved": False,
-            "account_net_worth_usd": 5.0,
+            "account_net_worth_usd": 25.0,
             "explicit_execution_authorization": False,
         },
     }
@@ -156,14 +156,14 @@ class ApexPacketMonitorTests(unittest.TestCase):
         write_json(market_path, market_input)
         write_json(ticket_path, order_ticket)
         write_json(settings_path, {
-            "capital": {"available_trading_capital": 5.0},
+            "capital": {"capital_source": "CONNECTED_BROKER_RUNTIME_ONLY"},
             "asset_limits": {"crypto_max_allocation_decimal": 0.2, "us_equity_max_allocation_decimal": 0.2},
             "broker": {"explicit_execution_authorization": True},
             "risk_limits": {"single_crypto_all_in_blocked": True, "single_stock_all_in_blocked": True},
         })
         write_json(intake_path, {
             "explicit_execution_authorization": True,
-            "verified_agentic_account": {"crypto_buying_power_usd": 5.0, "buying_power_usd": 5.0},
+            "verified_agentic_account": {"crypto_buying_power_usd": 25.0, "buying_power_usd": 25.0},
             "minimum_order_value_usd": "1.00",
             "margin_approved": False,
         })
@@ -206,14 +206,14 @@ class ApexPacketMonitorTests(unittest.TestCase):
             "risk_status": "pass",
             "source_count": 2,
             "source_conflict": False,
-            "available_trading_capital": 5.0,
+            "crypto_buying_power_usd": 25.0,
             "requested_notional_usd": 1.0,
             "crypto_account_confirmed": True,
             "maintenance_active": False,
             "account_restricted": False,
             "margin_requested": False,
             "margin_approved": False,
-            "account_net_worth_usd": 5.0,
+            "account_net_worth_usd": 25.0,
             "explicit_execution_authorization": True,
         }
 
@@ -251,13 +251,13 @@ class ApexPacketMonitorTests(unittest.TestCase):
             "risk_status": "pass",
             "source_count": 2,
             "source_conflict": False,
-            "available_trading_capital": 5.0,
+            "buying_power_usd": 25.0,
             "requested_notional_usd": 1.0,
             "fractional_shares_supported": True,
             "fractional_asset_eligible": True,
             "margin_requested": False,
             "margin_approved": False,
-            "account_net_worth_usd": 5.0,
+            "account_net_worth_usd": 25.0,
             "explicit_execution_authorization": True,
         }
 

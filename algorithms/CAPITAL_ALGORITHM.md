@@ -28,7 +28,18 @@ Each evaluation requires:
 
 Missing input returns `NO ACTION`.
 
-Current configured capital starts at `$5.00` in `rules/user_settings.json`.
+Capital is dynamic and must be read from the connected broker at runtime.
+
+For equities/options:
+use the selected account’s authoritative buying power.
+
+For crypto:
+use the selected account’s crypto buying power.
+
+Never use a hard-coded capital amount or total portfolio value as spendable capital.
+
+If live buying-power data is missing, stale, contradictory, or unavailable:
+`NO ACTION`.
 
 ## Algorithm
 
