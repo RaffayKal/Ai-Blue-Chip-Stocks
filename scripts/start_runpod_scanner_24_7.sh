@@ -7,6 +7,8 @@ SCANNER_LANES="${RUNPOD_SCANNER_LANES:-7}"
 ONCE_ARG="${1:-}"
 PYTHON3_BIN="${PYTHON3_BIN:-}"
 
+mkdir -p "$ROOT/logs" "$ROOT/data"
+
 if [ -z "$PYTHON3_BIN" ] && [ -x "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3" ]; then
   PYTHON3_BIN="/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
 fi
