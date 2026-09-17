@@ -118,6 +118,11 @@ if [ "$ONCE_ARG" = "--once" ]; then
     --codex-heavy-state "FROZEN_UNTIL_VERIFIED_USAGE_AND_VIABILITY_GATES_TRUE"
 fi
 
+if [ "${CHATGPT_SCANNER_ENABLED:-true}" = "true" ]; then
+  "$PYTHON3_BIN" scripts/chatgpt_scanner_runtime.py >> logs/chatgpt_scanner_runtime.out.log 2>&1 &
+  echo "CHATGPT_SCANNER_RUNTIME: STARTED"
+fi
+
 exec "$PYTHON3_BIN" scripts/runpod_lightweight_scanner.py \
   --interval-seconds "$INTERVAL_SECONDS" \
   --lane "primary" \
