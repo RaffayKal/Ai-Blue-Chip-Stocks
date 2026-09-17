@@ -109,24 +109,17 @@ def scan_once(client: OpenAI, model: str, role: str, instruction: str, lanes: li
             "missing_facts": "array",
         },
     }, sort_keys=True)
-    session = client.beta.agents.sessions.create(
-        environment={"type": "none"},
-        agent={
-            "model": model,
-            "instructions": (
-                "You are one regular ChatGPT medium-weight scanner in a market-analysis fleet. "
-                "Use only supplied data. Do not invent quotes, timestamps, liquidity, or forecasts. "
-                "Do not execute, preview, authorize, or request a trade. Never override deterministic gates. "
-                "Return JSON only. scanner_viable must be false if required facts are missing, stale, or conflicting."
-            ),
-        },
+    response = client.responses.create(
+        model=model,
+        instructions=(
+            "You are one regular ChatGPT medium-weight scanner in a market-analysis fleet. "
+            "Use only supplied data. Do not invent quotes, timestamps, liquidity, or forecasts. "
+            "Do not execute, preview, authorize, or request a trade. Never override deterministic gates. "
+            "Return JSON only. scanner_viable must be false if required facts are missing, stale, or conflicting."
+        ),
         input=prompt,
     )
-    items = client.beta.agents.sessions.items.list(session.id)
-    texts = []
-    for item in items:
-        dumped = item.model_dump() if hasattr(item, "model_dump") else {}
-        texts.extend(text_values(dumped))
+    texts = [getattr(response, "output_text", "")]
     result = None
     for text in reversed(texts):
         if "scanner_viable" not in text:
