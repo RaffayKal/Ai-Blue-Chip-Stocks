@@ -197,14 +197,127 @@ def scan_once(model: str, role: str, instruction: str, lanes: list[dict], fp: st
     }
 
 
+def deterministic_role_result(role: str, lanes: list[dict], fp: str, openai_error: str | None = None) -> dict:
+    """Have RunPod's own already-computed deterministic scoring stand in for a
+    ChatGPT role when the OpenAI API is unavailable (missing key, exhausted
+    credits, transport error). RunPod's scanner already computes the medium8
+    forward-projection (continuation/reversal/net-opportunity) for every
+    candidate lane; most roles here are just a labeled view of numbers that
+    already exist. This never invents data ChatGPT would have supplied that
+    RunPod does not actually have (fundamentals/news narrative), and it is
+    always labeled OK_DETERMINISTIC_FALLBACK, never "OK", so it is never
+    mistaken for a real ChatGPT analysis.
+    """
+    lane = lanes[0] if lanes else {}
+    projection = lane.get("projection") or {}
+    crypto = projection.get("crypto") or {}
+    blue_chips = projection.get("blue_chips") or {}
+    crypto_scores = crypto.get("projection_scores") or {}
+    blue_chip_scores = blue_chips.get("projection_scores") or {}
+    scanner_viable = bool(lane.get("scanner_viable"))
+    candidate_decision = lane.get("candidate_decision") or "NO ACTION"
+    missing_facts: list[str] = []
+    if not lane:
+        missing_facts.append("no_candidate_lane_available")
+
+    if role == "blue_chip_momentum":
+        projection_out = {
+            "continuation_probability": blue_chip_scores.get("continuation_probability"),
+            "net_opportunity_score": blue_chip_scores.get("net_opportunity_score"),
+        }
+        reason = "RunPod deterministic fallback: blue-chip continuation/net-opportunity score from the scanner's own medium8 projection."
+    elif role == "blue_chip_reversal":
+        projection_out = {
+            "reversal_risk_score": blue_chips.get("reversal_risk_score"),
+            "stale_penalty_score": blue_chips.get("stale_penalty_score"),
+        }
+        reason = "RunPod deterministic fallback: blue-chip reversal-risk score from the scanner's own medium8 projection."
+    elif role == "crypto_momentum":
+        projection_out = {
+            "continuation_probability": crypto_scores.get("continuation_probability"),
+            "net_opportunity_score": crypto_scores.get("net_opportunity_score"),
+        }
+        reason = "RunPod deterministic fallback: crypto continuation/net-opportunity score from the scanner's own medium8 projection."
+    elif role == "crypto_reversal":
+        projection_out = {
+            "reversal_risk_score": crypto.get("reversal_risk_score"),
+            "stale_penalty_score": crypto.get("stale_penalty_score"),
+        }
+        reason = "RunPod deterministic fallback: crypto reversal-risk score from the scanner's own medium8 projection."
+    elif role == "multi_source_quality":
+        source_records = lane.get("required_sources") or []
+        fresh_count = sum(1 for item in source_records if item.get("status") == "fresh")
+        projection_out = {
+            "fresh_source_count": fresh_count,
+            "total_source_count": len(source_records),
+            "source_conflict": (lane.get("market_input") or {}).get("source_conflict"),
+        }
+        reason = "RunPod deterministic fallback: source freshness/conflict read directly from the scanner's own quote quorum."
+        if fresh_count == 0:
+            scanner_viable = False
+    elif role == "forward_projection":
+        projection_out = {"crypto": crypto_scores, "blue_chips": blue_chip_scores}
+        reason = "RunPod deterministic fallback: identical medium8 forward-projection math the scanner already computes every cycle."
+    elif role == "fundamentals_news":
+        projection_out = {}
+        candidate_decision = "NO ACTION"
+        scanner_viable = False
+        missing_facts.append("fundamentals_and_news_narrative_unavailable_without_chatgpt")
+        reason = (
+            "RunPod has no fundamentals/news data source. This role cannot be "
+            "deterministically substituted; reporting it honestly as unavailable "
+            "rather than fabricating a narrative."
+        )
+    else:
+        projection_out = {}
+        scanner_viable = False
+        missing_facts.append("no_deterministic_mapping_for_role")
+        reason = "RunPod deterministic fallback: no mapping defined for this role."
+
+    result = {
+        "timestamp": now(),
+        "role": role,
+        "input_fingerprint": fp,
+        "status": "OK_DETERMINISTIC_FALLBACK",
+        "execution_authority": False,
+        "scanner_viable": scanner_viable,
+        "candidate_decision": candidate_decision,
+        "projection": projection_out,
+        "reason": reason,
+        "missing_facts": missing_facts,
+        "fallback_source": "RUNPOD_MEDIUM_WEIGHT_SCANNER_DETERMINISTIC",
+    }
+    if openai_error:
+        result["openai_error"] = openai_error
+    return result
+
+
+def run_role(model: str, role: str, instruction: str, lanes: list[dict], fp: str, openai_available: bool) -> dict:
+    if not openai_available:
+        return deterministic_role_result(role, lanes, fp, openai_error="OPENAI_API_KEY unavailable")
+    try:
+        return scan_once(model, role, instruction, lanes, fp)
+    except Exception as exc:
+        detail = str(exc)
+        configured_key = os.environ.get("OPENAI_API_KEY", "")
+        if configured_key:
+            detail = detail.replace(configured_key, "[REDACTED]")
+            detail = detail.replace(configured_key.strip(), "[REDACTED]")
+        return deterministic_role_result(role, lanes, fp, openai_error=f"{type(exc).__name__}: {detail[:500]}")
+
+
 def main() -> None:
-    load_local_environment()
-    if not os.environ.get("OPENAI_API_KEY"):
-        raise SystemExit("CHATGPT_MEDIUM_SCANNER_FLEET: OPENAI_API_KEY is unavailable")
+    # RunPod does the medium-scanner's job itself whenever ChatGPT is down
+    # (missing key, exhausted credits, transport failure) rather than the
+    # whole fleet process exiting or every role going to ERROR. Re-check the
+    # key each cycle so the fleet automatically resumes real ChatGPT analysis
+    # once billing/credits are restored, with no restart required.
     interval = max(30.0, float(os.environ.get("CHATGPT_MEDIUM_SCANNER_INTERVAL_SECONDS", "60")))
     model = os.environ.get("CHATGPT_MEDIUM_SCANNER_MODEL", "gpt-5.5")
     previous = ""
     while True:
+        load_local_environment()
+        openai_available = bool(os.environ.get("OPENAI_API_KEY"))
         lanes = inputs()
         fp = fingerprint(lanes)
         if lanes and fp != previous:
@@ -212,34 +325,29 @@ def main() -> None:
             results = []
             with ThreadPoolExecutor(max_workers=len(ROLES)) as pool:
                 futures = {
-                    pool.submit(scan_once, model, role, instruction, lanes, fp): role
+                    pool.submit(run_role, model, role, instruction, lanes, fp, openai_available): role
                     for role, instruction in ROLES
                 }
                 for future in as_completed(futures):
                     role = futures[future]
                     try:
                         result = future.result()
-                    except Exception as exc:
-                        detail = str(exc)
-                        configured_key = os.environ.get("OPENAI_API_KEY", "")
-                        if configured_key:
-                            detail = detail.replace(configured_key, "[REDACTED]")
-                        detail = detail.replace(configured_key.strip(), "[REDACTED]")
-                        result = {
-                            "timestamp": now(),
-                            "role": role,
-                            "input_fingerprint": fp,
-                            "status": "ERROR",
-                            "execution_authority": False,
-                            "error": type(exc).__name__,
-                            "error_detail": detail[:500],
-                        }
+                    except Exception as exc:  # noqa: BLE001 - keep the fleet alive
+                        result = deterministic_role_result(role, lanes, fp, openai_error=f"{type(exc).__name__}: {exc}")
                     results.append(result)
                     if result.get("role"):
                         atomic_write(OUTPUT_DIR / f"{result['role']}.json", result)
+            statuses = {item.get("status") for item in results}
+            if statuses and statuses <= {"OK"}:
+                overall_status = "OK"
+            elif statuses and statuses <= {"OK", "OK_DETERMINISTIC_FALLBACK"}:
+                overall_status = "OK_DETERMINISTIC_FALLBACK"
+            else:
+                overall_status = "PARTIAL_OR_ERROR"
             atomic_write(AGGREGATE, {
                 "timestamp": now(),
-                "status": "OK" if results and all(item.get("status") == "OK" for item in results) else "PARTIAL_OR_ERROR",
+                "status": overall_status,
+                "openai_available": openai_available,
                 "worker_count": len(ROLES),
                 "input_fingerprint": fp,
                 "execution_authority": False,
