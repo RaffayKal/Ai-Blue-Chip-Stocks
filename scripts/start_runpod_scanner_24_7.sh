@@ -119,8 +119,8 @@ if [ "$ONCE_ARG" = "--once" ]; then
 fi
 
 if [ "${CHATGPT_SCANNER_ENABLED:-true}" = "true" ]; then
-  "$PYTHON3_BIN" scripts/chatgpt_scanner_runtime.py >> logs/chatgpt_scanner_runtime.out.log 2>&1 &
-  echo "CHATGPT_SCANNER_RUNTIME: STARTED"
+  "$PYTHON3_BIN" scripts/chatgpt_medium_scanner_fleet.py >> logs/chatgpt_medium_scanner_fleet.out.log 2>&1 &
+  echo "CHATGPT_MEDIUM_SCANNER_FLEET: STARTED"
 fi
 
 if [ "${MEDIUM_WEIGHT_FLEET_ENABLED:-true}" = "true" ]; then
