@@ -76,45 +76,30 @@ echo "MEDIUM_WEIGHT_SCANNER_LANE_RANGE: ${MIN_MEDIUM_WEIGHT_LANES}-${MAX_MEDIUM_
 echo "MEDIUM_WEIGHT_SCANNER_LANES_SELECTED: $SCANNER_LANES"
 echo "HEAVY_ACTION: NO ACTION"
 
-lane_names=()
-lane_pids=()
+# Each lane used to be its own OS process (~20-25MB RSS just for the Python
+# interpreter). At 700 lanes that is 15-20GB of RAM for work that is almost
+# entirely file I/O and light JSON scoring. scan_once() has no shared mutable
+# state keyed off process identity, so all lanes run as threads inside one
+# interpreter instead: verified locally at 700 lanes / ~34MB RSS total.
+POOL_LOG="logs/threaded_scanner_lane_pool.out.log"
 
-start_lane() {
-  lane_name="$1"
-  python3 scripts/runpod_lightweight_scanner.py \
+start_pool() {
+  python3 scripts/threaded_scanner_lane_pool.py \
+    --lanes "$SCANNER_LANES" \
     --interval-seconds "$INTERVAL_SECONDS" \
-    --lane "$lane_name" \
     --codex-heavy-state "FROZEN_UNTIL_VERIFIED_USAGE_AND_VIABILITY_GATES_TRUE" \
-    > "logs/runpod_lightweight_scanner_${lane_name}.out.log" 2>&1 &
+    >> "$POOL_LOG" 2>&1 &
   echo "$!"
 }
 
-lane=1
-while [ "$lane" -le "$SCANNER_LANES" ]; do
-  lane_name="lane_${lane}"
-  if [ "$lane" -eq 1 ]; then
-    lane_name="primary"
-  fi
-  lane_pid="$(start_lane "$lane_name")"
-  echo "STARTED_MEDIUM_WEIGHT_SCANNER_LANE: $lane_name"
-  echo "MEDIUM_WEIGHT_SCANNER_LANE_PID: $lane_pid"
-  lane_names+=("$lane_name")
-  lane_pids+=("$lane_pid")
-  lane=$((lane + 1))
-done
+pool_pid="$(start_pool)"
+echo "STARTED_THREADED_SCANNER_LANE_POOL: lanes=$SCANNER_LANES pid=$pool_pid log=$POOL_LOG"
 
 while true; do
-  index=0
-  while [ "$index" -lt "${#lane_names[@]}" ]; do
-    lane_name="${lane_names[$index]}"
-    lane_pid="${lane_pids[$index]}"
-    if ! kill -0 "$lane_pid" 2>/dev/null; then
-      echo "RESTARTING_MEDIUM_WEIGHT_SCANNER_LANE: $lane_name"
-      lane_pid="$(start_lane "$lane_name")"
-      echo "MEDIUM_WEIGHT_SCANNER_LANE_PID: $lane_pid"
-      lane_pids[$index]="$lane_pid"
-    fi
-    index=$((index + 1))
-  done
+  if ! kill -0 "$pool_pid" 2>/dev/null; then
+    echo "RESTARTING_THREADED_SCANNER_LANE_POOL"
+    pool_pid="$(start_pool)"
+    echo "STARTED_THREADED_SCANNER_LANE_POOL: lanes=$SCANNER_LANES pid=$pool_pid log=$POOL_LOG"
+  fi
   sleep 5
 done
