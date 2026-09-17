@@ -97,7 +97,9 @@ def text_values(value: object) -> list[str]:
 
 
 def call_responses_api(model: str, instructions: str, prompt: str) -> dict:
-    api_key = os.environ["OPENAI_API_KEY"]
+    api_key = os.environ["OPENAI_API_KEY"].strip()
+    if not api_key:
+        raise RuntimeError("OPENAI_API_KEY is empty after trimming")
     base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
     request = urllib.request.Request(
         f"{base_url}/responses",
@@ -185,12 +187,17 @@ def main() -> None:
                     try:
                         result = future.result()
                     except Exception as exc:
+                        detail = str(exc)
+                        configured_key = os.environ.get("OPENAI_API_KEY", "")
+                        if configured_key:
+                            detail = detail.replace(configured_key, "[REDACTED]")
+                        detail = detail.replace(configured_key.strip(), "[REDACTED]")
                         result = {
                             "timestamp": now(),
                             "status": "ERROR",
                             "execution_authority": False,
                             "error": type(exc).__name__,
-                            "error_detail": str(exc)[:500],
+                            "error_detail": detail[:500],
                         }
                     results.append(result)
                     if result.get("role"):
