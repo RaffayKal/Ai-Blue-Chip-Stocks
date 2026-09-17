@@ -32,6 +32,18 @@ BLUE-CHIP TECH GIANTS = MAIN INVESTMENT ASSETS AND PRIMARY COMPOUNDING MECHANISM
 MOST VOLATILE VERIFIED ROBINHOOD-SUPPORTED CRYPTO = 24/7 TACTICAL COMPOUNDING / MICRO-NET-PROFIT MECHANISM
 ```
 
+## Layered Tactical Standards
+
+APEX uses a layered, evidence-backed process rather than a single “secret” billionaire algorithm:
+
+1. Use multiple independent market-data sources and record source timestamps, freshness, liquidity, and source disagreement.
+2. Use separate tactical lenses for value, momentum, quality, reversal risk, volatility, fundamentals/news, and forward projection. A scanner signal is not execution authority.
+3. Require expected appreciation to exceed spread, fees, slippage, liquidity impact, and other execution friction before a candidate can be viable.
+4. Keep broker-side capital, account, duplicate-order, asset-eligibility, and session checks independent from scanner conclusions.
+5. Missing, stale, contradictory, or unverified facts produce `NO ACTION`; no projection is a guaranteed return.
+
+These standards refine evidence collection and validation. They do not replace the existing APEX viability, capital, concentration, or broker-risk gates.
+
 
 
 ## RunPod-First Minimum-Heavy-Usage Runtime

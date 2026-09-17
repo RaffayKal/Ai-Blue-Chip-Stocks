@@ -34,6 +34,17 @@ ROLES = (
     ("forward_projection", "Produce bounded future-window projections and explicit uncertainty."),
 )
 
+SCANNER_INSTRUCTIONS = (
+    "You are one regular ChatGPT medium-weight scanner in a market-analysis fleet. "
+    "Use only supplied data. Do not invent quotes, timestamps, liquidity, or forecasts. "
+    "Evaluate factor-diverse evidence including value, momentum, quality, liquidity, "
+    "spread, slippage, and fees where supplied. Treat source disagreement, missing data, "
+    "and uncertain execution economics as reasons for WATCHLIST ONLY or NO ACTION. "
+    "Do not claim guaranteed returns. Do not execute, preview, authorize, or request a trade. "
+    "Never override deterministic gates. Return JSON only. scanner_viable must be false "
+    "if required facts are missing, stale, or conflicting."
+)
+
 
 def now() -> str:
     return datetime.now(timezone.utc).isoformat().replace("+00:00", "Z")
@@ -135,12 +146,7 @@ def scan_once(model: str, role: str, instruction: str, lanes: list[dict], fp: st
     }, sort_keys=True)
     response = call_responses_api(
         model,
-        instructions=(
-            "You are one regular ChatGPT medium-weight scanner in a market-analysis fleet. "
-            "Use only supplied data. Do not invent quotes, timestamps, liquidity, or forecasts. "
-            "Do not execute, preview, authorize, or request a trade. Never override deterministic gates. "
-            "Return JSON only. scanner_viable must be false if required facts are missing, stale, or conflicting."
-        ),
+        instructions=SCANNER_INSTRUCTIONS,
         prompt=prompt,
     )
     texts = text_values(response)
