@@ -22,6 +22,16 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
         scanner.write_json(path, payload)
         return path
 
+    def fresh_chatgpt_reinforcement(self):
+        return {
+            "status": "fresh",
+            "fleet_status": "OK",
+            "timestamp": iso_before(1),
+            "age_seconds": 1.0,
+            "max_age_seconds": scanner.MAX_CHATGPT_REINFORCEMENT_AGE_SECONDS,
+            "input_fingerprint": "test",
+        }
+
     def quote(self, **overrides):
         payload = {
             "bid": 100.0,
@@ -176,7 +186,8 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
     def test_lightweight_viability_does_not_require_heavy_lane_to_be_awake(self):
         with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
              patch.object(scanner, "load_crypto_quote", return_value=self.quote()), \
-             patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
+             patch.object(scanner, "load_crypto_capital_snapshot", return_value={}), \
+             patch.object(scanner, "chatgpt_reinforcement_status", return_value=self.fresh_chatgpt_reinforcement()):
             envelope = scanner.build_non_executable_envelope(
                 [],
                 {},
@@ -519,7 +530,8 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
         quote = self.quote(payload={"invalidation_price_usd": None, "stop_distance_usd": None})
         with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
              patch.object(scanner, "load_crypto_quote", return_value=quote), \
-             patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
+             patch.object(scanner, "load_crypto_capital_snapshot", return_value={}), \
+             patch.object(scanner, "chatgpt_reinforcement_status", return_value=self.fresh_chatgpt_reinforcement()):
             envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
         self.assertTrue(envelope["scanner_viable"])
         self.assertNotIn("APEX_HAS_NO_NUMERIC_NOTIONAL_OUTPUT", envelope["failed_checks"])

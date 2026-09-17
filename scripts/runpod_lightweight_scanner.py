@@ -39,6 +39,13 @@ USER_SETTINGS = ROOT / "rules" / "user_settings.json"
 PLUGIN_SNAPSHOT = ROOT / "data" / "plugin_runtime_snapshot.json"
 COINGECKO_CRYPTO_SNAPSHOT = ROOT / "data" / "coingecko_crypto_quote_snapshot.json"
 CANDIDATE_ENVELOPE = ROOT / "data" / "current_candidate_envelope.json"
+# Chain: RunPod scans -> ChatGPT medium-scanner reinforcement/viability check
+# -> Codex heavy viability check -> Robinhood. Without this gate, RunPod's
+# own deterministic envelope reached Codex's packet monitor directly,
+# bypassing the ChatGPT reinforcement step entirely.
+CHATGPT_FLEET_AGGREGATE = ROOT / "data" / "chatgpt_medium_scanner_fleet.json"
+MAX_CHATGPT_REINFORCEMENT_AGE_SECONDS = 180.0
+ACCEPTABLE_CHATGPT_FLEET_STATUSES = ("OK", "OK_DETERMINISTIC_FALLBACK")
 ROBINHOOD_CRYPTO_CAPITAL = ROOT / "data" / "robinhood_crypto_capital_snapshot.json"
 LANE_STATUS_DIR = ROOT / "data" / "scanner_lanes"
 LANE_ENVELOPE_DIR = ROOT / "data" / "candidate_lanes"
@@ -853,6 +860,36 @@ def optional_source_record(name, payload):
     }
 
 
+def chatgpt_reinforcement_status():
+    """Confirm a fresh ChatGPT medium-scanner fleet verdict exists before a
+    candidate can become viable -- enforces RunPod scans -> ChatGPT
+    reinforcement/viability check -> Codex heavy check, instead of RunPod's
+    deterministic envelope reaching Codex directly. OK_DETERMINISTIC_FALLBACK
+    counts as satisfying this: RunPod already stands in for ChatGPT's job
+    when the OpenAI API is unavailable, so that fallback is not a failure
+    of this gate.
+    """
+    fleet = load_json(CHATGPT_FLEET_AGGREGATE, {})
+    if not isinstance(fleet, dict):
+        fleet = {}
+    timestamp = fleet.get("timestamp")
+    age_seconds = timestamp_age_seconds(timestamp)
+    status = fleet.get("status")
+    is_fresh = (
+        status in ACCEPTABLE_CHATGPT_FLEET_STATUSES
+        and age_seconds is not None
+        and 0 <= age_seconds <= MAX_CHATGPT_REINFORCEMENT_AGE_SECONDS
+    )
+    return {
+        "status": "fresh" if is_fresh else "stale_or_unusable",
+        "fleet_status": status,
+        "timestamp": timestamp,
+        "age_seconds": round(age_seconds, 3) if age_seconds is not None else None,
+        "max_age_seconds": MAX_CHATGPT_REINFORCEMENT_AGE_SECONDS,
+        "input_fingerprint": fleet.get("input_fingerprint"),
+    }
+
+
 def apex_requires_positive_sentiment(settings):
     apex = settings.get("apex") if isinstance(settings, dict) else {}
     if not isinstance(apex, dict):
@@ -984,6 +1021,9 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         sentiment_label == "BEARISH" or (isinstance(sentiment_score, (int, float)) and sentiment_score < 50)
     ):
         failed.append("Stocktwits sentiment is not positive")
+    chatgpt_reinforcement = chatgpt_reinforcement_status()
+    if chatgpt_reinforcement["status"] != "fresh":
+        failed.append("chatgpt medium-scanner reinforcement is missing, stale, or failed")
     micro_trade_value = build_micro_trade_value(crypto_quote)
     requested_notional, requested_notional_source, sizing_inputs = apex_requested_notional(
         crypto_quote["payload"],
@@ -1140,6 +1180,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "projection": projection,
         "market_input": market_input,
         "micro_trade_value": micro_trade_value,
+        "chatgpt_reinforcement": chatgpt_reinforcement,
         "data_provenance": required_sources,
         "required_sources": required_sources,
         "optional_sources": optional_sources,
