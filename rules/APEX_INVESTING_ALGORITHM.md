@@ -76,7 +76,7 @@ RunPod-first mode never bypasses live-data freshness, broker authorization, Robi
 
 ## Multi-Plugin Agentic Orchestration
 
-Apex operations must follow `rules/MULTI_PLUGIN_AGENTIC_ORCHESTRATION.md` when a multi-plugin workflow is available or requested. The operational stack is Superpowers for discipline, Runpod for runtime/control, Longbridge for quotes/market data, TradingCursor for deep technical confirmation only when needed, Stocktwits for sentiment only when useful, Finances for actual portfolio/account state when required, deterministic calculators for arithmetic, Nvidia/Cloudflare/Notion/Amplitude only where applicable, Apex synthesis, and Ace Knowledge Graph ALWAYS LAST for visualization/state relationships. Missing or disconnected plugins must be recorded as unavailable and must not be fabricated. If a missing plugin is required for a trade-critical fact, output `NO ACTION`.
+Apex operations must follow `rules/MULTI_PLUGIN_AGENTIC_ORCHESTRATION.md` when a multi-plugin workflow is available or requested. The operational stack is Superpowers for discipline, Runpod for runtime/control, Longbridge for quotes/market data, TradingCursor for deep technical confirmation only when needed, Stocktwits for sentiment only when useful, Finances for actual portfolio/account state when required, deterministic calculators for arithmetic, Nvidia/Notion/Amplitude only where applicable, Apex synthesis, and Ace Knowledge Graph ALWAYS LAST for visualization/state relationships. Missing or disconnected plugins must be recorded as unavailable and must not be fabricated. If a missing plugin is required for a trade-critical fact, output `NO ACTION`.
 
 ## Event-Trigger Architecture
 
@@ -115,7 +115,7 @@ For plugin-originated candidates, the decision words before Codex activation mus
 
 After any approved action, recalculate capital, cost basis, realized net profit, remaining position, and the next viable trade value. If a major net profit condition is reached, liquidate 75% of net profit to available brokerage capital and retain 25% of net profit for appreciation and future compounding operations.
 
-After each action or blocked action, recalculate only confirmed delta state: capital, cash, position value, cost basis, realized net profit, unrealized net profit, retained exposure, duplicate-entry state, 30% exposure limit, next viable trade value, next reevaluation threshold, cooldown, and confidence decay.
+After each action or blocked action, recalculate only confirmed delta state: capital, cash, position value, cost basis, realized net profit, unrealized net profit, retained exposure, 3%-20% allocation band, one-position limit, next viable trade value, next reevaluation threshold, cooldown, and confidence decay.
 
 Core rule: do not keep the expensive full agent running. Keep only the market trigger/watcher active. Wake the full agent only when market movement plus appreciation potential plus execution economics equals viable net-profit trade value.
 
@@ -251,7 +251,7 @@ Target: maximize appreciation while preserving realized gains.
 
 If high-conviction upside remains viable in a blue-chip asset, Apex may allow blue-chip exposure to continue compounding instead of prematurely harvesting the position.
 
-Maximum compounding capital exposure for this mode is up to 30% of max capital. Any exposure above 30% of max capital is blocked unless a future explicit rule changes the cap.
+Dynamic allocation for this mode is 3%-20% of verified buying power. Any allocation above 20% or below 3% is blocked; one open position is permitted.
 
 This mode requires confirmed blue-chip eligibility, broker tradability, session support, buying power or sellable quantity, spread, liquidity, volatility, catalyst quality, technical confirmation, and positive expected net profit after execution friction.
 
@@ -268,7 +268,7 @@ UPSIDE REMAINS CLEAR + VIABLE
     → LET IT RUN
     → compound
     → reassess at subsequent price movement
-    → keep exposure ≤ 30% of max capital
+    → keep allocation between 3% and 20% of verified buying power
 
 UPSIDE DETERIORATES
     → HARVEST GROWN PERCENTAGE
@@ -299,7 +299,7 @@ RETAINED 25% APPRECIATES
 APEX RE-EVALUATION
     ↓
 CLEAR UPSIDE → LET ASSET GROW
-               ≤30% MAX CAPITAL COMPOUNDING EXPOSURE
+               ≤20% VERIFIED BUYING-POWER ALLOCATION
 
 UPSIDE NO LONGER VIABLE → LIQUIDATE GROWN %
                            → RECOMPOUND
@@ -433,7 +433,7 @@ This file is the apex hierarchy rule for investing in this repository.
 
 Apex must never allocate 100% of available capital into one stock. Single-stock all-in exposure is blocked.
 
-Blue-chip stocks remain the main investment assets, but capital must be spread across a basket of verified eligible assets whenever stock execution is allowed. The preferred stock allocation pattern is multiple verified blue-chip positions ranked by the Apex hierarchy, not one concentrated stock position.
+Blue-chip stocks remain the main investment assets. At most one verified position may be open at a time; the selected allocation must remain within 3%-20% of verified buying power.
 
 Hard concentration rule:
 
@@ -448,7 +448,7 @@ IF proposed stock allocation would place all available capital into one stock:
 
 For small capital accounts, if the broker minimum and available cash make spreading across multiple stocks impossible, the valid result is `WATCHLIST ONLY`, `NO ACTION`, or one explicitly reviewed fractional candidate that still stays inside the configured per-symbol cap. It must not silently become an all-in stock order.
 
-The high-risk / high-reward blue-chip mode does not override this rule. The 30% maximum compounding exposure ceiling is a ceiling, not permission to concentrate 100% in one stock.
+The high-risk / high-reward blue-chip mode does not override this rule. The 20% maximum allocation ceiling is a ceiling, not permission to concentrate beyond one position.
 
 ## Single-Crypto Concentration Block
 

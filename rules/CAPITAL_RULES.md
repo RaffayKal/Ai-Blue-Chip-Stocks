@@ -13,6 +13,14 @@ Capital rules for the user's capital algorithm.
 
 Signal strength never overrides risk failure.
 
+## Current Allocation and Market-Quality Bounds
+
+- Allocation: dynamically 3%-20% of verified buying power.
+- Maximum open positions: 1.
+- Liquidity: require confirmed positive liquidity sufficient for the positive net-profit calculation; no invented fixed dollar threshold.
+- Spread: 0.02%-0.07%; 0.07% is the hard ceiling and tighter is better.
+- Quote freshness: use available live sources within the configured 0.0007-second-to-7-minute operating range; stale or contradictory data returns `NO ACTION`.
+
 ## Dynamic Capital Rule
 
 Capital is dynamic and must be read from the connected broker at runtime.
@@ -55,7 +63,7 @@ Retained 25% major-profit exposure is monitored after a major net-profit event. 
 
 If upside remains clear and viable, retain the exposure and reassess dynamically. If upside deteriorates, harvest the grown percentage only after confirming positive net profit after execution friction.
 
-High-risk / high-reward blue-chip compounding exposure is capped at 30% of max capital. The cap is a hard ceiling for this mode unless a later explicit user rule changes it.
+Blue-chip allocation is dynamically bounded between 3% and 20% of verified buying power. The 20% cap is hard, and maximum open positions is 1.
 
 ## Position Sizing Formula
 
@@ -93,7 +101,7 @@ Never put 100% of capital into one stock. Any proposed stock order or stock port
 
 For U.S. equities and blue-chip stocks, capital must be spread across eligible verified positions whenever execution is allowed. If the account is too small to meet broker minimums across multiple symbols, the system must prefer `WATCHLIST ONLY` or `NO ACTION` instead of forcing a one-stock all-in order.
 
-A single stock must stay inside the configured per-symbol/per-asset allocation cap, available buying power, session rules, broker tradability, liquidity, spread, and risk checks. The 30% high-risk/high-reward blue-chip exposure ceiling is the maximum allowed exposure for justified compounding, not a default target and not all-in permission.
+A single stock must stay inside the configured 3%-20% per-symbol allocation band, available buying power, session rules, broker tradability, liquidity, spread, and risk checks. The 20% ceiling is not all-in permission.
 
 ## Single-Crypto Concentration Block
 

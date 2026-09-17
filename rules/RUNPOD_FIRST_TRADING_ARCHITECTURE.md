@@ -29,7 +29,7 @@ Reevaluation rule:
 Every 10%-UNKNOWN%+ portfolio/account/opportunity change triggers reevaluation.
 
 Capital compounding ceiling:
-Up to 30% max capital compounding is allowed only when APEX supports it with current data, liquidity, execution math, and risk confirmation.
+Dynamic 3%-20% allocation of verified buying power is allowed only when APEX supports it with current data, liquidity, execution math, and risk confirmation. Maximum open positions: 1.
 
 Execution rule:
 No live brokerage execution unless an actually authorized execution surface is available.
@@ -285,9 +285,6 @@ ALWAYS LAST visualization of architecture/state relationships. It is not trade a
 NVIDIA Skills:
 GPU/model/runtime optimization only when infrastructure or accelerated inference matters
 
-Cloudflare:
-edge routing, dashboards, durable state, alert/webhook layer, public/private control surfaces
-
 Amplitude:
 event analytics, scanner performance, trigger quality, false-positive rate, wake-cost tracking
 
@@ -329,7 +326,7 @@ capital sizing valid for $5 start
 fractional eligibility confirmed if equity
 crypto action status confirmed if crypto
 risk does not exceed approved limits
-30% max capital compounding ceiling respected
+3%-20% verified-buying-power allocation band respected
 75% net-profit harvest / 25% retained rule preserved
 10%-UNKNOWN%+ reevaluation rule applied
 duplicate-position rule applied
@@ -385,7 +382,7 @@ When profit exists and is confirmed as NET PROFIT:
 25% retained for compounding
 
 If APEX supports increased exposure:
-capital compounding may rise up to 30% max
+capital allocation may rise up to 20% max
 
 If APEX does not support increased exposure:
 retain current size
@@ -397,7 +394,7 @@ rerun reevaluation
 rerun risk math
 rerun capital allocation logic
 
-After each action, recalculate capital, cash, position value, cost basis, realized net profit, unrealized net profit, retained exposure, duplicate-entry state, 30% exposure limit, next viable trade value, next reevaluation threshold, cooldown, and confidence decay. Write only delta state. Notion may record decision/state change. Amplitude may record runtime event metrics. Runpod updates live machine state.
+After each action, recalculate capital, cash, position value, cost basis, realized net profit, unrealized net profit, retained exposure, 3%-20% allocation band, one-position limit, duplicate-entry state, next viable trade value, next reevaluation threshold, cooldown, and confidence decay. Write only delta state. Notion may record decision/state change. Amplitude may record runtime event metrics. Runpod updates live machine state.
 
 Block transaction if any of these exist:
 
@@ -429,9 +426,6 @@ high-level agentic tactical burst
 
 OpenAI Developers:
 agent/API/workflow build layer
-
-Cloudflare:
-edge, dashboard, durable state, alert delivery
 
 Precise Special Functions:
 specialized math only when needed

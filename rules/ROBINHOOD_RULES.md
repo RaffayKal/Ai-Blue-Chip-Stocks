@@ -23,6 +23,9 @@ Robinhood buying power must be verified from the connected broker at runtime.
 - Robinhood Crypto can trade 24/7, except scheduled maintenance and account restrictions.
 - Robinhood Crypto orders can start at `$1.00`.
 - Robinhood Crypto is separate from Robinhood Financial.
+- Autonomous allocation is dynamically bounded between 3% and 20% of verified buying power, with one open position maximum.
+- Accepted spread target is 0.02%-0.07%; 0.07% is the hard ceiling.
+- Quotes must come from available live sources within the configured 0.0007-second-to-7-minute operating range.
 - Robinhood margin access is not automatic.
 - Robinhood margin requires eligibility and at least `$2,000` portfolio value.
 
