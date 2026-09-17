@@ -106,12 +106,10 @@ fi
 # Robinhood MCP is owned by the authenticated Codex host. No remote broker
 # relay is part of the RunPod scanner runtime.
 
-if [ "${MEDIUM_SCANNER_ENABLED:-true}" = "true" ]; then
-  if [ "$ALPACA_CREDENTIALS_AVAILABLE" = "true" ]; then
-    SCAN_INTERVAL_SECONDS="${MEDIUM_SCANNER_INTERVAL_SECONDS:-7}" "$PYTHON3_BIN" scripts/medium_market_orchestrator.py &
-  else
-    echo "MEDIUM_SCANNER: DISABLED (its Alpaca-only implementation has no credentials; primary multi-source scanner remains active)"
-  fi
+if [ "${MEDIUM_WEIGHT_FLEET_ENABLED:-true}" = "true" ]; then
+  echo "MEDIUM_WEIGHT_FLEET: ENABLED (multi-source scanner lanes)"
+else
+  echo "MEDIUM_WEIGHT_FLEET: DISABLED by explicit configuration"
 fi
 
 if [ "$ONCE_ARG" = "--once" ]; then
@@ -123,6 +121,10 @@ fi
 if [ "${CHATGPT_SCANNER_ENABLED:-true}" = "true" ]; then
   "$PYTHON3_BIN" scripts/chatgpt_scanner_runtime.py >> logs/chatgpt_scanner_runtime.out.log 2>&1 &
   echo "CHATGPT_SCANNER_RUNTIME: STARTED"
+fi
+
+if [ "${MEDIUM_WEIGHT_FLEET_ENABLED:-true}" = "true" ]; then
+  exec ./scripts/start_lightweight_scanner_fleet.sh
 fi
 
 exec "$PYTHON3_BIN" scripts/runpod_lightweight_scanner.py \
