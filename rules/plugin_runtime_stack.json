@@ -7,11 +7,11 @@
     "conflicting_trade_critical_plugin_result": "NO ACTION"
   },
   "tiered_data_resources": {
-    "tier_2": [
+    "tier_1": [
       {
         "name": "Robinhood Legend / Robinhood MCP",
         "status": "CONFIGURED_NOT_RUNTIME_VERIFIED",
-        "role": "read-only broker-side quote, account, position, buying-power, and tradability confirmation",
+        "role": "broker-authoritative quote, account, position, buying-power, and tradability confirmation",
         "transport": "existing authenticated Robinhood MCP",
         "browser_url_is_data_authority": false,
         "execution_authority": false,
