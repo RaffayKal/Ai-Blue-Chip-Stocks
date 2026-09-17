@@ -860,6 +860,31 @@ def apex_requires_positive_sentiment(settings):
     return apex.get("requires_positive_stocktwits_sentiment") is True
 
 
+def plugin_symbol_matches(payload, target_symbol):
+    """Confirm a symbol-scoped plugin record (Stocktwits sentiment/pulse,
+    TradingCursor analysis) actually covers the currently active symbol.
+
+    These records are written externally and can lag behind symbol
+    rotation (rank_volatile_crypto_candidates.py can now select ETH or SOL,
+    not just BTC). Without this check, stale BTC-scoped sentiment or a
+    BTC entry/invalidation price from TradingCursor would get silently
+    applied as if it were about the active symbol -- for TradingCursor
+    specifically that means a wrong-asset entry/invalidation price feeding
+    real position sizing.
+    """
+    if not isinstance(payload, dict):
+        return False
+    candidate = str(payload.get("symbol") or "").strip().upper()
+    target = str(target_symbol or "").strip().upper()
+    if not candidate or not target:
+        return False
+    for suffix in (".X", "-USD", "/USD", "USD"):
+        if candidate.endswith(suffix):
+            candidate = candidate[: -len(suffix)]
+            break
+    return candidate == target
+
+
 def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     crypto_symbol, crypto_candidates = load_active_crypto_symbol()
     crypto_quote = load_crypto_quote(crypto_symbol)
@@ -873,6 +898,13 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     temperature = longbridge.get("market_temperature", {})
     sentiment = stocktwits.get("sentiment", {})
     pulse = stocktwits.get("symbol_pulse", {})
+    tradingcursor_analysis = tradingcursor.get("analysis", {})
+    if not plugin_symbol_matches(sentiment, crypto_symbol):
+        sentiment = {}
+    if not plugin_symbol_matches(pulse, crypto_symbol):
+        pulse = {}
+    if not plugin_symbol_matches(tradingcursor_analysis, crypto_symbol):
+        tradingcursor_analysis = {"usable": False, "status": "symbol_mismatch"}
     settings = load_json(USER_SETTINGS, {})
 
     symbol = crypto_symbol
@@ -915,7 +947,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         optional_source_record("Stocktwits.sentiment", sentiment),
         optional_source_record("CoinGecko.last_price", coingecko_quote),
         optional_source_record("Stocktwits.symbol_pulse", pulse),
-        optional_source_record("TradingCursor.analysis", tradingcursor.get("analysis", {"usable": False, "status": "unavailable"})),
+        optional_source_record("TradingCursor.analysis", tradingcursor_analysis or {"usable": False, "status": "unavailable"}),
     ]
     unavailable_optional_sources = [
         item for item in optional_sources if item.get("status") == "UNAVAILABLE"
@@ -934,7 +966,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     sentiment_label = sentiment.get("label")
     temperature_value = temperature.get("temperature")
     tradingcursor_rejected = str(tradingcursor.get("status") or "").lower() == "rejected"
-    apex_sizing_fields = tradingcursor_apex_fields(tradingcursor.get("analysis", {}))
+    apex_sizing_fields = tradingcursor_apex_fields(tradingcursor_analysis)
     if apex_sizing_fields:
         crypto_quote["payload"].update(apex_sizing_fields)
 

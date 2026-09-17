@@ -453,13 +453,14 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
                 "analysis": {
                     "usable": True,
                     "status": "completed",
+                    "symbol": "BTCUSD",
                     "retrieved_at": iso_before(1),
                     "analysis": {
                         "potentialPosition": {"entryPrice": 100.0, "stopLoss": 90.0}
                     },
                 },
             },
-            "Stocktwits": {"sentiment": {"label": "BEARISH", "score": 26, "retrieved_at": iso_before(1)}},
+            "Stocktwits": {"sentiment": {"label": "BEARISH", "score": 26, "symbol": "BTC.X", "retrieved_at": iso_before(1)}},
         }
         with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
              patch.object(scanner, "load_crypto_quote", return_value=quote), \
