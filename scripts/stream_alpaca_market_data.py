@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
 import argparse
 import asyncio
+import gzip
 import json
 import os
+import shutil
 import time
 from datetime import datetime, timezone
 from pathlib import Path
@@ -34,6 +36,8 @@ STREAM_DIR = ROOT / "data" / "alpaca_stream"
 STATUS = STREAM_DIR / "status.json"
 LATEST_CRYPTO_QUOTE = ROOT / "data" / "alpaca_crypto_quote_snapshot.json"
 EVENT_LOG = ROOT / "logs" / "alpaca_market_stream.jsonl"
+LOG_ARCHIVE_DIR = ROOT / "logs" / "archive"
+MAX_JSONL_LOG_BYTES = 50 * 1024 * 1024  # append-only stream log; grew to 3GB+ unbounded before this
 
 
 def iso_now():
@@ -49,8 +53,29 @@ def write_json(path, data):
     tmp.replace(path)
 
 
+def rotate_jsonl_if_oversized(path):
+    """Archive (gzip) and reset an append-only JSONL log once it crosses
+    MAX_JSONL_LOG_BYTES, instead of letting it grow forever. Preserves the
+    old content (compressed, moved aside) rather than deleting it, since
+    these are audit-relevant stream logs. Rotation failures never block the
+    actual stream write.
+    """
+    try:
+        if not path.exists() or path.stat().st_size < MAX_JSONL_LOG_BYTES:
+            return
+        LOG_ARCHIVE_DIR.mkdir(parents=True, exist_ok=True)
+        stamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+        archive_path = LOG_ARCHIVE_DIR / f"{path.stem}.{stamp}{path.suffix}.gz"
+        with path.open("rb") as source, gzip.open(archive_path, "wb") as dest:
+            shutil.copyfileobj(source, dest)
+        path.unlink()
+    except OSError:
+        pass
+
+
 def append_jsonl(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
+    rotate_jsonl_if_oversized(path)
     with path.open("a", encoding="utf-8") as handle:
         handle.write(json.dumps(data, sort_keys=True, separators=(",", ":")) + "\n")
 
