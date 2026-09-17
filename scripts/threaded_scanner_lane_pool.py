@@ -25,11 +25,15 @@ import argparse
 import asyncio
 import os
 import signal
+import statistics
+from collections import Counter, deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from project_root import ROOT
 import runpod_lightweight_scanner as scanner
+
+SYNERGY_STATUS_PATH = ROOT / "data" / "fleet_synergy_status.json"
 
 
 def lane_name_for(index):
@@ -43,7 +47,14 @@ def worker_pool_size():
     return min(64, max(8, (os.cpu_count() or 2) * 8))
 
 
-async def run_lane(lane, codex_heavy_state, interval_seconds, once, executor, loop, stop_event):
+def extract_net_opportunity(status):
+    try:
+        return status["projection"]["crypto"]["projection_scores"]["net_opportunity_score"]
+    except (KeyError, TypeError):
+        return None
+
+
+async def run_lane(lane, codex_heavy_state, interval_seconds, once, executor, loop, stop_event, recent_results):
     lock = None
     if not once:
         lock_path = scanner.lane_paths(lane)[2]
@@ -55,7 +66,16 @@ async def run_lane(lane, codex_heavy_state, interval_seconds, once, executor, lo
     try:
         while not stop_event.is_set():
             try:
-                await loop.run_in_executor(executor, scanner.scan_once, codex_heavy_state, lane)
+                status = await loop.run_in_executor(executor, scanner.scan_once, codex_heavy_state, lane)
+                recent_results.append(
+                    {
+                        "lane": lane,
+                        "timestamp_utc": status.get("timestamp_utc"),
+                        "candidate_decision": status.get("candidate_decision"),
+                        "scanner_viable": bool(status.get("scanner_viable")),
+                        "net_opportunity_score": extract_net_opportunity(status),
+                    }
+                )
             except Exception as exc:  # noqa: BLE001 - keep the lane alive
                 print(f"LANE_CYCLE_ERROR: lane={lane} error={exc!r}")
             if once:
@@ -68,6 +88,59 @@ async def run_lane(lane, codex_heavy_state, interval_seconds, once, executor, lo
     finally:
         if lock is not None:
             lock.close()
+
+
+async def synergy_aggregator(recent_results, lane_count, interval_seconds, once, stop_event):
+    """Publish one fleet-level consensus signal instead of N duplicate lane outputs.
+
+    Every lane already computes the same 8-part forecast (continuation
+    probability, reversal risk, net-opportunity score, etc.) from
+    scan_once(); the actual redundancy problem was that 700 identical
+    lanes reading the same shared snapshot never talked to each other.
+    Because lanes are staggered ~1ms apart in one process, they sample the
+    live incoming price stream at many distinct sub-second instants per
+    interval. This turns that into a real signal: decision agreement
+    across the fleet, how many lanes see a currently-viable setup, and the
+    spread of the net-opportunity forecast across samples. Read-only —
+    changes no gate, sizing input, or AUM value.
+    """
+    aggregate_interval = min(max(interval_seconds, 2.0), 30.0)
+    while True:
+        window = list(recent_results)
+        if window:
+            decisions = Counter(item["candidate_decision"] for item in window)
+            consensus_decision, consensus_count = decisions.most_common(1)[0]
+            scores = [item["net_opportunity_score"] for item in window if isinstance(item["net_opportunity_score"], (int, float))]
+            payload = {
+                "timestamp_utc": scanner.iso_now(),
+                "fleet_size_configured": lane_count,
+                "sample_count": len(window),
+                "distinct_lanes_represented": len({item["lane"] for item in window}),
+                "consensus_decision": consensus_decision,
+                "agreement_ratio": round(consensus_count / len(window), 4),
+                "viable_ratio": round(sum(1 for item in window if item["scanner_viable"]) / len(window), 4),
+                "net_opportunity_score_avg": round(statistics.fmean(scores), 3) if scores else None,
+                "net_opportunity_score_min": round(min(scores), 3) if scores else None,
+                "net_opportunity_score_max": round(max(scores), 3) if scores else None,
+                "note": (
+                    "Read-only fleet consensus/confirmation signal aggregated across "
+                    "staggered lane samples. Not an execution authority; does not "
+                    "change sizing, gates, or AUM."
+                ),
+            }
+            scanner.write_json(SYNERGY_STATUS_PATH, payload)
+            print(
+                f"FLEET_SYNERGY: lanes={lane_count} samples={payload['sample_count']} "
+                f"consensus={consensus_decision} agreement={payload['agreement_ratio'] * 100:.1f}% "
+                f"viable_ratio={payload['viable_ratio'] * 100:.1f}% "
+                f"net_opportunity_avg={payload['net_opportunity_score_avg']}"
+            )
+        if once:
+            return
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=aggregate_interval)
+        except asyncio.TimeoutError:
+            pass
 
 
 async def async_main(args, executor):
@@ -86,19 +159,38 @@ async def async_main(args, executor):
     lane_count = max(1, args.lanes)
     print(f"THREADED_LANE_POOL_SIZE: {lane_count}")
 
+    recent_results = deque(maxlen=min(5000, max(200, lane_count * 3)))
+
     tasks = []
     for index in range(1, lane_count + 1):
         lane = lane_name_for(index)
         tasks.append(
             asyncio.create_task(
-                run_lane(lane, args.codex_heavy_state, args.interval_seconds, args.once, executor, loop, stop_event)
+                run_lane(
+                    lane,
+                    args.codex_heavy_state,
+                    args.interval_seconds,
+                    args.once,
+                    executor,
+                    loop,
+                    stop_event,
+                    recent_results,
+                )
             )
         )
         # Small stagger so lane_1..lane_N don't all queue file I/O in the
         # same instant against the fixed worker pool.
         await asyncio.sleep(0.001)
 
-    await asyncio.gather(*tasks)
+    if args.once:
+        await asyncio.gather(*tasks)
+        await synergy_aggregator(recent_results, lane_count, args.interval_seconds, True, stop_event)
+        return
+
+    aggregator_task = asyncio.create_task(
+        synergy_aggregator(recent_results, lane_count, args.interval_seconds, False, stop_event)
+    )
+    await asyncio.gather(*tasks, aggregator_task)
 
 
 def main():
