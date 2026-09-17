@@ -278,6 +278,23 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
         self.assertFalse(result["required_quote_quorum_ok"])
         self.assertEqual(result["missing_required_quote_sources"], ["Robinhood"])
 
+    def test_alpaca_never_becomes_primary_candidate_quote(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            alpaca = Path(tmp) / "alpaca_crypto_quote_snapshot.json"
+            scanner.write_json(alpaca, {
+                "asset_class": "CRYPTO",
+                "symbol": "BTC",
+                "quote_timestamp": iso_before(1),
+                "provider": "Alpaca",
+                "bid": 100.0,
+                "ask": 100.1,
+                "last": 100.05,
+            })
+            with patch.object(scanner, "CRYPTO_QUOTE_INPUTS", [alpaca]):
+                result = scanner.load_crypto_quote("BTC")
+        self.assertIsNone(result["path"])
+        self.assertFalse(result["required_quote_quorum_ok"])
+
     def test_apex_numeric_sizing_reaches_requested_notional(self):
         payload = {
             "crypto_buying_power_usd": 10000.0,

@@ -28,12 +28,27 @@ fi
 
 ./scripts/verify_environment.sh || exit 1
 
-if [ "${ALPACA_ADAPTER_REST_PREFLIGHT:-false}" = "true" ]; then
-  "$PYTHON3_BIN" scripts/alpaca_market_data_adapter.py --rest-once || exit 1
+ALPACA_KEY="${ALPACA_API_KEY_ID:-${APCA_API_KEY_ID:-${ALPACA_API_KEY:-}}}"
+ALPACA_SECRET="${ALPACA_API_SECRET_KEY:-${APCA_API_SECRET_KEY:-${ALPACA_SECRET_KEY:-}}}"
+ALPACA_CREDENTIALS_AVAILABLE=false
+if [ -n "$ALPACA_KEY" ] && [ -n "$ALPACA_SECRET" ]; then
+  ALPACA_CREDENTIALS_AVAILABLE=true
 fi
 
-if [ "${ALPACA_STREAM_MARKET_DATA:-true}" = "true" ]; then
-  "$PYTHON3_BIN" scripts/stream_alpaca_market_data.py &
+if [ "${ALPACA_ADAPTER_REST_PREFLIGHT:-false}" = "true" ]; then
+  if [ "$ALPACA_CREDENTIALS_AVAILABLE" = "true" ]; then
+    "$PYTHON3_BIN" scripts/alpaca_market_data_adapter.py --rest-once || exit 1
+  else
+    echo "ALPACA_REST_PREFLIGHT: SKIPPED (Alpaca credentials unavailable; optional source)"
+  fi
+fi
+
+if [ "${ALPACA_STREAM_MARKET_DATA:-false}" = "true" ]; then
+  if [ "$ALPACA_CREDENTIALS_AVAILABLE" = "true" ]; then
+    "$PYTHON3_BIN" scripts/stream_alpaca_market_data.py &
+  else
+    echo "ALPACA_STREAM: DISABLED (Alpaca credentials unavailable; optional source)"
+  fi
 fi
 
 if [ "${COINGECKO_STREAM_MARKET_DATA:-true}" = "true" ]; then
@@ -86,12 +101,15 @@ print(f"ROBINHOOD_STREAM_STATUS: {payload['status']} - {payload['reason']}")
 PY
 fi
 
-if [ -n "${ROBINHOOD_MCP_RELAY_URL:-}" ]; then
-  "$PYTHON3_BIN" scripts/poll_robinhood_mcp_relay.py &
-fi
+# Robinhood MCP is owned by the authenticated Codex host. No remote broker
+# relay is part of the RunPod scanner runtime.
 
 if [ "${MEDIUM_SCANNER_ENABLED:-true}" = "true" ]; then
-  SCAN_INTERVAL_SECONDS="${MEDIUM_SCANNER_INTERVAL_SECONDS:-7}" "$PYTHON3_BIN" scripts/medium_market_orchestrator.py &
+  if [ "$ALPACA_CREDENTIALS_AVAILABLE" = "true" ]; then
+    SCAN_INTERVAL_SECONDS="${MEDIUM_SCANNER_INTERVAL_SECONDS:-7}" "$PYTHON3_BIN" scripts/medium_market_orchestrator.py &
+  else
+    echo "MEDIUM_SCANNER: DISABLED (its Alpaca-only implementation has no credentials; primary multi-source scanner remains active)"
+  fi
 fi
 
 if [ "$ONCE_ARG" = "--once" ]; then

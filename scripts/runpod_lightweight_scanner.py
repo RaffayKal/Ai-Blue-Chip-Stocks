@@ -258,10 +258,11 @@ def load_crypto_quote(symbol):
     ]
     source_conflict = quote_sources_conflict(list(required_fresh.values()), settings)
     required_quorum_ok = not missing_required and not source_conflict
-    primary = (
-        required_fresh.get("Robinhood")
-        or required_fresh.get("Alpaca")
-        or next((source for source in quote_sources if source["fresh"]), quote_sources[0] if quote_sources else None)
+    # Alpaca is legacy optional data only. It must never become the selected
+    # quote for a new candidate when the broker-authoritative source is absent.
+    primary = required_fresh.get("Robinhood") or next(
+        (source for source in quote_sources if source["fresh"] and source["provider"] != "Alpaca"),
+        next((source for source in quote_sources if source["provider"] != "Alpaca"), None),
     )
     if primary is not None:
         primary = {**primary}
@@ -1058,7 +1059,6 @@ def scan_once(codex_heavy_state, lane):
             "Finances",
             "2+2 Calculator",
             "Precise Special Functions",
-            "Cloudflare",
             "Amplitude",
             "Notion",
             "Carta CRM",
