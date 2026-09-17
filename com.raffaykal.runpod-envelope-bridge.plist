@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.raffaykal.runpod-envelope-bridge</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Users/raffaykal/AI BLUE CHIP STOCKS/scripts/pull_runpod_envelope_bridge.sh</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/raffaykal/AI BLUE CHIP STOCKS</string>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <!-- Read-only SSH pull from RunPod; promotes the pod's envelope into the
+       local current_candidate_envelope.json only when it is genuinely
+       fresher than the local scanner's own output. Never mutates the pod. -->
+  <key>StandardOutPath</key>
+  <string>/Users/raffaykal/AI BLUE CHIP STOCKS/logs/runpod_envelope_bridge.launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/raffaykal/AI BLUE CHIP STOCKS/logs/runpod_envelope_bridge.launchd.err.log</string>
+</dict>
+</plist>
