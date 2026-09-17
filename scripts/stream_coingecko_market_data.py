@@ -24,11 +24,10 @@ import certifi
 
 from project_root import ROOT
 
-SNAPSHOT = ROOT / "data" / "coingecko_crypto_quote_snapshot.json"
-SYMBOL = "BTC"
-COINGECKO_ID = "bitcoin"
-URL = f"https://api.coingecko.com/api/v3/simple/price?ids={COINGECKO_ID}&vs_currencies=usd&include_last_updated_at=true"
-POLL_INTERVAL_SECONDS = 20  # confirmed HTTP 429 at 5s polling; 20s (~3/min) is the safe sustained rate observed
+SYMBOL_TO_COINGECKO_ID = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana"}
+COINGECKO_IDS = ",".join(SYMBOL_TO_COINGECKO_ID.values())
+URL = f"https://api.coingecko.com/api/v3/simple/price?ids={COINGECKO_IDS}&vs_currencies=usd&include_last_updated_at=true"
+POLL_INTERVAL_SECONDS = 20  # confirmed HTTP 429 at 5s polling; 20s (~3/min) is the safe sustained rate observed; one request covers every tracked symbol
 
 
 def iso_now():
@@ -48,21 +47,33 @@ def write_json(path, data):
     tmp.replace(path)
 
 
-def fetch_once(ctx):
+def snapshot_paths(symbol):
+    paths = [ROOT / "data" / f"coingecko_crypto_quote_snapshot_{symbol}.json"]
+    if symbol == "BTC":
+        paths.append(ROOT / "data" / "coingecko_crypto_quote_snapshot.json")
+    return paths
+
+
+def fetch_all(ctx):
     req = Request(URL, headers={"User-Agent": "ai-blue-chip-stocks/1.0"})
     with urlopen(req, timeout=10, context=ctx) as response:
         payload = json.load(response)
-    entry = payload.get(COINGECKO_ID)
-    if not entry or "usd" not in entry:
-        raise ValueError("missing usd price in CoinGecko response")
-    return {
-        "status": "ok",
-        "usable": True,
-        "symbol": SYMBOL,
-        "source": "CoinGecko.simple_price",
-        "last": entry["usd"],
-        "retrieved_at": iso(entry["last_updated_at"]) if entry.get("last_updated_at") else iso_now(),
-    }
+    snapshots = {}
+    for symbol, coingecko_id in SYMBOL_TO_COINGECKO_ID.items():
+        entry = payload.get(coingecko_id)
+        if not entry or "usd" not in entry:
+            continue
+        snapshots[symbol] = {
+            "status": "ok",
+            "usable": True,
+            "symbol": symbol,
+            "source": "CoinGecko.simple_price",
+            "last": entry["usd"],
+            "retrieved_at": iso(entry["last_updated_at"]) if entry.get("last_updated_at") else iso_now(),
+        }
+    if not snapshots:
+        raise ValueError("missing usd price for every tracked symbol in CoinGecko response")
+    return snapshots
 
 
 def main():
@@ -73,18 +84,22 @@ def main():
 
     while True:
         try:
-            snapshot = fetch_once(ctx)
-            write_json(SNAPSHOT, snapshot)
-            print(f"COINGECKO_QUOTE symbol={SYMBOL} last={snapshot['last']} retrieved_at={snapshot['retrieved_at']}", flush=True)
+            snapshots = fetch_all(ctx)
+            for symbol, snapshot in snapshots.items():
+                for path in snapshot_paths(symbol):
+                    write_json(path, snapshot)
+                print(f"COINGECKO_QUOTE symbol={symbol} last={snapshot['last']} retrieved_at={snapshot['retrieved_at']}", flush=True)
         except (URLError, ValueError, TimeoutError) as exc:
-            write_json(SNAPSHOT, {
-                "status": "unavailable",
-                "usable": False,
-                "symbol": SYMBOL,
-                "source": "CoinGecko.simple_price",
-                "retrieved_at": iso_now(),
-                "error": str(exc),
-            })
+            for symbol in SYMBOL_TO_COINGECKO_ID:
+                for path in snapshot_paths(symbol):
+                    write_json(path, {
+                        "status": "unavailable",
+                        "usable": False,
+                        "symbol": symbol,
+                        "source": "CoinGecko.simple_price",
+                        "retrieved_at": iso_now(),
+                        "error": str(exc),
+                    })
             print(f"COINGECKO_QUOTE_ERROR {exc}", flush=True)
 
         if once:

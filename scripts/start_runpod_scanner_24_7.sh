@@ -66,6 +66,10 @@ if [ "${INDEPENDENT_CRYPTO_STREAMS:-true}" = "true" ]; then
   "$PYTHON3_BIN" scripts/stream_independent_crypto_market_data.py &
 fi
 
+if [ "${VOLATILE_CRYPTO_RANKING_ENABLED:-true}" = "true" ]; then
+  "$PYTHON3_BIN" scripts/rank_volatile_crypto_candidates.py &
+fi
+
 if [ "${ROBINHOOD_STREAM_MARKET_DATA:-false}" = "true" ]; then
   mkdir -p "$ROOT/data"
   PROJECT_ROOT="$ROOT" "$PYTHON3_BIN" - <<'PY'

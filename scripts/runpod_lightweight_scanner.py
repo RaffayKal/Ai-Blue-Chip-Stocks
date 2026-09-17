@@ -16,6 +16,11 @@ LOCK = ROOT / "data" / "runpod_lightweight_scanner.lock"
 LOG = ROOT / "logs" / "runpod_lightweight_scanner.jsonl"
 WATCHLIST = ROOT / "data" / "blue_chip_watchlist.txt"
 CRYPTO_CANDIDATES = ROOT / "data" / "volatile_crypto_candidates.json"
+# Tracked symbols the volatility ranker (rank_volatile_crypto_candidates.py)
+# can select as the active symbol. Must stay in sync with that script's
+# ROBINHOOD_SUPPORTED_TRACKED_SYMBOLS -- otherwise picking a symbol here has
+# no matching quote files and the scanner silently loses all market data.
+TRACKED_CRYPTO_SYMBOLS = ("BTC", "ETH", "SOL")
 CRYPTO_QUOTE_INPUTS = [
     ROOT / "data" / "alpaca_crypto_quote_snapshot.json",
     ROOT / "data" / "robinhood_crypto_quote_snapshot.json",
@@ -25,6 +30,10 @@ CRYPTO_QUOTE_INPUTS = [
     ROOT / "data" / "sample_robinhood_volatile_crypto_input.json",
     ROOT / "data" / "sample_robinhood_crypto_input.json",
     ROOT / "data" / "sample_crypto_input.json",
+] + [
+    ROOT / "data" / f"{provider}_crypto_quote_snapshot_{symbol}.json"
+    for provider in ("coinbase", "binance", "kraken", "coingecko")
+    for symbol in TRACKED_CRYPTO_SYMBOLS
 ]
 USER_SETTINGS = ROOT / "rules" / "user_settings.json"
 PLUGIN_SNAPSHOT = ROOT / "data" / "plugin_runtime_snapshot.json"
