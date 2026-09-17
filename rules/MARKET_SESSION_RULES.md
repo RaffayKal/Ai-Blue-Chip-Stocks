@@ -53,6 +53,67 @@ U.S. equities and blue-chip stocks must be separated by session in Eastern Time:
 
 Equity actions outside `REGULAR` require explicit support for the broker route, order type, symbol tradability, and session. If not confirmed, output `NO ACTION`.
 
+## Blue-Chip Spread Limit (configured limit referenced above)
+
+```text
+midpoint       = (bid + ask) / 2
+spread_decimal = (ask - bid) / midpoint
+spread_percent = spread_decimal * 100
+```
+
+Typical observed ranges, for context only (not a gate by themselves):
+
+- Regular session, very liquid mega-cap: 0.01%-0.05%
+- Regular session, typical blue chip: 0.03%-0.10%
+- Regular session, volatile/less liquid: 0.10%-0.25%
+- Extended hours, typical range: 0.20%-1.00%+
+
+Binding maximums:
+
+- `REGULAR` session: `spread_percent` must not exceed `0.10`. Above that,
+  `NO ACTION`.
+- `PRE_MARKET`, `AFTER_HOURS`, `OVERNIGHT`: `spread_percent` must not exceed
+  `0.25`. Above that, `NO ACTION`.
+
+This is the numeric definition of "spread is within configured limit" in
+the Crypto Session Rule above and the spread checks referenced throughout
+`BLUE_CHIP_RULES.md` and `CAPITAL_RULES.md`.
+
+## Fast-Market Rule
+
+If volatility or spread expands materially within a session:
+
+- shorten the trusted quote-age window for that symbol
+- recalculate execution friction
+- recalculate position sizing
+- if any resulting gate check fails, output `NO ACTION`
+
+## Freshness Timings
+
+- Scanner refresh cadence: 4 seconds minimum
+- Maximum packet age: 420 seconds
+- Maximum quote age: 420 seconds
+- Maximum provenance age: 420 seconds
+- Packet emission interval: 4 seconds minimum
+
+Any fact older than its maximum age above is stale under the Stale Data
+Rule below and returns `NO ACTION`.
+
+## Net Opportunity Rule
+
+```text
+expected net opportunity =
+    expected appreciation
+    - spread
+    - slippage
+    - fees
+    - liquidity impact
+    - execution friction
+```
+
+If expected net opportunity is less than or equal to zero, output
+`NO ACTION`.
+
 ## Stale Data Rule
 
 Data is stale when:

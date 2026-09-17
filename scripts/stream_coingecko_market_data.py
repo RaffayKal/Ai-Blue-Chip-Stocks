@@ -24,7 +24,23 @@ import certifi
 
 from project_root import ROOT
 
-SYMBOL_TO_COINGECKO_ID = {"BTC": "bitcoin", "ETH": "ethereum", "SOL": "solana"}
+SYMBOL_TO_COINGECKO_ID = {
+    "BTC": "bitcoin",
+    "ETH": "ethereum",
+    "SOL": "solana",
+    # Additional 24/7 crypto research coverage (rules/MULTI_LANE_SYNERGY_RESEARCH_LAW.md).
+    # Read-only market-data awareness only -- this does NOT expand the
+    # tradable/executable crypto set, which stays governed separately by
+    # rank_volatile_crypto_candidates.ROBINHOOD_SUPPORTED_TRACKED_SYMBOLS.
+    "XRP": "ripple",
+    "BNB": "binancecoin",
+    "ADA": "cardano",
+    "DOGE": "dogecoin",
+    "LTC": "litecoin",
+    "DOT": "polkadot",
+    "AVAX": "avalanche-2",
+    "LINK": "chainlink",
+}
 COINGECKO_IDS = ",".join(SYMBOL_TO_COINGECKO_ID.values())
 URL = f"https://api.coingecko.com/api/v3/simple/price?ids={COINGECKO_IDS}&vs_currencies=usd&include_last_updated_at=true"
 POLL_INTERVAL_SECONDS = 20  # confirmed HTTP 429 at 5s polling; 20s (~3/min) is the safe sustained rate observed; one request covers every tracked symbol

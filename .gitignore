@@ -15,6 +15,8 @@ data/stale_signals/
 data/candidate_lanes/
 data/scanner_lanes/
 data/alpaca_stream/
+data/lane_synergy/
+data/lane_synergy_history/
 data/.robinhood_session*
 data/*robinhood_session*
 data/*.pickle

@@ -337,6 +337,23 @@ If a mandatory plugin is not connected or not callable in the current environmen
 Never fabricate plugin output. Never use stale documentation as live market authority.
 
 
+## Multi-Lane Synergy Research Layer
+
+Before Step 2 (Longbridge) is consulted, the scanner's own multi-lane
+synergy research layer (`rules/MULTI_LANE_SYNERGY_RESEARCH_LAW.md`) has
+already been running continuously in the background across every blue-chip
+and tracked-crypto symbol, combining dedicated MATH, HISTORY, RESEARCH, and
+TEMPORAL lanes into a per-symbol `APPRECIATION_LIKELY` / `DEPRECIATION_LIKELY`
+/ `NEUTRAL` / `INSUFFICIENT_SYNERGY_DATA` forecast at
+`data/lane_synergy/<symbol>/synergy.json`.
+
+When available and fresh, Apex Synthesis treats this forecast as
+corroborating evidence at the same authority level as sentiment: it may
+support or weaken a candidate decision, but it is never sole trade
+authority, never bypasses a gate, and `INSUFFICIENT_SYNERGY_DATA` is never
+read as a directional call. See `rules/MULTI_LANE_SYNERGY_RESEARCH_LAW.md`
+for the full binding definition.
+
 ## RunPod-first controller overlay
 
 RunPod is the always-on scanner/runtime/controller. It performs cheap scanning, state tracking, cooldowns, deduplication, event packet creation, and wake/sleep control. The mandatory plugin order applies only after RunPod has confirmed a non-duplicate viable event that justifies waking the agentic burst.

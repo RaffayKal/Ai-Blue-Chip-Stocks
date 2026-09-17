@@ -9,6 +9,7 @@ from pathlib import Path
 ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 sys.path.insert(0, str(ROOT / "scripts"))
 
+import lane_synergy_engine as synergy_engine
 import threaded_scanner_lane_pool as pool
 
 
@@ -28,8 +29,19 @@ class ThreadedScannerLanePoolTests(unittest.TestCase):
         )
         self.assertEqual(result.returncode, 0, result.stderr)
         self.assertIn("THREADED_LANE_POOL_SIZE: 700", result.stdout)
-        self.assertEqual(result.stdout.count("STARTED_MEDIUM_WEIGHT_SCANNER_LANE:"), 700)
+        # Per rules/MULTI_LANE_SYNERGY_RESEARCH_LAW.md, SYNERGY_LANE_SHARE of
+        # the lanes are dedicated MATH/HISTORY/RESEARCH/TEMPORAL synergy
+        # lanes (piling multiple lanes onto the same symbol/role once every
+        # combo has at least one), and the remainder still run the legacy
+        # generic scan.
+        dedicated_synergy_lanes = synergy_engine.dedicated_role_lane_count(700, synergy_engine.synergy_symbols())
+        self.assertEqual(
+            result.stdout.count("STARTED_MEDIUM_WEIGHT_SCANNER_LANE:"),
+            700 - dedicated_synergy_lanes,
+        )
+        self.assertEqual(result.stdout.count("STARTED_SYNERGY_LANE:"), dedicated_synergy_lanes)
         self.assertIn("FLEET_SYNERGY:", result.stdout)
+        self.assertIn("LANE_SYNERGY_ROLLUP:", result.stdout)
 
     def test_extract_net_opportunity_reads_crypto_projection_score(self):
         status = {"projection": {"crypto": {"projection_scores": {"net_opportunity_score": 12.5}}}}

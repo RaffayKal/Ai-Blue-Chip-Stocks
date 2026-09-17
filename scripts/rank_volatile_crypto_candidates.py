@@ -25,7 +25,11 @@ from runpod_lightweight_scanner import iso_now, load_json, timestamp_age_seconds
 CANDIDATES_PATH = ROOT / "data" / "volatile_crypto_candidates.json"
 # Real, currently-supported Robinhood Crypto symbols this script has live
 # quote data for. Never add a symbol here without a matching stream writer.
-ROBINHOOD_SUPPORTED_TRACKED_SYMBOLS = ("BTC", "ETH", "SOL")
+# Crypto is a 24/7 micro-trading system here, secondary to blue-chip stocks.
+# Confirmed tradable on Robinhood as of 2026-09-17
+# (robinhood.com/us/en/support/articles/coin-availability/); each has a
+# live CoinGecko quote writer at minimum (stream_coingecko_market_data.py).
+ROBINHOOD_SUPPORTED_TRACKED_SYMBOLS = ("BTC", "ETH", "SOL", "XRP", "BNB", "ADA", "DOGE", "LTC", "DOT", "AVAX", "LINK")
 PROVIDERS = ("coinbase", "binance", "kraken", "coingecko")
 MAX_QUOTE_AGE_SECONDS = 30.0
 MIN_VOLATILITY_SAMPLES = 3

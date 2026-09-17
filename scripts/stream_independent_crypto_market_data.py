@@ -23,7 +23,11 @@ ROOT = Path(os.environ.get("PROJECT_ROOT", Path(__file__).resolve().parents[1]))
 
 
 def _configured_symbols():
-    raw = os.environ.get("INDEPENDENT_CRYPTO_SYMBOLS") or os.environ.get("INDEPENDENT_CRYPTO_SYMBOL") or "BTC,ETH,SOL"
+    raw = (
+        os.environ.get("INDEPENDENT_CRYPTO_SYMBOLS")
+        or os.environ.get("INDEPENDENT_CRYPTO_SYMBOL")
+        or "BTC,ETH,SOL,XRP,BNB,ADA,DOGE,LTC,DOT,AVAX,LINK"
+    )
     symbols = [s.strip().upper() for s in raw.split(",") if s.strip()]
     return symbols or ["BTC"]
 

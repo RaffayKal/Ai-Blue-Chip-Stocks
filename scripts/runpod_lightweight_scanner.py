@@ -20,7 +20,12 @@ CRYPTO_CANDIDATES = ROOT / "data" / "volatile_crypto_candidates.json"
 # can select as the active symbol. Must stay in sync with that script's
 # ROBINHOOD_SUPPORTED_TRACKED_SYMBOLS -- otherwise picking a symbol here has
 # no matching quote files and the scanner silently loses all market data.
-TRACKED_CRYPTO_SYMBOLS = ("BTC", "ETH", "SOL")
+# Crypto is a 24/7 micro-trading system, secondary to blue-chip stocks
+# (rules/BLUE_CHIP_RULES.md); every symbol below is confirmed tradable on
+# Robinhood (robinhood.com/us/en/support/articles/coin-availability/,
+# checked 2026-09-17) and has a real live quote source (CoinGecko at
+# minimum; see stream_coingecko_market_data.py).
+TRACKED_CRYPTO_SYMBOLS = ("BTC", "ETH", "SOL", "XRP", "BNB", "ADA", "DOGE", "LTC", "DOT", "AVAX", "LINK")
 CRYPTO_QUOTE_INPUTS = [
     ROOT / "data" / "alpaca_crypto_quote_snapshot.json",
     ROOT / "data" / "robinhood_crypto_quote_snapshot.json",

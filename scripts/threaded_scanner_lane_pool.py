@@ -31,6 +31,7 @@ from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
 
 from project_root import ROOT
+import lane_synergy_engine as synergy_engine
 import runpod_lightweight_scanner as scanner
 
 SYNERGY_STATUS_PATH = ROOT / "data" / "fleet_synergy_status.json"
@@ -88,6 +89,55 @@ async def run_lane(lane, codex_heavy_state, interval_seconds, once, executor, lo
     finally:
         if lock is not None:
             lock.close()
+
+
+async def run_role_lane(symbol, role, lane_label, interval_seconds, once, executor, loop, stop_event):
+    """Dedicated MATH/HISTORY/RESEARCH/TEMPORAL lane for one symbol, per
+    rules/MULTI_LANE_SYNERGY_RESEARCH_LAW.md.
+
+    Unlike the legacy generic lane, this is unlocked on purpose: with 700+
+    lanes available, any number of lanes may be assigned to the same
+    (symbol, role) pair (see lane_synergy_engine.role_assignment's
+    wrap-around), running concurrently to sample the live feed at many
+    distinct sub-second instants per interval. That is safe because
+    lane_synergy_engine.append_history is idempotent against the
+    underlying live price tick: concurrent lanes reading the same not-yet-
+    updated price simply re-derive and re-write the same window, they
+    never corrupt or duplicate it."""
+    print(f"STARTED_SYNERGY_LANE: {lane_label} symbol={symbol} role={role}")
+    while not stop_event.is_set():
+        try:
+            await loop.run_in_executor(executor, synergy_engine.run_role, symbol, role)
+        except Exception as exc:  # noqa: BLE001 - keep the lane alive
+            print(f"SYNERGY_LANE_CYCLE_ERROR: lane={lane_label} symbol={symbol} role={role} error={exc!r}")
+        if once:
+            return
+        wait_seconds = scanner.bounded_loop_interval(interval_seconds)
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=wait_seconds)
+        except asyncio.TimeoutError:
+            pass
+
+
+async def synergy_rollup_loop(symbols, interval_seconds, once, stop_event, executor, loop):
+    """Periodically combine each symbol's four role outputs into one
+    appreciation/depreciation forecast, then publish the fleet-wide
+    rollup. Runs independently of individual role lane timing."""
+    rollup_interval = min(max(interval_seconds * 2, 5.0), 60.0)
+    while True:
+        for symbol in symbols:
+            await loop.run_in_executor(executor, synergy_engine.run_synergy, symbol)
+        rollup = await loop.run_in_executor(executor, synergy_engine.run_rollup, symbols)
+        print(
+            "LANE_SYNERGY_ROLLUP: "
+            f"symbols={rollup['symbols_tracked']} with_output={rollup['symbols_with_synergy_output']}"
+        )
+        if once:
+            return
+        try:
+            await asyncio.wait_for(stop_event.wait(), timeout=rollup_interval)
+        except asyncio.TimeoutError:
+            pass
 
 
 async def synergy_aggregator(recent_results, lane_count, interval_seconds, once, stop_event):
@@ -161,23 +211,54 @@ async def async_main(args, executor):
 
     recent_results = deque(maxlen=min(5000, max(200, lane_count * 3)))
 
+    synergy_symbols = synergy_engine.synergy_symbols()
+    dedicated_synergy_lanes = synergy_engine.dedicated_role_lane_count(lane_count, synergy_symbols)
+    if dedicated_synergy_lanes:
+        print(
+            "MULTI_LANE_SYNERGY_RESEARCH_LAW: "
+            f"dedicated_lanes={dedicated_synergy_lanes} symbols={len(synergy_symbols)} "
+            f"roles={len(synergy_engine.ROLES)}"
+        )
+
     tasks = []
     for index in range(1, lane_count + 1):
         lane = lane_name_for(index)
-        tasks.append(
-            asyncio.create_task(
-                run_lane(
-                    lane,
-                    args.codex_heavy_state,
-                    args.interval_seconds,
-                    args.once,
-                    executor,
-                    loop,
-                    stop_event,
-                    recent_results,
+        assignment = (
+            synergy_engine.role_assignment(index, synergy_symbols)
+            if index <= dedicated_synergy_lanes
+            else None
+        )
+        if assignment is not None:
+            symbol, role = assignment
+            tasks.append(
+                asyncio.create_task(
+                    run_role_lane(
+                        symbol,
+                        role,
+                        lane,
+                        args.interval_seconds,
+                        args.once,
+                        executor,
+                        loop,
+                        stop_event,
+                    )
                 )
             )
-        )
+        else:
+            tasks.append(
+                asyncio.create_task(
+                    run_lane(
+                        lane,
+                        args.codex_heavy_state,
+                        args.interval_seconds,
+                        args.once,
+                        executor,
+                        loop,
+                        stop_event,
+                        recent_results,
+                    )
+                )
+            )
         # Small stagger so lane_1..lane_N don't all queue file I/O in the
         # same instant against the fixed worker pool.
         await asyncio.sleep(0.001)
@@ -185,12 +266,21 @@ async def async_main(args, executor):
     if args.once:
         await asyncio.gather(*tasks)
         await synergy_aggregator(recent_results, lane_count, args.interval_seconds, True, stop_event)
+        if dedicated_synergy_lanes:
+            await synergy_rollup_loop(synergy_symbols, args.interval_seconds, True, stop_event, executor, loop)
         return
 
     aggregator_task = asyncio.create_task(
         synergy_aggregator(recent_results, lane_count, args.interval_seconds, False, stop_event)
     )
-    await asyncio.gather(*tasks, aggregator_task)
+    background_tasks = [aggregator_task]
+    if dedicated_synergy_lanes:
+        background_tasks.append(
+            asyncio.create_task(
+                synergy_rollup_loop(synergy_symbols, args.interval_seconds, False, stop_event, executor, loop)
+            )
+        )
+    await asyncio.gather(*tasks, *background_tasks)
 
 
 def main():

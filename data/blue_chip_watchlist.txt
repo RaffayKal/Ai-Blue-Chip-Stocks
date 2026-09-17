@@ -1,3 +1,16 @@
+# Blue-chip watchlist. Per BLUE_CHIP_RULES.md (in the rules directory),
+# only symbols listed here count as blue-chip; nothing else is silently
+# treated as approved.
+#
+# Sunni AAOIFI-style Shariah screening applied 2026-09-17: every symbol
+# below is a current constituent of at least one mainstream Sunni-standard
+# Shariah index fund (SP Funds S&P 500 Sharia Industry Exclusions ETF
+# "SPUS", or Wahed FTSE USA Shariah ETF "HLAL", or both; AAOIFI methodology).
+# Removed for consensus non-compliance: JPM (conventional interest-based
+# bank), BRK.B (>5% revenue from insurance), UNH (conventional health
+# insurance). Individual screening opinions can change over time and
+# investors should re-verify before relying on this list; consult your own
+# scholar for any symbol you are unsure about.
 AAPL
 MSFT
 NVDA
@@ -6,10 +19,31 @@ AMZN
 META
 AVGO
 TSLA
-BRK.B
-JPM
-V
-MA
-UNH
 XOM
 COST
+# V and MA (Visa, Mastercard): DISPUTED among Sunni Shariah screens. Some
+# AAOIFI-based screens (Musaffa, Zoya) rate them halal because they earn
+# fee and data revenue and do not lend or hold interest-bearing receivables;
+# others (HalalWallet, and index providers that exclude the "Financial
+# Exchanges and Data" and "Data Processing" sub-industries entirely, e.g.
+# SPUS) exclude them regardless of financial ratios. Kept here pending your own
+# review; remove if you decide payment-network facilitation of
+# interest-based card debt is not acceptable to you.
+V
+MA
+MU
+LLY
+AMD
+JNJ
+CSCO
+MRK
+PG
+LRCX
+AMAT
+PANW
+TXN
+GEV
+INTC
+CVX
+KO
+SNDK

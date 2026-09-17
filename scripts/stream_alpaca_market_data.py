@@ -30,7 +30,21 @@ except ImportError:  # pragma: no cover - exercised only when dependency is abse
 
 from project_root import ROOT
 
-BLUE_CHIPS = ["AAPL", "MSFT", "GOOGL", "NVDA", "AMZN"]
+WATCHLIST_PATH = ROOT / "data" / "blue_chip_watchlist.txt"
+
+
+def load_blue_chip_watchlist():
+    if not WATCHLIST_PATH.exists():
+        return ["AAPL", "MSFT", "GOOGL", "NVDA", "AMZN"]
+    symbols = []
+    for raw in WATCHLIST_PATH.read_text(encoding="utf-8").splitlines():
+        symbol = raw.strip().upper()
+        if symbol and not symbol.startswith("#"):
+            symbols.append(symbol)
+    return symbols or ["AAPL", "MSFT", "GOOGL", "NVDA", "AMZN"]
+
+
+BLUE_CHIPS = load_blue_chip_watchlist()
 CRYPTO_PAIRS = ["BTC/USD", "ETH/USD"]
 STREAM_DIR = ROOT / "data" / "alpaca_stream"
 STATUS = STREAM_DIR / "status.json"
