@@ -40,7 +40,9 @@ USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 APEX_VALUE_DOCTRINE = "MICRO TRADES - ABSOLUTE INFINITE +775% OPTIMALLY APPRECIATE TACTICAL COMPOUNDING OF CAPITAL"
 MAX_SOURCE_AGE_SECONDS = 90  # ceiling for optional/cross-check sources (e.g. CoinGecko); see per-provider overrides for required crypto quotes
 DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS = 420
-REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Robinhood",)
+# Robinhood remains broker-authoritative; Coinbase is the required independent
+# crypto market-data cross-check. Alpaca and other feeds remain optional.
+REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Robinhood", "Coinbase")
 MIN_LOOP_INTERVAL_SECONDS = 4.0
 MAX_LOOP_INTERVAL_SECONDS = 420.0
 
@@ -821,7 +823,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         failed.append("APEX crypto bid/ask/last feed is stale")
     if not crypto_quote.get("required_quote_quorum_ok"):
         missing = ", ".join(crypto_quote.get("missing_required_quote_sources") or [])
-        failed.append(f"required Robinhood crypto quote source not satisfied: missing {missing or 'required source freshness'}")
+        failed.append(f"required crypto quote sources not satisfied: missing {missing or 'required source freshness'}")
     if crypto_quote["source_conflict"]:
         failed.append("crypto quote sources conflict")
     if apex_requires_positive_sentiment(settings) and (

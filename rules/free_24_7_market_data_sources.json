@@ -13,7 +13,7 @@
       "url": "wss://advanced-trade-ws.coinbase.com",
       "documentation": "https://docs.cdp.coinbase.com/coinbase-app/advanced-trade-apis/websocket/websocket-overview",
       "status": "implemented",
-      "role": "independent crypto quote cross-check"
+      "role": "required independent crypto quote cross-check"
     },
     {
       "name": "Binance",
