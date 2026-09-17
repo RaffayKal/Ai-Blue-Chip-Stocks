@@ -95,11 +95,57 @@ start_pool() {
 pool_pid="$(start_pool)"
 echo "STARTED_THREADED_SCANNER_LANE_POOL: lanes=$SCANNER_LANES pid=$pool_pid log=$POOL_LOG"
 
+# The per-lane pool's own stdout is redirected to $POOL_LOG above so 700
+# lanes' worth of per-cycle output doesn't flood the container log. That
+# also meant nothing visible ever proved the scanner was actively deciding
+# anything -- only infra-level price ticks (COINGECKO_QUOTE, etc.) reached
+# the visible container log, which looked identical whether or not the
+# scanner was actually running. This periodically surfaces real proof of
+# active scanning (current decision, viability, fleet consensus) to the
+# visible container log, reading the same JSON status files Codex/external
+# checks already read.
+print_scanning_proof() {
+  python3 - "$PRESSURE_STATUS" "data/fleet_synergy_status.json" "data/volatile_crypto_candidates.json" <<'PY'
+import json
+import sys
+
+scanner_path, synergy_path, candidates_path = sys.argv[1], sys.argv[2], sys.argv[3]
+
+def load(path):
+    try:
+        return json.load(open(path, encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        return {}
+
+scanner = load(scanner_path)
+synergy = load(synergy_path)
+candidates = load(candidates_path)
+
+print(
+    "SCANNING_PROOF: "
+    f"active_symbol={candidates.get('active_symbol', 'UNKNOWN')} "
+    f"candidate_decision={scanner.get('candidate_decision', 'UNKNOWN')} "
+    f"scanner_viable={scanner.get('scanner_viable', 'UNKNOWN')} "
+    f"last_status_timestamp={scanner.get('timestamp_utc', 'UNKNOWN')} "
+    f"fleet_samples={synergy.get('sample_count', 'UNKNOWN')} "
+    f"fleet_consensus={synergy.get('consensus_decision', 'UNKNOWN')} "
+    f"fleet_agreement={synergy.get('agreement_ratio', 'UNKNOWN')} "
+    f"fleet_ranked_at={synergy.get('timestamp_utc', 'UNKNOWN')}"
+)
+PY
+}
+
+heartbeat_ticks=0
 while true; do
   if ! kill -0 "$pool_pid" 2>/dev/null; then
     echo "RESTARTING_THREADED_SCANNER_LANE_POOL"
     pool_pid="$(start_pool)"
     echo "STARTED_THREADED_SCANNER_LANE_POOL: lanes=$SCANNER_LANES pid=$pool_pid log=$POOL_LOG"
+  fi
+  heartbeat_ticks=$((heartbeat_ticks + 1))
+  if [ "$heartbeat_ticks" -ge 3 ]; then
+    print_scanning_proof
+    heartbeat_ticks=0
   fi
   sleep 5
 done
