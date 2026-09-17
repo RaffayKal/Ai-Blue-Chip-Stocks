@@ -8,26 +8,33 @@
     "max_open_positions": 1
   },
   "asset_limits": {
+    "minimum_allocation_decimal": 0.03,
+    "maximum_allocation_decimal": 0.2,
     "crypto_max_allocation_decimal": 0.2,
     "us_equity_max_allocation_decimal": 0.2,
     "etf_max_allocation_decimal": 0.2,
     "option_max_allocation_decimal": 0.0
   },
   "data_quality": {
-    "max_quote_age_seconds_crypto": 15,
+    "min_quote_age_seconds": 0.0007,
+    "max_quote_age_seconds": 420,
+    "max_quote_age_seconds_crypto": 420,
     "max_quote_age_seconds_by_provider": {
-      "Alpaca": 15,
+      "Alpaca": 420,
       "Robinhood": 420
     },
-    "max_quote_age_seconds_us_equity_regular": 15,
-    "max_quote_age_seconds_us_equity_extended": 5,
+    "max_quote_age_seconds_us_equity_regular": 420,
+    "max_quote_age_seconds_us_equity_extended": 420,
     "max_allowed_source_price_difference_decimal": 0.002
   },
   "execution_quality": {
-    "max_spread_decimal_crypto": 0.002,
-    "max_spread_decimal_us_equity_regular": 0.001,
-    "max_spread_decimal_us_equity_extended": 0.0005,
-    "min_liquidity_usd": 100000
+    "min_spread_decimal": 0.0002,
+    "max_spread_decimal": 0.0007,
+    "max_spread_decimal_crypto": 0.0007,
+    "max_spread_decimal_us_equity_regular": 0.0007,
+    "max_spread_decimal_us_equity_extended": 0.0007,
+    "min_liquidity_usd": null,
+    "liquidity_policy": "REQUIRE_CONFIRMED_POSITIVE_LIQUIDITY_SUFFICIENT_FOR_POSITIVE_NET_PROFIT"
   },
   "broker": {
     "brokerage_account_exists": true,

@@ -11,8 +11,8 @@
     "max_iterations": null
   },
   "freshness": {
-    "max_quote_age_seconds": 180,
-    "max_provenance_age_seconds": 300
+    "max_quote_age_seconds": 420,
+    "max_provenance_age_seconds": 420
   },
   "viability": {
     "min_apex_score": 75,

@@ -8,22 +8,29 @@
     "max_open_positions": null
   },
   "asset_limits": {
+    "minimum_allocation_decimal": null,
+    "maximum_allocation_decimal": null,
     "crypto_max_allocation_decimal": null,
     "us_equity_max_allocation_decimal": null,
     "etf_max_allocation_decimal": null,
     "option_max_allocation_decimal": null
   },
   "data_quality": {
+    "min_quote_age_seconds": null,
+    "max_quote_age_seconds": null,
     "max_quote_age_seconds_crypto": null,
     "max_quote_age_seconds_us_equity_regular": null,
     "max_quote_age_seconds_us_equity_extended": null,
     "max_allowed_source_price_difference_decimal": null
   },
   "execution_quality": {
+    "min_spread_decimal": null,
+    "max_spread_decimal": null,
     "max_spread_decimal_crypto": null,
     "max_spread_decimal_us_equity_regular": null,
     "max_spread_decimal_us_equity_extended": null,
-    "min_liquidity_usd": null
+    "min_liquidity_usd": null,
+    "liquidity_policy": null
   },
   "broker": {
     "name": null,

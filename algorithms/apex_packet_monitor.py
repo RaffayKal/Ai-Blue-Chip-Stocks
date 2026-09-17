@@ -87,7 +87,7 @@ def load_config(path: Path) -> dict[str, Any]:
     config.setdefault("log_path", str(DEFAULT_LOG))
     config.setdefault("transport", {"type": "local_file", "inbox_dir": str(DEFAULT_LOCAL_INBOX)})
     config.setdefault("loop", {"interval_seconds": 18000, "max_iterations": None})
-    config.setdefault("freshness", {"max_quote_age_seconds": 180, "max_provenance_age_seconds": 300})
+    config.setdefault("freshness", {"max_quote_age_seconds": 420, "max_provenance_age_seconds": 420})
     config.setdefault("viability", {"min_apex_score": 75, "min_confidence": 0.65})
     config.setdefault("retry", {"max_attempts": 3, "base_backoff_seconds": 1.0, "max_backoff_seconds": 30.0})
     config.setdefault("rate_limit", {"min_emit_interval_seconds": 18000})

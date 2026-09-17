@@ -39,7 +39,7 @@ ARCHITECTURE_NAME = "ABSOLUTE INFINITE +775% TACTICAL APPRECIATION OPERATIONS CO
 USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 APEX_VALUE_DOCTRINE = "MICRO TRADES - ABSOLUTE INFINITE +775% OPTIMALLY APPRECIATE TACTICAL COMPOUNDING OF CAPITAL"
 MAX_SOURCE_AGE_SECONDS = 90  # ceiling for optional/cross-check sources (e.g. CoinGecko); see per-provider overrides for required crypto quotes
-DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS = 15
+DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS = 420
 REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Robinhood",)
 MIN_LOOP_INTERVAL_SECONDS = 4.0
 MAX_LOOP_INTERVAL_SECONDS = 420.0
@@ -375,7 +375,12 @@ def build_micro_trade_value(crypto_quote):
     last = numeric(payload.get("last"))
     buying_power = numeric(payload.get("crypto_buying_power_usd"))
     requested_notional = numeric(payload.get("requested_notional_usd"))
-    max_allocation_decimal = 0.2
+    settings = load_json(USER_SETTINGS, {})
+    asset_limits = settings.get("asset_limits", {}) if isinstance(settings, dict) else {}
+    execution_quality = settings.get("execution_quality", {}) if isinstance(settings, dict) else {}
+    max_allocation_decimal = valid_positive_number(asset_limits.get("maximum_allocation_decimal")) or 0.2
+    minimum_allocation_decimal = valid_positive_number(asset_limits.get("minimum_allocation_decimal")) or 0.03
+    max_spread_decimal = valid_positive_number(execution_quality.get("max_spread_decimal_crypto")) or 0.0007
     max_micro_notional = buying_power * max_allocation_decimal if buying_power is not None else None
     spread = ask - bid if bid is not None and ask is not None else None
     mid = (ask + bid) / 2 if bid is not None and ask is not None else None
@@ -391,13 +396,15 @@ def build_micro_trade_value(crypto_quote):
         and requested_notional <= max_micro_notional
     )
     quote_fresh = crypto_quote["fresh"] is True
-    viable = quote_fresh and ticket_within_cap and spread_decimal is not None and spread_decimal <= 0.002
+    viable = quote_fresh and ticket_within_cap and spread_decimal is not None and spread_decimal <= max_spread_decimal
     return {
         "doctrine": APEX_VALUE_DOCTRINE,
         "execution_authority": False,
         "requested_micro_notional_usd": round(requested_notional, 6) if requested_notional is not None else None,
         "crypto_buying_power_usd": round(buying_power, 6) if buying_power is not None else None,
         "max_allocation_decimal": max_allocation_decimal,
+        "minimum_allocation_decimal": minimum_allocation_decimal,
+        "max_spread_decimal": max_spread_decimal,
         "max_micro_notional_usd": round(max_micro_notional, 6) if max_micro_notional is not None else None,
         "ticket_within_cap": ticket_within_cap,
         "bid": bid,
@@ -546,7 +553,10 @@ def build_medium8_projection(source_records, session_confirmed, sentiment, tempe
     )
     reversal_risk_score = clamp(100.0 - continuation_probability + stale_penalty_score * 0.25)
     spread_decimal = numeric((micro_trade_value or {}).get("spread_decimal"))
-    spread_quality_score = 100.0 if spread_decimal is not None and spread_decimal <= 0.002 else 0.0
+    settings = load_json(USER_SETTINGS, {})
+    execution_quality = settings.get("execution_quality", {}) if isinstance(settings, dict) else {}
+    max_spread_decimal = valid_positive_number(execution_quality.get("max_spread_decimal_crypto")) or 0.0007
+    spread_quality_score = 100.0 if spread_decimal is not None and spread_decimal <= max_spread_decimal else 0.0
     net_opportunity_score = clamp(continuation_probability - reversal_risk_score * 0.35 + spread_quality_score * 0.1)
     medium8 = {
         "freshness_score": round(freshness_score, 3),
