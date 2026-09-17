@@ -164,7 +164,13 @@ def main() -> None:
                     try:
                         result = future.result()
                     except Exception as exc:
-                        result = {"timestamp": now(), "status": "ERROR", "execution_authority": False, "error": type(exc).__name__}
+                        result = {
+                            "timestamp": now(),
+                            "status": "ERROR",
+                            "execution_authority": False,
+                            "error": type(exc).__name__,
+                            "error_detail": str(exc)[:500],
+                        }
                     results.append(result)
                     if result.get("role"):
                         atomic_write(OUTPUT_DIR / f"{result['role']}.json", result)
