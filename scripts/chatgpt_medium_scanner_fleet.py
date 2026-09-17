@@ -11,12 +11,12 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import urllib.error
+import urllib.request
 import time
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
-
-from openai import OpenAI
 
 ROOT = Path(__file__).resolve().parents[1]
 INPUT_DIR = ROOT / "data" / "candidate_lanes"
@@ -96,7 +96,29 @@ def text_values(value: object) -> list[str]:
     return []
 
 
-def scan_once(client: OpenAI, model: str, role: str, instruction: str, lanes: list[dict], fp: str) -> dict:
+def call_responses_api(model: str, instructions: str, prompt: str) -> dict:
+    api_key = os.environ["OPENAI_API_KEY"]
+    base_url = os.environ.get("OPENAI_BASE_URL", "https://api.openai.com/v1").rstrip("/")
+    request = urllib.request.Request(
+        f"{base_url}/responses",
+        data=json.dumps({"model": model, "instructions": instructions, "input": prompt}).encode("utf-8"),
+        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
+        method="POST",
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=45) as response:
+            payload = json.loads(response.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        detail = exc.read().decode("utf-8", errors="replace")[:500]
+        raise RuntimeError(f"OpenAI HTTP {exc.code}: {detail}") from exc
+    except (urllib.error.URLError, TimeoutError) as exc:
+        raise RuntimeError(f"OpenAI transport error: {exc}") from exc
+    if not isinstance(payload, dict):
+        raise RuntimeError("OpenAI response was not a JSON object")
+    return payload
+
+
+def scan_once(model: str, role: str, instruction: str, lanes: list[dict], fp: str) -> dict:
     prompt = json.dumps({
         "role": role,
         "instruction": instruction,
@@ -109,17 +131,17 @@ def scan_once(client: OpenAI, model: str, role: str, instruction: str, lanes: li
             "missing_facts": "array",
         },
     }, sort_keys=True)
-    response = client.responses.create(
-        model=model,
+    response = call_responses_api(
+        model,
         instructions=(
             "You are one regular ChatGPT medium-weight scanner in a market-analysis fleet. "
             "Use only supplied data. Do not invent quotes, timestamps, liquidity, or forecasts. "
             "Do not execute, preview, authorize, or request a trade. Never override deterministic gates. "
             "Return JSON only. scanner_viable must be false if required facts are missing, stale, or conflicting."
         ),
-        input=prompt,
+        prompt=prompt,
     )
-    texts = [getattr(response, "output_text", "")]
+    texts = text_values(response)
     result = None
     for text in reversed(texts):
         if "scanner_viable" not in text:
@@ -150,7 +172,6 @@ def main() -> None:
         raise SystemExit("CHATGPT_MEDIUM_SCANNER_FLEET: OPENAI_API_KEY is unavailable")
     interval = max(30.0, float(os.environ.get("CHATGPT_MEDIUM_SCANNER_INTERVAL_SECONDS", "60")))
     model = os.environ.get("CHATGPT_MEDIUM_SCANNER_MODEL", "gpt-5.5")
-    client = OpenAI()
     previous = ""
     while True:
         lanes = inputs()
@@ -159,7 +180,7 @@ def main() -> None:
             OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
             results = []
             with ThreadPoolExecutor(max_workers=len(ROLES)) as pool:
-                futures = [pool.submit(scan_once, client, model, role, instruction, lanes, fp) for role, instruction in ROLES]
+                futures = [pool.submit(scan_once, model, role, instruction, lanes, fp) for role, instruction in ROLES]
                 for future in as_completed(futures):
                     try:
                         result = future.result()
