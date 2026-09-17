@@ -532,8 +532,58 @@ def apex_requested_notional(payload, settings, asset_class):
     }
 
 
+def source_price_signature(record, digits=8):
+    bid = record.get("bid")
+    ask = record.get("ask")
+    last = record.get("last")
+    if bid is None or ask is None or last is None:
+        return None
+    try:
+        return (round(float(bid), digits), round(float(ask), digits), round(float(last), digits))
+    except (TypeError, ValueError):
+        return None
+
+
+def compute_effective_evidence(source_records):
+    """Discount correlated/mirrored feeds so they count once, not N times.
+
+    Two independently operated sources essentially never report
+    byte-identical bid/ask/last at the same instant. If they do, that is
+    evidence of a copied/relabeled feed, not an independent confirmation
+    ("entanglement" rule, rules/APEX_SKYSCRAPER_AUM_ENGINE_V4.md section V):
+    sources sharing an identical price signature are grouped into one
+    family and counted once toward evidence depth.
+    """
+    fresh_records = [item for item in source_records if item.get("status") == "fresh"]
+    families = []
+    family_index_by_signature = {}
+    duplicated_members = 0
+    effective_count = 0
+    for record in fresh_records:
+        signature = source_price_signature(record)
+        if signature is None:
+            families.append([record.get("source")])
+            effective_count += 1
+            continue
+        index = family_index_by_signature.get(signature)
+        if index is None:
+            family_index_by_signature[signature] = len(families)
+            families.append([record.get("source")])
+            effective_count += 1
+        else:
+            families[index].append(record.get("source"))
+            duplicated_members += 1
+    return {
+        "raw_fresh_count": len(fresh_records),
+        "effective_fresh_count": effective_count,
+        "duplicated_source_members": duplicated_members,
+        "source_families": families,
+    }
+
+
 def build_medium8_projection(source_records, session_confirmed, sentiment, temperature, pulse, tier, micro_trade_value=None):
-    fresh_count = sum(1 for item in source_records if item["status"] == "fresh")
+    effective_evidence = compute_effective_evidence(source_records)
+    fresh_count = effective_evidence["effective_fresh_count"]
     freshness_score = clamp((fresh_count / max(len(source_records), 1)) * 100)
     sentiment_score = projection_score(sentiment.get("score"))
     temperature_score = projection_score(temperature.get("temperature"))
@@ -601,6 +651,7 @@ def build_medium8_projection(source_records, session_confirmed, sentiment, tempe
         "micro_trade_value": micro_trade_value or {},
         "reversal_risk_score": round(reversal_risk_score, 3),
         "stale_penalty_score": round(stale_penalty_score, 3),
+        "effective_evidence": effective_evidence,
     }
 
 
