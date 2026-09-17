@@ -27,9 +27,9 @@ These hours define the session label only. Execution still requires live confirm
 
 Blue chips are the main investment assets for this project. When a verified blue-chip position has high-conviction upside, Apex may let exposure continue compounding instead of harvesting early.
 
-Maximum compounding capital exposure is 30% of max capital. The system must block any high-risk/high-reward blue-chip exposure above that cap.
+Maximum compounding allocation operates inside the configured 3%-20% tactical band. Exposure remains subject to current buying power, position, liquidity, risk, broker, and execution gates.
 
-A retained position with growth at or above 10% must be re-evaluated. If upside remains clear and viable, let it run within the 30% cap. If upside deteriorates, harvest the grown percentage only when the sale is expected to produce positive net profit after execution friction.
+A retained position with growth at or above 10% must be re-evaluated. If upside remains clear and viable, let it run within the configured band. If upside deteriorates, harvest the grown percentage only when the sale is expected to produce positive net profit after execution friction.
 
 ## Session Gate
 

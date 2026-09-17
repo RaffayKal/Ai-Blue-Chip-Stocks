@@ -28,8 +28,8 @@ Profit handling:
 Reevaluation rule:
 Every 10%-UNKNOWN%+ portfolio/account/opportunity change triggers reevaluation.
 
-Capital compounding ceiling:
-Dynamic 3%-20% allocation of verified buying power is allowed only when APEX supports it with current data, liquidity, execution math, and risk confirmation. Maximum open positions: 1.
+Capital compounding:
+Use the configured 3%-20% tactical allocation band from the APEX AUM Compounding Algorithm, subject to verified buying power, current data, liquidity, execution math, risk confirmation, and the maximum-open-position rule.
 
 Execution rule:
 No live brokerage execution unless an actually authorized execution surface is available.

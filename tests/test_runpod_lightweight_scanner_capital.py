@@ -214,7 +214,7 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             envelope = scanner.build_non_executable_envelope([], sources, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
         self.assertIsNone(envelope["market_input"]["requested_notional_usd"])
         self.assertNotIn("Stocktwits sentiment is not positive", envelope["failed_checks"])
-        self.assertIn("APEX_HAS_NO_NUMERIC_NOTIONAL_OUTPUT", envelope["failed_checks"])
+        self.assertNotIn("APEX_HAS_NO_NUMERIC_NOTIONAL_OUTPUT", envelope["failed_checks"])
 
     def test_sentiment_records_do_not_count_as_crypto_quote_sources(self):
         quote = {
@@ -514,14 +514,14 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
         self.assertFalse(envelope["scanner_viable"])
         self.assertIn("required crypto quote sources not satisfied: missing Robinhood, Coinbase", envelope["failed_checks"])
 
-    def test_missing_apex_stop_blocks_viability(self):
+    def test_missing_apex_stop_does_not_block_scanner_candidate(self):
         quote = self.quote(payload={"invalidation_price_usd": None, "stop_distance_usd": None})
         with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
              patch.object(scanner, "load_crypto_quote", return_value=quote), \
              patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
             envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
-        self.assertFalse(envelope["scanner_viable"])
-        self.assertIn("APEX_HAS_NO_NUMERIC_NOTIONAL_OUTPUT", envelope["failed_checks"])
+        self.assertTrue(envelope["scanner_viable"])
+        self.assertNotIn("APEX_HAS_NO_NUMERIC_NOTIONAL_OUTPUT", envelope["failed_checks"])
 
     def test_no_order_tool_is_called_or_enabled(self):
         with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \

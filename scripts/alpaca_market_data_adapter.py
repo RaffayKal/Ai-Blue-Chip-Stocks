@@ -5,9 +5,7 @@ import json
 import os
 from dataclasses import asdict, dataclass
 from datetime import datetime, timezone
-from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
-from urllib.parse import parse_qs, urlparse
 
 try:
     import certifi
@@ -44,8 +42,8 @@ LOG_PATH = ROOT / "logs" / "alpaca_market_data_adapter.jsonl"
 DEFAULT_QUOTE_MAX_AGE_SECONDS = 15
 DEFAULT_SCAN_INTERVAL_SECONDS = 7.0
 MIN_REST_SCAN_INTERVAL_SECONDS = 60
-MIN_LOOP_INTERVAL_SECONDS = 0.0007
-MAX_LOOP_INTERVAL_SECONDS = 7.0
+MIN_LOOP_INTERVAL_SECONDS = 4.0
+MAX_LOOP_INTERVAL_SECONDS = 420.0
 
 
 @dataclass
@@ -407,59 +405,12 @@ def load_state():
         return {"last_event_at": None, "quotes": {}, "scanner_viable": False, "execution_allowed": False}
 
 
-def auth_ok(headers, env=os.environ):
-    token = env.get("CLOUDFLARE_SCAN_TOKEN") or env.get("SCAN_INTERFACE_TOKEN")
-    if not token:
-        return False
-    auth = headers.get("Authorization") or ""
-    bearer = auth.removeprefix("Bearer ").strip()
-    return bearer == token or headers.get("X-Scan-Token") == token
-
-
-class ScanHandler(BaseHTTPRequestHandler):
-    def send_json(self, code, payload):
-        body = json.dumps(payload, sort_keys=True).encode("utf-8")
-        self.send_response(code)
-        self.send_header("Content-Type", "application/json")
-        self.send_header("Content-Length", str(len(body)))
-        self.end_headers()
-        self.wfile.write(body)
-
-    def do_GET(self):  # noqa: N802
-        if not auth_ok(self.headers):
-            self.send_json(401, {"error": "unauthorized"})
-            return
-        parsed = urlparse(self.path)
-        state = load_state()
-        if parsed.path == "/health":
-            self.send_json(200, health_payload(state))
-            return
-        if parsed.path == "/scan":
-            mode = parse_qs(parsed.query).get("mode", [""])[0]
-            if mode != "medium":
-                self.send_json(400, {"error": "unsupported mode", "required": "medium"})
-                return
-            self.send_json(200, health_payload(state))
-            return
-        self.send_json(404, {"error": "not found"})
-
-    def log_message(self, fmt, *args):  # pragma: no cover
-        append_jsonl(LOG_PATH, {"event": "http", "timestamp_utc": iso_now(), "message": fmt % args})
-
-
-def serve_cloudflare_interface(host, port):
-    ThreadingHTTPServer((host, port), ScanHandler).serve_forever()
-
-
 def main():
     if Path.cwd() != ROOT:
         raise SystemExit("BLOCKED: command is not running inside AI BLUE CHIP STOCKS")
     parser = argparse.ArgumentParser(description="Read-only Alpaca market-data adapter.")
     parser.add_argument("--rest-once", action="store_true")
     parser.add_argument("--stream", action="store_true")
-    parser.add_argument("--serve", action="store_true")
-    parser.add_argument("--host", default=os.getenv("SCAN_INTERFACE_HOST", "127.0.0.1"))
-    parser.add_argument("--port", type=int, default=int(os.getenv("SCAN_INTERFACE_PORT", "8787")))
     args = parser.parse_args()
 
     adapter = AlpacaReadOnlyAdapter(load_credentials(), config_from_env())
@@ -468,9 +419,6 @@ def main():
         return
     if args.stream:
         asyncio.run(adapter.run_streams())
-        return
-    if args.serve:
-        serve_cloudflare_interface(args.host, args.port)
         return
     parser.print_help()
 

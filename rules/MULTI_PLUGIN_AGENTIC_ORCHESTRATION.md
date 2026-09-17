@@ -123,7 +123,7 @@ Store or update:
 - compounding state
 - 75% / 25% harvest decisions
 - retained-position growth
-- 30% maximum-capital compounding exposure
+- no separate compounding-percentage ceiling
 - IPO monitoring state
 - post-operation reviews
 
@@ -223,7 +223,7 @@ RETAINED 25%:
     monitor growth from 10% → UNKNOWN%+
 
 HIGH-RISK / HIGH-REWARD BLUE-CHIP MODE:
-    allow up to 30% OF MAX CAPITAL to remain in compounding exposure when justified
+    allow compounding exposure when justified by current verified gates
 ```
 
 Verify that proposed action does not exceed commanded capital-exposure rules.
@@ -269,7 +269,7 @@ If major net profit is confirmed, apply the 75% / 25% rule.
 
 If retained 25% growth is at least 10%, Apex reassesses continuation. If projections remain sufficiently strong, let winner run. If projections deteriorate, harvest grown percentage.
 
-If high-conviction blue-chip appreciation remains viable, permit up to 30% of max capital to remain exposed for compounding.
+If high-conviction blue-chip appreciation remains viable, permit compounding exposure subject to the existing capital, position, liquidity, risk, broker, and execution gates.
 
 After operation, update operational records where connected, update financial state where connected, and return full agent to off.
 
@@ -290,7 +290,7 @@ Build graph of:
 - 75% harvested capital
 - 25% retained capital
 - retained-growth percentage
-- 30% max-capital exposure rule
+- no separate compounding-percentage ceiling
 - IPO catalysts
 - final Apex decision
 

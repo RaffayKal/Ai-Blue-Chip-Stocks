@@ -11,6 +11,7 @@ from __future__ import annotations
 import hashlib
 import json
 import os
+import ssl
 import urllib.error
 import urllib.request
 import time
@@ -18,11 +19,31 @@ from concurrent.futures import ThreadPoolExecutor, as_completed
 from datetime import datetime, timezone
 from pathlib import Path
 
+try:
+    import certifi
+except ImportError:  # pragma: no cover
+    certifi = None
+
 ROOT = Path(__file__).resolve().parents[1]
 INPUT_DIR = ROOT / "data" / "candidate_lanes"
 FALLBACK_INPUT = ROOT / "data" / "current_candidate_envelope.json"
 OUTPUT_DIR = ROOT / "data" / "chatgpt_medium_scanner_observations"
 AGGREGATE = ROOT / "data" / "chatgpt_medium_scanner_fleet.json"
+
+
+def load_local_environment() -> None:
+    """Load non-printed local configuration when the launcher did not export it."""
+    if os.environ.get("OPENAI_API_KEY"):
+        return
+    path = ROOT / ".env.local"
+    try:
+        for line in path.read_text(encoding="utf-8").splitlines():
+            key, separator, value = line.partition("=")
+            if separator and key.strip() == "OPENAI_API_KEY" and value.strip():
+                os.environ["OPENAI_API_KEY"] = value.strip().strip('"').strip("'")
+                return
+    except OSError:
+        return
 
 ROLES = (
     ("blue_chip_momentum", "Analyze blue-chip momentum and continuation across supplied lanes."),
@@ -119,7 +140,8 @@ def call_responses_api(model: str, instructions: str, prompt: str) -> dict:
         method="POST",
     )
     try:
-        with urllib.request.urlopen(request, timeout=45) as response:
+        context = ssl.create_default_context(cafile=certifi.where()) if certifi is not None else None
+        with urllib.request.urlopen(request, timeout=45, context=context) as response:
             payload = json.loads(response.read().decode("utf-8"))
     except urllib.error.HTTPError as exc:
         detail = exc.read().decode("utf-8", errors="replace")[:500]
@@ -176,6 +198,7 @@ def scan_once(model: str, role: str, instruction: str, lanes: list[dict], fp: st
 
 
 def main() -> None:
+    load_local_environment()
     if not os.environ.get("OPENAI_API_KEY"):
         raise SystemExit("CHATGPT_MEDIUM_SCANNER_FLEET: OPENAI_API_KEY is unavailable")
     interval = max(30.0, float(os.environ.get("CHATGPT_MEDIUM_SCANNER_INTERVAL_SECONDS", "60")))
@@ -188,8 +211,12 @@ def main() -> None:
             OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
             results = []
             with ThreadPoolExecutor(max_workers=len(ROLES)) as pool:
-                futures = [pool.submit(scan_once, model, role, instruction, lanes, fp) for role, instruction in ROLES]
+                futures = {
+                    pool.submit(scan_once, model, role, instruction, lanes, fp): role
+                    for role, instruction in ROLES
+                }
                 for future in as_completed(futures):
+                    role = futures[future]
                     try:
                         result = future.result()
                     except Exception as exc:
@@ -200,6 +227,8 @@ def main() -> None:
                         detail = detail.replace(configured_key.strip(), "[REDACTED]")
                         result = {
                             "timestamp": now(),
+                            "role": role,
+                            "input_fingerprint": fp,
                             "status": "ERROR",
                             "execution_authority": False,
                             "error": type(exc).__name__,

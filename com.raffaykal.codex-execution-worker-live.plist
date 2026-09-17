@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.raffaykal.codex-execution-worker-live</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/Library/Frameworks/Python.framework/Versions/3.13/bin/python3</string>
+    <string>/Users/raffaykal/AI BLUE CHIP STOCKS/scripts/codex_packet_consumer.py</string>
+    <string>--live</string>
+  </array>
+  <key>WorkingDirectory</key>
+  <string>/Users/raffaykal/AI BLUE CHIP STOCKS</string>
+  <key>EnvironmentVariables</key>
+  <dict>
+    <key>SHADOW_MODE</key>
+    <string>false</string>
+    <key>AUTONOMOUS_LIVE_EXECUTION_ENABLED</key>
+    <string>true</string>
+    <key>PATH</key>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin</string>
+  </dict>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>ProcessType</key>
+  <string>Background</string>
+  <key>StandardOutPath</key>
+  <string>/Users/raffaykal/AI BLUE CHIP STOCKS/logs/codex_packet_consumer_live.launchd.out.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/raffaykal/AI BLUE CHIP STOCKS/logs/codex_packet_consumer_live.launchd.err.log</string>
+</dict>
+</plist>

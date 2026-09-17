@@ -40,9 +40,11 @@ USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 APEX_VALUE_DOCTRINE = "MICRO TRADES - ABSOLUTE INFINITE +775% OPTIMALLY APPRECIATE TACTICAL COMPOUNDING OF CAPITAL"
 MAX_SOURCE_AGE_SECONDS = 90  # ceiling for optional/cross-check sources (e.g. CoinGecko); see per-provider overrides for required crypto quotes
 DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS = 420
-# Robinhood remains broker-authoritative; Coinbase is the required independent
-# crypto market-data cross-check. Alpaca and other feeds remain optional.
+# RunPod cannot consume Robinhood MCP directly. Its market quorum is therefore
+# Coinbase plus one independent exchange; Robinhood remains mandatory later for
+# Codex broker/account/preview validation.
 REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Robinhood", "Coinbase")
+RUNPOD_EXTERNAL_QUORUM_PROVIDERS = ("Coinbase", "Binance", "Kraken")
 MIN_LOOP_INTERVAL_SECONDS = 4.0
 MAX_LOOP_INTERVAL_SECONDS = 420.0
 
@@ -210,6 +212,9 @@ def load_crypto_quote(symbol):
     if not isinstance(per_provider_max_age, dict):
         per_provider_max_age = {}
 
+    quorum_providers = REQUIRED_CRYPTO_QUOTE_PROVIDERS
+    if os.environ.get("RUNPOD_MARKET_QUORUM") == "external":
+        quorum_providers = RUNPOD_EXTERNAL_QUORUM_PROVIDERS
     quote_sources = []
     for path in CRYPTO_QUOTE_INPUTS:
         payload = load_json(path, {})
@@ -229,7 +234,7 @@ def load_crypto_quote(symbol):
             "path": str(path),
             "payload": payload,
             "provider": provider,
-            "required_provider": provider in REQUIRED_CRYPTO_QUOTE_PROVIDERS,
+            "required_provider": provider in quorum_providers,
             "timestamp": timestamp,
             "scanner_refresh_timestamp": scanner_refresh_timestamp,
             "age_seconds": age_seconds,
@@ -242,7 +247,7 @@ def load_crypto_quote(symbol):
         })
 
     required_fresh = {}
-    for provider in REQUIRED_CRYPTO_QUOTE_PROVIDERS:
+    for provider in quorum_providers:
         source = next(
             (
                 candidate
@@ -255,14 +260,20 @@ def load_crypto_quote(symbol):
             required_fresh[provider] = source
     missing_required = [
         provider
-        for provider in REQUIRED_CRYPTO_QUOTE_PROVIDERS
+        for provider in quorum_providers
         if provider not in required_fresh
     ]
+    if os.environ.get("RUNPOD_MARKET_QUORUM") == "external":
+        independent = [required_fresh[p] for p in ("Binance", "Kraken") if p in required_fresh]
+        if len(independent) >= 1:
+            missing_required = [p for p in ("Coinbase",) if p not in required_fresh]
+        else:
+            missing_required = ["Binance_or_Kraken"] if "Coinbase" in required_fresh else ["Coinbase", "Binance_or_Kraken"]
     source_conflict = quote_sources_conflict(list(required_fresh.values()), settings)
     required_quorum_ok = not missing_required and not source_conflict
     # Alpaca is legacy optional data only. It must never become the selected
     # quote for a new candidate when the broker-authoritative source is absent.
-    primary = required_fresh.get("Robinhood") or next(
+    primary = required_fresh.get("Robinhood") or required_fresh.get("Coinbase") or next(
         (source for source in quote_sources if source["fresh"] and source["provider"] != "Alpaca"),
         next((source for source in quote_sources if source["provider"] != "Alpaca"), None),
     )
@@ -593,6 +604,49 @@ def build_medium8_projection(source_records, session_confirmed, sentiment, tempe
     }
 
 
+def build_aum_compounding_score(payload, settings):
+    """Rank candidates using verified realized economics without inventing AUM.
+
+    Scanner forecasts may rank a candidate, but only broker-confirmed realized
+    results can change AUM.  Missing ledger values therefore remain UNKNOWN and
+    never become synthetic profit or buying power.
+    """
+    realized_profit = numeric(payload.get("realized_net_profit_usd"))
+    realized_loss = numeric(payload.get("realized_net_loss_usd"))
+    verified_aum = numeric(payload.get("verified_compounding_aum_usd"))
+    expected_net = numeric(payload.get("expected_net_opportunity_usd"))
+    if realized_profit is None and realized_loss is None:
+        realized_score = None
+        ledger_status = "UNKNOWN_REALIZED_LEDGER"
+    else:
+        net_realized = (realized_profit or 0.0) - (realized_loss or 0.0)
+        realized_score = round(clamp(50.0 + (net_realized / max(abs(verified_aum or 1.0), 1.0)) * 500.0), 3)
+        ledger_status = "BROKER_CONFIRMED_REALIZED_INPUT_REQUIRED"
+
+    opportunity_score = clamp((expected_net or 0.0) * 100.0)
+    capacity_score = 100.0 if verified_aum is not None and verified_aum > 0 else 0.0
+    components = {
+        "realized_net_profit_score": realized_score,
+        "after_cost_opportunity_score": round(opportunity_score, 3),
+        "verified_aum_capacity_score": capacity_score,
+    }
+    known_realized = realized_score if realized_score is not None else 0.0
+    compounding_score = round(clamp(
+        known_realized * 0.55
+        + opportunity_score * 0.30
+        + capacity_score * 0.15
+    ), 3)
+    return {
+        "compounding_score": compounding_score,
+        "compounding_score_priority": "PRIMARY_RANKING_FIELD",
+        "components": components,
+        "ledger_status": ledger_status,
+        "aum_change_authorized": False,
+        "realized_profit_compoundable": False if realized_score is None else True,
+        "note": "Ranking only; broker-confirmed completion and ledger reconciliation are required before AUM changes.",
+    }
+
+
 def normalize_plugin_snapshot():
     snapshot = load_json(PLUGIN_SNAPSHOT, {})
     if not isinstance(snapshot, dict):
@@ -836,8 +890,11 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         settings,
         "CRYPTO",
     )
-    if requested_notional is None:
-        failed.append(requested_notional_source)
+    # Medium scanners do not need a precomputed order amount to publish a
+    # market candidate. Exact notional is an APEX/Codex calculation from fresh
+    # broker capital, risk, entry, invalidation, and allocation inputs. Keep the
+    # sizing diagnostic in the envelope, but do not misclassify its absence as
+    # missing market data or grant execution authority.
     crypto_projection = build_medium8_projection(
         required_sources,
         crypto_session_confirmed,
@@ -867,6 +924,13 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "blue_chips": blue_chip_projection,
         "blue_chip_status": "ACTIVE_WHEN_EQUITY_MARKET_VERIFIED_OPEN" if market_open else "WATCH_ONLY_UNTIL_EQUITY_MARKET_VERIFIED_OPEN",
     }
+    aum_score_input = {
+        **crypto_quote["payload"],
+        # Ranking proxy only; never a realized ledger event or AUM credit.
+        "expected_net_opportunity_usd": crypto_projection["projection_scores"].get("net_opportunity_score", 0.0) / 100.0,
+    }
+    aum_compounding = build_aum_compounding_score(aum_score_input, settings)
+    projection["aum_compounding"] = aum_compounding
     viable = not failed
     risk_status = "pass" if viable else "fail"
     broker_settings = settings.get("broker") if isinstance(settings, dict) else {}
@@ -940,6 +1004,8 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "requested_notional_source": requested_notional_source,
         "requested_notional_retrieved_at": iso_now(),
         "apex_sizing_inputs": sizing_inputs,
+        "aum_compounding_score": aum_compounding["compounding_score"],
+        "aum_compounding_status": aum_compounding["ledger_status"],
         "entry_price": crypto_quote["payload"].get("entry_price_usd"),
         "invalidation_price": crypto_quote["payload"].get("invalidation_price_usd"),
         "stop_distance_usd": crypto_quote["payload"].get("stop_distance_usd"),

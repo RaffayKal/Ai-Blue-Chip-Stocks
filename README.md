@@ -22,7 +22,7 @@ Autonomous execution, when enabled by the user, is gated by `rules/AUTONOMOUS_EX
 
 The active code must also pass `rules/algorithm_sources.json` through `scripts/verify_algorithm_sources.sh`. That manifest anchors the main folder to the rule and algorithm files in `rules/` and `algorithms/`; if any required source is missing or empty, autonomous execution returns `NO ACTION`.
 
-The executable user algorithm is `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING` in `rules/APEX_INVESTING_ALGORITHM.md`. Autonomous tickets must declare this exact `user_algorithm_id`, or the gate returns `NO ACTION`.
+The executable user algorithm is `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING` in `rules/APEX_INVESTING_ALGORITHM.md`, with AUM accounting controlled by `rules/APEX_AUM_COMPOUNDING_ALGORITHM.md`. Autonomous tickets must declare this exact `user_algorithm_id`, or the gate returns `NO ACTION`.
 
 ## Usage-Conserving Runtime Cadence
 

@@ -1,5 +1,6 @@
 #!/usr/bin/env bash
 set -u
+export RUNPOD_MARKET_QUORUM=external
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INTERVAL_SECONDS="${RUNPOD_SCANNER_INTERVAL_SECONDS:-7}"
@@ -119,7 +120,12 @@ if [ "$ONCE_ARG" = "--once" ]; then
 fi
 
 if [ "${CHATGPT_SCANNER_ENABLED:-true}" = "true" ]; then
-  "$PYTHON3_BIN" scripts/chatgpt_medium_scanner_fleet.py >> logs/chatgpt_medium_scanner_fleet.out.log 2>&1 &
+  (
+    while true; do
+      "$PYTHON3_BIN" scripts/chatgpt_medium_scanner_fleet.py >> logs/chatgpt_medium_scanner_fleet.out.log 2>&1
+      sleep 5
+    done
+  ) &
   echo "CHATGPT_MEDIUM_SCANNER_FLEET: STARTED"
 fi
 

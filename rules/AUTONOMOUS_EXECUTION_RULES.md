@@ -123,9 +123,7 @@ If projected upside remains clear and viable, the result is `HOLD / LET IT RUN`;
 
 ## Blue-Chip Capital Exposure Gate
 
-High-risk / high-reward blue-chip mode may maintain compounding exposure up to 30% of max capital when high-conviction upside remains viable.
-
-Exposure above 30% of max capital is blocked. Blue-chip execution remains blocked in this automation until a separate equity execution gate exists and approves the exact order.
+High-risk / high-reward blue-chip mode may maintain compounding exposure within the configured 3%-20% tactical allocation band when high-conviction upside remains viable. Blue-chip execution remains blocked in this automation until a separate equity execution gate exists and approves the exact order.
 
 ## Autonomous Gate
 

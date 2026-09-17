@@ -65,7 +65,7 @@ AUTH_TOKEN = os.getenv("CRON_AUTH_TOKEN", "")
 PLUGIN_INPUT_FILE = os.getenv("PLUGIN_INPUT_FILE", "")
 PLUGIN_REGISTRY = [
     "superpowers", "alpaca", "blue_chip_stocks", "finances", "nvidia",
-    "openai_developers", "runpod", "cloudflare", "tradingcursor", "stocktwits",
+    "openai_developers", "runpod", "tradingcursor", "stocktwits",
     "longbridge", "calculator", "productivity", "cowork_plugin_management",
     "airtable", "figma", "amplitude", "github", "ace_knowledge_graph",
 ]

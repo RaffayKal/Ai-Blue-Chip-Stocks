@@ -11,11 +11,6 @@ sys.path.insert(0, str(ROOT / "scripts"))
 import alpaca_market_data_adapter as adapter
 
 
-class FakeHeaders(dict):
-    def get(self, key, default=None):
-        return super().get(key, default)
-
-
 class AlpacaMarketDataAdapterTests(unittest.TestCase):
     def test_missing_credentials_rejected(self):
         result = adapter.load_credentials({})
@@ -90,12 +85,6 @@ class AlpacaMarketDataAdapterTests(unittest.TestCase):
         )
         self.assertEqual(equity.asset_class, "US_EQUITY")
         self.assertEqual(crypto.asset_class, "CRYPTO")
-
-    def test_auth_required_for_cloudflare_interface(self):
-        self.assertFalse(adapter.auth_ok(FakeHeaders({}), env={}))
-        self.assertFalse(adapter.auth_ok(FakeHeaders({"Authorization": "Bearer bad"}), env={"CLOUDFLARE_SCAN_TOKEN": "good"}))
-        self.assertTrue(adapter.auth_ok(FakeHeaders({"Authorization": "Bearer good"}), env={"CLOUDFLARE_SCAN_TOKEN": "good"}))
-        self.assertTrue(adapter.auth_ok(FakeHeaders({"X-Scan-Token": "good"}), env={"SCAN_INTERFACE_TOKEN": "good"}))
 
     def test_health_payload_shape(self):
         state = {

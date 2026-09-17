@@ -1,0 +1,9 @@
+{
+  "error": "RuntimeError",
+  "error_detail": "OpenAI HTTP 429: {\n  \"error\": {\n    \"message\": \"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"credit_balance_exhausted\"\n  }\n}",
+  "execution_authority": false,
+  "input_fingerprint": "f27b3d193dae847a879bc8837d81d8efce94d9ffeb9b460899899ef5f9d5a8d1",
+  "role": "crypto_momentum",
+  "status": "ERROR",
+  "timestamp": "2026-09-17T17:18:12.812831Z"
+}
