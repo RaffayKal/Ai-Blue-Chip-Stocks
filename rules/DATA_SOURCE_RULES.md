@@ -66,3 +66,10 @@ When sources conflict:
 2. Prefer the official exchange/session calendar for open/closed status.
 3. Treat sentiment as non-executable context.
 4. If conflict remains, output `NO ACTION`.
+# Tier-2 Broker Data Resource
+
+Robinhood Legend is classified as a Tier-2 read-only broker-data resource when its existing authenticated Robinhood MCP surface is available. It may provide current quote, account, position, buying-power, and tradability confirmation to the validation layers.
+
+The Legend browser URL is not itself a machine-readable data authority. No password, MFA code, browser cookie, or session token may be placed in project files, RunPod startup commands, logs, or chat. Robinhood remains the execution authority only through the existing authorized MCP execution path, after independent APEX and Codex validation.
+
+If the Robinhood MCP artifact is missing, stale, contradictory, or unavailable, the affected candidate returns `NO ACTION`.
