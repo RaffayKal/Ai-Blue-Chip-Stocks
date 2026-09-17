@@ -289,6 +289,7 @@ def load_crypto_quote(symbol):
         )
         primary["quote_source_count"] = len(quote_sources)
         primary["source_conflict"] = source_conflict
+        primary["quorum_providers"] = list(quorum_providers)
         return primary
     return {
         "path": None,
@@ -301,12 +302,13 @@ def load_crypto_quote(symbol):
         "fresh": False,
         "quote_sources": quote_sources,
         "required_quote_sources": {},
-        "missing_required_quote_sources": list(REQUIRED_CRYPTO_QUOTE_PROVIDERS),
+        "missing_required_quote_sources": list(quorum_providers),
         "required_quote_quorum_ok": False,
         "fresh_quote_source_count": 0,
         "fresh_optional_quote_source_count": 0,
         "quote_source_count": 0,
         "source_conflict": source_conflict,
+        "quorum_providers": list(quorum_providers),
     }
 
 
@@ -876,9 +878,15 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "max_age_seconds": MAX_SOURCE_AGE_SECONDS,
         }
     ]
-    # Robinhood is broker-authoritative. Other quote feeds remain optional
-    # cross-checks and must not silently become viability gates.
-    for provider in REQUIRED_CRYPTO_QUOTE_PROVIDERS:
+    # This must match whatever quorum load_crypto_quote() actually used
+    # (RUNPOD_MARKET_QUORUM=external swaps Robinhood+Coinbase for
+    # Coinbase+Binance+Kraken, since RunPod cannot reach Robinhood MCP
+    # directly). Using the wrong constant here would permanently mark a
+    # provider outside the active quorum as "missing" in required_sources,
+    # dragging down freshness/source-depth scoring and the envelope's
+    # data_provenance check regardless of how fresh the real quorum is.
+    active_quorum_providers = crypto_quote.get("quorum_providers") or list(REQUIRED_CRYPTO_QUOTE_PROVIDERS)
+    for provider in active_quorum_providers:
         required_sources.append(
             required_quote_record(
                 f"{provider}.crypto_quote",
@@ -1030,7 +1038,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "source_path": crypto_quote["path"],
             "quote_source_count": crypto_quote["quote_source_count"],
             "fresh_quote_source_count": crypto_quote["fresh_quote_source_count"],
-            "required_sources": list(REQUIRED_CRYPTO_QUOTE_PROVIDERS),
+            "required_sources": crypto_quote.get("quorum_providers") or list(REQUIRED_CRYPTO_QUOTE_PROVIDERS),
             "required_quote_quorum_ok": crypto_quote.get("required_quote_quorum_ok"),
             "missing_required_quote_sources": crypto_quote.get("missing_required_quote_sources"),
             "source_has_bid_ask_last": crypto_quote["has_bid_ask_last"],
