@@ -13,7 +13,10 @@ runpod 24/7 engine - >  codex/live source/robinhoon live market feeds +
     confirmation
 ```
 
-No subsystem may defer, reorder, or bypass this procedure. Confirmation remains mandatory.
+No subsystem may defer, reorder, or bypass this procedure. The user's blanket
+autonomous buy/sell authorization satisfies the user-confirmation gate for
+orders that pass every live gate; Robinhood preview, idempotency, and broker
+reconciliation remain mandatory.
 
 ## Codex Robinhood MCP Freshness Authority
 
