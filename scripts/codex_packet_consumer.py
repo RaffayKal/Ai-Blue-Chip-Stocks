@@ -33,7 +33,11 @@ DEFAULT_PROCESSED = ROOT / "data" / "codex_processed"
 DEFAULT_REJECTED = ROOT / "data" / "codex_rejected"
 DEFAULT_STATE = ROOT / "data" / "codex_packet_consumer_state.json"
 DEFAULT_STATUS = ROOT / "data" / "codex_packet_consumer_status.json"
-DEFAULT_MAX_PACKET_AGE = 300.0
+# A packet is operationally fresh from the 4-second scanner cadence through
+# the seven-minute hard expiry. The lower bound belongs to cadence; age is
+# never allowed to exceed the 420-second safety ceiling.
+DEFAULT_MIN_PACKET_CADENCE = 4.0
+DEFAULT_MAX_PACKET_AGE = 420.0
 CODEX_CLI_CANDIDATES = ("/opt/homebrew/bin/codex", "/usr/local/bin/codex", "/usr/bin/codex")
 
 
@@ -198,6 +202,8 @@ def derive_workflow_inputs(packet: dict[str, Any], directory: Path) -> tuple[Pat
         "explicit_execution_authorization": False,
         "margin_requested": False,
         "margin_approved": False,
+        "robinhood_mcp_refresh_required": True,
+        "robinhood_mcp_refresh_trigger": "new_candidate_envelope",
     })
     request = packet.get("execution_request")
     if not isinstance(request, dict):
@@ -241,7 +247,8 @@ def default_workflow(market_path: Path, ticket_path: Path, shadow: bool) -> tupl
         live_clause = """If every gate passes, call the appropriate Robinhood MCP review/preview tool first. Then, and only then, place exactly the reviewed order through the existing Robinhood MCP route. Do not change symbol, side, type, quantity, notional, account, or venue after review. If any gate or review fails, respond exactly NO ACTION with the reason. A live placement is permitted only because the project configuration explicitly authorizes autonomous execution and the packet's idempotency key is fresh.""" if not shadow else """If every gate is true, respond with exactly WOULD_EXECUTE and include the exact request that would be sent. Do not preview, place, submit, or mutate any order, account, position, or broker state."""
         prompt = f"""You are the {mode} execution worker for AI BLUE CHIP STOCKS.
 Read the packet-derived files {market_path} and {ticket_path}.
-Use the configured robinhood-trading MCP only for read-only runtime revalidation:
+Use the configured robinhood-trading MCP for the required candidate-triggered
+refresh and read-only runtime revalidation:
 instrument, asset class, venue, current quote and freshness, buying power,
 duplicate-order state, current position, and execution eligibility.
 Then run the existing project gate with python3 algorithms/autonomous_order_gate.py

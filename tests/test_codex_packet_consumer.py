@@ -52,7 +52,7 @@ class ConsumerTests(unittest.TestCase):
 
     def make(self, root, calls):
         def workflow(market, ticket, shadow):
-            calls.append((market, ticket, shadow))
+            calls.append((market.read_text(encoding="utf-8"), ticket, shadow))
             return True, "EXECUTION_ALLOWED: true\nWOULD_EXECUTE"
         return consumer.Consumer(
             root / "inbox", root / "processing", root / "processed", root / "rejected",
@@ -89,6 +89,15 @@ class ConsumerTests(unittest.TestCase):
     def test_g_restart_cannot_reexecute_processed_packet(self):
         with tempfile.TemporaryDirectory() as raw:
             root = Path(raw); calls = []; c = self.make(root, calls); self.write(root / "inbox" / "g.json", packet("restart-key")); self.assertEqual(c.once(), "would_execute"); restarted = self.make(root, calls); self.assertEqual(restarted.once(), "dormant"); self.assertEqual(len(calls), 1)
+
+    def test_new_candidate_requires_robinhood_refresh_marker(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw); calls = []; c = self.make(root, calls)
+            self.write(root / "inbox" / "refresh.json", packet())
+            self.assertEqual(c.once(), "would_execute")
+            market = (root / "processing" / "runtime_market_input.json")
+            self.assertFalse(market.exists())
+            self.assertIn("robinhood_mcp_refresh_required", calls[0][0])
 
     def test_end_to_end_monitor_to_consumer_shadow(self):
         with tempfile.TemporaryDirectory() as raw:
