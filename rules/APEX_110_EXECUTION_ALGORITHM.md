@@ -2,8 +2,22 @@
 
 Algorithm ID: `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING`
 
+## NON-DEFERRED VERBATIM PROCEDURE
+
+```text
+runpod 24/7 engine - >  codex/live source/robinhoon live market feeds +
+  ChatGPT sources/prjections/math/calculations/forecatsing/etc.  → envelopes →
+  Codex Robinhood MCP
+    refresh → enriched envelope → viability gate → preview → execution only
+  after
+    confirmation
+```
+
+This exact sequence is mandatory and must not be deferred or reordered.
+
 This is the canonical, fully-specified execution algorithm for this project:
-RunPod scanning → Codex APEX validation → Robinhood MCP final execution. It
+Long-term wait/grow/harvest is the preferred objective. Tactical micro-trading
+is secondary and opportunity-only. RunPod scanning → Codex APEX validation → Robinhood MCP final execution. It
 supersedes no other rules file's intent — `APEX_INVESTING_ALGORITHM.md`,
 `APEX_AUM_COMPOUNDING_ALGORITHM.md`, `AUTONOMOUS_EXECUTION_RULES.md`, and
 `RUNPOD_FIRST_TRADING_ARCHITECTURE.md` describe the same fail-closed system;

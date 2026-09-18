@@ -8,6 +8,17 @@ APEX PRESTIGE RUNPOD-FIRST MINIMUM-HEAVY-USAGE TRADING ARCHITECTURE
 ## CANONICAL FOREVER OPERATIONS PIPELINE
 
 ```text
+runpod 24/7 engine - >  codex/live source/robinhoon live market feeds +
+  ChatGPT sources/prjections/math/calculations/forecatsing/etc.  → envelopes →
+  Codex Robinhood MCP
+    refresh → enriched envelope → viability gate → preview → execution only
+  after
+    confirmation
+```
+
+This verbatim procedure is controlling and must not be deferred, reordered, or replaced.
+
+```text
 RunPod MCP/live sources
     -> Codex Robinhood live feed plus ChatGPT/RunPod fresh sources,
        projections, forecasting, math, and calculations

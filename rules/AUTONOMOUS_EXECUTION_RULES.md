@@ -2,6 +2,19 @@
 
 Autonomous execution is allowed only when every gate in this file passes.
 
+## CONTROLLING VERBATIM PROCEDURE
+
+```text
+runpod 24/7 engine - >  codex/live source/robinhoon live market feeds +
+  ChatGPT sources/prjections/math/calculations/forecatsing/etc.  → envelopes →
+  Codex Robinhood MCP
+    refresh → enriched envelope → viability gate → preview → execution only
+  after
+    confirmation
+```
+
+No subsystem may defer, reorder, or bypass this procedure. Confirmation remains mandatory.
+
 
 ## RunPod-First Runtime Gate
 
