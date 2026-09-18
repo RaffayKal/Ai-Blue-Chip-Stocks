@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INTERVAL_SECONDS="${RUNPOD_SCANNER_INTERVAL_SECONDS:-7}"
 SCANNER_LANES="${RUNPOD_SCANNER_LANES:-auto}"
 MIN_MEDIUM_WEIGHT_LANES="${RUNPOD_MIN_MEDIUM_WEIGHT_LANES:-${RUNPOD_MIN_LIGHTWEIGHT_LANES:-7}}"
-MAX_MEDIUM_WEIGHT_LANES="${RUNPOD_MAX_MEDIUM_WEIGHT_LANES:-${RUNPOD_MAX_LIGHTWEIGHT_LANES:-700}}"
+MAX_MEDIUM_WEIGHT_LANES="${RUNPOD_MAX_MEDIUM_WEIGHT_LANES:-${RUNPOD_MAX_LIGHTWEIGHT_LANES:-13000}}"
 SAFE_MEDIUM_WEIGHT_LANES="${RUNPOD_SAFE_MEDIUM_WEIGHT_LANES:-${RUNPOD_SAFE_LIGHTWEIGHT_LANES:-14}}"
 ALLOW_HIGH_MEDIUM_WEIGHT_FANOUT="${RUNPOD_ALLOW_HIGH_MEDIUM_WEIGHT_FANOUT:-${RUNPOD_ALLOW_HIGH_LIGHTWEIGHT_FANOUT:-true}}"
 PRESSURE_STATUS="${RUNPOD_SCANNER_PRESSURE_STATUS:-data/runpod_lightweight_scanner_status.json}"
@@ -77,10 +77,10 @@ echo "MEDIUM_WEIGHT_SCANNER_LANES_SELECTED: $SCANNER_LANES"
 echo "HEAVY_ACTION: NO ACTION"
 
 # Each lane used to be its own OS process (~20-25MB RSS just for the Python
-# interpreter). At 700 lanes that is 15-20GB of RAM for work that is almost
+# interpreter). At high lane counts that is 15-20GB of RAM for work that is almost
 # entirely file I/O and light JSON scoring. scan_once() has no shared mutable
 # state keyed off process identity, so all lanes run as threads inside one
-# interpreter instead: verified locally at 700 lanes / ~34MB RSS total.
+# interpreter instead: asyncio tasks keep lane count decoupled from OS thread count.
 POOL_LOG="logs/threaded_scanner_lane_pool.out.log"
 
 start_pool() {
@@ -95,7 +95,7 @@ start_pool() {
 pool_pid="$(start_pool)"
 echo "STARTED_THREADED_SCANNER_LANE_POOL: lanes=$SCANNER_LANES pid=$pool_pid log=$POOL_LOG"
 
-# The per-lane pool's own stdout is redirected to $POOL_LOG above so 700
+# The per-lane pool's own stdout is redirected to $POOL_LOG above so high lane counts
 # lanes' worth of per-cycle output doesn't flood the container log. That
 # also meant nothing visible ever proved the scanner was actively deciding
 # anything -- only infra-level price ticks (COINGECKO_QUOTE, etc.) reached

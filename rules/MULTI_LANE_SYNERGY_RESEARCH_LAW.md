@@ -1,7 +1,7 @@
 # MULTI_LANE_SYNERGY_RESEARCH_LAW.md
 
 This file is mandatory law. It governs how the medium-weight scanner's lane
-capacity (currently up to 700 concurrent lanes, `RUNPOD_MAX_MEDIUM_WEIGHT_LANES`
+capacity (currently up to 13,000 concurrent lanes, `RUNPOD_MAX_MEDIUM_WEIGHT_LANES`
 in `scripts/start_lightweight_scanner_fleet.sh`) is used, and it is binding
 on Apex the same way `MULTI_PLUGIN_AGENTIC_ORCHESTRATION.md` and
 `BLUE_CHIP_RULES.md` are.
@@ -67,7 +67,7 @@ and execution: `scripts/threaded_scanner_lane_pool.py`.
 
 ## Lane Allocation
 
-With 700+ lanes available, capping each symbol at exactly 4 lanes (one per
+With 13,000 lanes available, capping each symbol at exactly 4 lanes (one per
 role) wastes most of the fleet. Any number of lanes may be assigned to the
 same blue-chip/crypto symbol:
 
