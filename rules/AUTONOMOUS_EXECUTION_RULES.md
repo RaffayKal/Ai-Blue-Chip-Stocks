@@ -15,6 +15,24 @@ runpod 24/7 engine - >  codex/live source/robinhoon live market feeds +
 
 No subsystem may defer, reorder, or bypass this procedure. Confirmation remains mandatory.
 
+## Codex Robinhood MCP Freshness Authority
+
+Codex has the direct Robinhood MCP connection and is the broker-data authority.
+Robinhood data must be refreshed at every candidate-processing and final broker
+revalidation step. The data is not considered permanently live merely because
+the MCP is connected.
+
+```text
+fresh Codex Robinhood MCP refresh = required for each candidate
+stale, missing, contradictory, or failed refresh = NO ACTION
+RunPod/ChatGPT scanning = continues 24/7 while execution is blocked
+```
+
+RunPod does not need a direct Robinhood relay to scan. Codex performs the live
+Robinhood refresh, enriches the envelope, and owns the viability gate. No
+cached Robinhood quote, heartbeat, or prior account snapshot may authorize a
+new preview or order.
+
 
 ## RunPod-First Runtime Gate
 
