@@ -43,6 +43,9 @@ SHARED_INPUT_CHANNELS = (
     "Binance_quote",
     "Kraken_quote",
     "CoinGecko_quote",
+    "Polygon_Massive_equity_quote",
+    "Twelve_Data_equity_quote",
+    "Nasdaq_Data_Link_equity_quote",
     "ChatGPT_scanner_envelopes",
 )
 

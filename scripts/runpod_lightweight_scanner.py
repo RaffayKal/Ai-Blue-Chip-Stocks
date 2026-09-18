@@ -73,6 +73,9 @@ RUNPOD_EXTERNAL_QUORUM_PROVIDERS = ("Coinbase", "Binance", "Kraken")
 FALLBACK_CRYPTO_MARKET_DATA_PROVIDERS = (
     "Robinhood", "Alpaca", "Coinbase", "Binance", "Kraken", "CoinGecko"
 )
+BLUE_CHIP_MARKET_DATA_PROVIDERS = (
+    "Robinhood", "Alpaca", "Polygon/Massive", "Twelve Data", "Nasdaq Data Link"
+)
 MIN_LOOP_INTERVAL_SECONDS = 4.0
 MAX_LOOP_INTERVAL_SECONDS = 420.0
 
@@ -770,6 +773,8 @@ def source_refresh_policy():
         "freshness_model": "websocket/live-feed artifacts first; REST snapshots only as bounded fallback or independent cross-check",
         "required_quote_sources": list(REQUIRED_CRYPTO_QUOTE_PROVIDERS),
         "fallback_market_data_sources": list(FALLBACK_CRYPTO_MARKET_DATA_PROVIDERS),
+        "blue_chip_market_data_sources": list(BLUE_CHIP_MARKET_DATA_PROVIDERS),
+        "blue_chip_source_rule": "Each source may provide fresh quote evidence only after timestamp, symbol, session, entitlement, and bid/ask validation.",
         "execution_authority": "Robinhood MCP only",
         "fallback_execution_rule": "Fallback sources may create evidence/envelopes; Robinhood MCP must refresh and validate before preview or execution.",
         "market_data_sources": [
@@ -779,6 +784,9 @@ def source_refresh_policy():
             {"name": "Binance", "artifact": "data/binance_crypto_quote_snapshot.json", "role": "free public WebSocket independent crypto cross-check"},
             {"name": "Kraken", "artifact": "data/kraken_crypto_quote_snapshot.json", "role": "free public WebSocket independent crypto cross-check"},
             {"name": "CoinGecko", "artifact": "data/coingecko_crypto_quote_snapshot.json", "role": "independent crypto quote cross-check"},
+            {"name": "Polygon/Massive", "artifact": "data/polygon_massive_equity_quote_snapshot.json", "role": "authenticated US-equity WebSocket/REST quote evidence"},
+            {"name": "Twelve Data", "artifact": "data/twelve_data_equity_quote_snapshot.json", "role": "authenticated US-equity WebSocket/REST quote evidence"},
+            {"name": "Nasdaq Data Link", "artifact": "data/nasdaq_data_link_equity_quote_snapshot.json", "role": "entitled real-time or delayed US-equity quote evidence"},
         ],
         "plugin_context_sources": [
             {"name": "Longbridge", "artifact": "data/plugin_runtime_snapshot.json sources.Longbridge", "role": "market/news/report context"},

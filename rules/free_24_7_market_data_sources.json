@@ -8,6 +8,33 @@
   },
   "providers": [
     {
+      "name": "Polygon/Massive Stocks",
+      "transport": "WebSocket and REST",
+      "url": "wss://socket.polygon.io/stocks",
+      "documentation": "https://polygon.io/docs/websocket/stocks/overview",
+      "status": "candidate",
+      "asset_class": "US equities",
+      "role": "fresh blue-chip quote evidence; credential and entitlement required"
+    },
+    {
+      "name": "Twelve Data",
+      "transport": "authenticated WebSocket and REST",
+      "url": "wss://ws.twelvedata.com/v1/quotes/price",
+      "documentation": "https://support.twelvedata.com/en/articles/5620516-how-to-stream-the-data",
+      "status": "candidate",
+      "asset_class": "US equities",
+      "role": "fresh blue-chip quote evidence; API key and plan entitlement required"
+    },
+    {
+      "name": "Nasdaq Data Link",
+      "transport": "Streaming API and REST",
+      "url": "https://data.nasdaq.com/",
+      "documentation": "https://docs.data.nasdaq.com/docs/getting-started",
+      "status": "candidate",
+      "asset_class": "US equities",
+      "role": "real-time or delayed equity data; dataset subscription and entitlement required"
+    },
+    {
       "name": "Coinbase Advanced Trade",
       "transport": "public WebSocket",
       "url": "wss://advanced-trade-ws.coinbase.com",
