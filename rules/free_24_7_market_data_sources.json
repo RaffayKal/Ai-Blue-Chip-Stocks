@@ -12,7 +12,8 @@
       "transport": "WebSocket and REST",
       "url": "wss://socket.polygon.io/stocks",
       "documentation": "https://polygon.io/docs/websocket/stocks/overview",
-      "status": "candidate",
+      "status": "official_vendor_verified_credentials_required",
+      "validation": "official documentation confirms REST/WebSocket US-equity data; entitlement still required",
       "asset_class": "US equities",
       "role": "fresh blue-chip quote evidence; credential and entitlement required"
     },
@@ -21,7 +22,8 @@
       "transport": "authenticated WebSocket and REST",
       "url": "wss://ws.twelvedata.com/v1/quotes/price",
       "documentation": "https://support.twelvedata.com/en/articles/5620516-how-to-stream-the-data",
-      "status": "candidate",
+      "status": "official_vendor_verified_credentials_required",
+      "validation": "official documentation confirms authenticated WebSocket price events; API key and plan still required",
       "asset_class": "US equities",
       "role": "fresh blue-chip quote evidence; API key and plan entitlement required"
     },
@@ -30,7 +32,8 @@
       "transport": "Streaming API and REST",
       "url": "https://data.nasdaq.com/",
       "documentation": "https://docs.data.nasdaq.com/docs/getting-started",
-      "status": "candidate",
+      "status": "official_vendor_verified_entitlement_required",
+      "validation": "official documentation confirms streaming and real-time/delayed API products; dataset entitlement still required",
       "asset_class": "US equities",
       "role": "real-time or delayed equity data; dataset subscription and entitlement required"
     },
