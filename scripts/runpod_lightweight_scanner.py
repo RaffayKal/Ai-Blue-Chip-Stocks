@@ -5,11 +5,14 @@ import hashlib
 import json
 import math
 import os
+import sys
 import time
 from datetime import datetime, timezone
 from pathlib import Path
 
 from project_root import ROOT
+sys.path.insert(0, str(ROOT / "algorithms"))
+import apex_micro_crypto_ledger as micro_ledger
 
 STATUS = ROOT / "data" / "runpod_lightweight_scanner_status.json"
 LOCK = ROOT / "data" / "runpod_lightweight_scanner.lock"
@@ -25,7 +28,7 @@ CRYPTO_CANDIDATES = ROOT / "data" / "volatile_crypto_candidates.json"
 # Robinhood (robinhood.com/us/en/support/articles/coin-availability/,
 # checked 2026-09-17) and has a real live quote source (CoinGecko at
 # minimum; see stream_coingecko_market_data.py).
-TRACKED_CRYPTO_SYMBOLS = ("BTC", "ETH", "SOL", "XRP", "BNB", "ADA", "DOGE", "LTC", "DOT", "AVAX", "LINK")
+TRACKED_CRYPTO_SYMBOLS = ("BTC", "ETH", "SOL", "XRP", "BNB", "ADA", "DOGE", "LTC", "DOT", "AVAX", "LINK", "BCH", "ETC", "XLM", "HBAR", "ALGO", "UNI", "NEAR", "ATOM", "SUI")
 CRYPTO_QUOTE_INPUTS = [
     ROOT / "data" / "alpaca_crypto_quote_snapshot.json",
     ROOT / "data" / "robinhood_crypto_quote_snapshot.json",
@@ -1162,6 +1165,26 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "account_net_worth_usd": crypto_quote["payload"].get("account_net_worth_usd"),
         "explicit_execution_authorization": explicit_execution_authorization,
     }
+    micro_payload = {
+        "current_aum": crypto_quote["payload"].get("account_net_worth_usd"),
+        "settled_cash": crypto_quote["payload"].get("crypto_buying_power_usd"),
+        "realized_pnl": crypto_quote["payload"].get("realized_pnl", 0),
+        "fees_and_slippage": crypto_quote["payload"].get("fees_and_slippage", 0),
+        "tax_reserve": crypto_quote["payload"].get("tax_reserve", 0),
+        "protected_reserve": crypto_quote["payload"].get("protected_reserve", 0),
+        "broker_minimum": crypto_quote["payload"].get("broker_minimum", 0.01),
+        "stop_distance_pct": crypto_quote["payload"].get("stop_distance_pct"),
+        "apex_viable": viable,
+        "source_freshness": crypto_quote.get("required_quote_quorum_ok") is True,
+        "risk_gates_passed": risk_status == "pass",
+        "risk_fraction": crypto_quote["payload"].get("risk_fraction", 0.0025),
+        "position_cap": crypto_quote["payload"].get("maximum_position_size_usd"),
+        "expected_edge": crypto_projection["projection_scores"].get("net_opportunity_score", 0) / 100.0,
+        "expected_cost": crypto_quote["payload"].get("expected_total_cost", 0),
+        "projected_drawdown": crypto_quote["payload"].get("projected_drawdown", 0),
+        "drawdown_limit": crypto_quote["payload"].get("drawdown_limit", 0.05),
+    }
+    micro_math = micro_ledger.evaluate(micro_payload)
     envelope = {
         "architecture": ARCHITECTURE_NAME,
         "envelope_id": f"runpod-scan-{stable_hash({'symbol': symbol, 'sources': required_sources})[:16]}",
@@ -1185,6 +1208,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "projection": projection,
         "market_input": market_input,
         "micro_trade_value": micro_trade_value,
+        "apex_micro_math": micro_math,
         "chatgpt_reinforcement": chatgpt_reinforcement,
         "data_provenance": required_sources,
         "required_sources": required_sources,
