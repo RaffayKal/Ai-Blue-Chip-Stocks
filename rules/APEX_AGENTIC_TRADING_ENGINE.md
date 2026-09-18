@@ -3,6 +3,11 @@
 This is the governing investing/trading code for every scanner, envelope,
 capital, APEX, RunPod, Codex, and Robinhood workflow.
 
+Fractional spot, micro-purchase, AUM, governance, and execution details are
+defined by `rules/APEX_MICRO_CRYPTO_UNIT_LEDGER.md` and the user-supplied APEX
+Fractional Spot Trading specification. Those controls are mandatory for every
+micro-purchase candidate.
+
 ## Authority
 
 Predictions, scores, simulations, forecasts, and projections are inputs only.
@@ -40,4 +45,3 @@ Only a fresh, reconciled, broker-valid APEX envelope can authorize execution.
 ## Final law
 
 `NO FRESH DATA = NO AUTHORITY; NO SOURCE QUORUM = NO AUTHORITY; NO NUMERIC NOTIONAL = NO ORDER; NO POSITIVE NET EDGE = NO TRADE; NO SETTLED PROFIT = NO NEW FLOOR; NO VERIFIED FILL = NO EXECUTION CLAIM; NO AUDIT TRAIL = NO PROMOTION.`
-
