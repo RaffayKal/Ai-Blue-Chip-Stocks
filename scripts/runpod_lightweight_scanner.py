@@ -35,12 +35,13 @@ CRYPTO_QUOTE_INPUTS = [
     ROOT / "data" / "coinbase_crypto_quote_snapshot.json",
     ROOT / "data" / "binance_crypto_quote_snapshot.json",
     ROOT / "data" / "kraken_crypto_quote_snapshot.json",
+    ROOT / "data" / "finnhub_crypto_quote_snapshot.json",
     ROOT / "data" / "sample_robinhood_volatile_crypto_input.json",
     ROOT / "data" / "sample_robinhood_crypto_input.json",
     ROOT / "data" / "sample_crypto_input.json",
 ] + [
     ROOT / "data" / f"{provider}_crypto_quote_snapshot_{symbol}.json"
-    for provider in ("coinbase", "binance", "kraken", "coingecko")
+    for provider in ("coinbase", "binance", "kraken", "finnhub", "coingecko")
     for symbol in TRACKED_CRYPTO_SYMBOLS
 ]
 USER_SETTINGS = ROOT / "rules" / "user_settings.json"
@@ -64,17 +65,16 @@ USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 APEX_VALUE_DOCTRINE = "MICRO TRADES - ABSOLUTE INFINITE +775% OPTIMALLY APPRECIATE TACTICAL COMPOUNDING OF CAPITAL"
 MAX_SOURCE_AGE_SECONDS = 90  # ceiling for optional/cross-check sources (e.g. CoinGecko); see per-provider overrides for required crypto quotes
 DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS = 420
-# RunPod cannot consume Robinhood MCP directly. Its external market quorum is
-# Coinbase, Binance, and Kraken; Alpaca and CoinGecko remain additional live
-# evidence sources. Robinhood remains mandatory later for Codex broker/account
-# and order validation.
-REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Robinhood", "Coinbase")
+# Scanner-stage market quorum intentionally avoids Robinhood MCP usage.
+# Independent live feeds establish market evidence; Robinhood is consumed only
+# at Codex's final broker/account revalidation, preview, and execution boundary.
+REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Coinbase", "Binance", "Kraken")
 RUNPOD_EXTERNAL_QUORUM_PROVIDERS = ("Coinbase", "Binance", "Kraken")
 FALLBACK_CRYPTO_MARKET_DATA_PROVIDERS = (
-    "Robinhood", "Alpaca", "Coinbase", "Binance", "Kraken", "CoinGecko"
+    "Robinhood", "Alpaca", "Coinbase", "Binance", "Kraken", "Finnhub", "CoinGecko"
 )
 BLUE_CHIP_MARKET_DATA_PROVIDERS = (
-    "Robinhood", "Alpaca", "Polygon/Massive", "Twelve Data", "Nasdaq Data Link"
+    "Robinhood", "Alpaca", "Finnhub", "Polygon/Massive", "Twelve Data", "Nasdaq Data Link"
 )
 MIN_LOOP_INTERVAL_SECONDS = 4.0
 MAX_LOOP_INTERVAL_SECONDS = 420.0
@@ -223,6 +223,14 @@ def crypto_quote_provider(payload, path):
         return "Robinhood"
     if "coinbase" in haystack:
         return "Coinbase"
+    if "binance" in haystack:
+        return "Binance"
+    if "kraken" in haystack:
+        return "Kraken"
+    if "finnhub" in haystack:
+        return "Finnhub"
+    if "coingecko" in haystack:
+        return "CoinGecko"
     return None
 
 
@@ -244,8 +252,6 @@ def load_crypto_quote(symbol):
         per_provider_max_age = {}
 
     quorum_providers = REQUIRED_CRYPTO_QUOTE_PROVIDERS
-    if os.environ.get("RUNPOD_MARKET_QUORUM") == "external":
-        quorum_providers = RUNPOD_EXTERNAL_QUORUM_PROVIDERS
     quote_sources = []
     for path in CRYPTO_QUOTE_INPUTS:
         payload = load_json(path, {})
@@ -294,12 +300,6 @@ def load_crypto_quote(symbol):
         for provider in quorum_providers
         if provider not in required_fresh
     ]
-    if os.environ.get("RUNPOD_MARKET_QUORUM") == "external":
-        independent = [required_fresh[p] for p in ("Binance", "Kraken") if p in required_fresh]
-        if len(independent) >= 1:
-            missing_required = [p for p in ("Coinbase",) if p not in required_fresh]
-        else:
-            missing_required = ["Binance_or_Kraken"] if "Coinbase" in required_fresh else ["Coinbase", "Binance_or_Kraken"]
     source_conflict = quote_sources_conflict(list(required_fresh.values()), settings)
     required_quorum_ok = not missing_required and not source_conflict
     # A fallback quote may inform a candidate, but it never grants execution
@@ -783,6 +783,7 @@ def source_refresh_policy():
             {"name": "Coinbase", "artifact": "data/coinbase_crypto_quote_snapshot.json", "role": "free public WebSocket independent crypto cross-check"},
             {"name": "Binance", "artifact": "data/binance_crypto_quote_snapshot.json", "role": "free public WebSocket independent crypto cross-check"},
             {"name": "Kraken", "artifact": "data/kraken_crypto_quote_snapshot.json", "role": "free public WebSocket independent crypto cross-check"},
+            {"name": "Finnhub", "artifact": "data/finnhub_trade_snapshot_*.json", "role": "authenticated live WebSocket trade peer input for US equities and crypto; bid/ask remain independently required"},
             {"name": "CoinGecko", "artifact": "data/coingecko_crypto_quote_snapshot.json", "role": "independent crypto quote cross-check"},
             {"name": "Polygon/Massive", "artifact": "data/polygon_massive_equity_quote_snapshot.json", "role": "authenticated US-equity WebSocket/REST quote evidence"},
             {"name": "Twelve Data", "artifact": "data/twelve_data_equity_quote_snapshot.json", "role": "authenticated US-equity WebSocket/REST quote evidence"},
@@ -1200,6 +1201,10 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "drawdown_limit": crypto_quote["payload"].get("drawdown_limit", 0.05),
     }
     micro_math = micro_ledger.evaluate(micro_payload)
+    # Fresh quotes alone are not an executable candidate. Missing APEX sizing
+    # inputs must make the envelope non-viable, not merely watchlistable.
+    apex_sizing_viable = micro_math.get("RESULT") == "PASS"
+    execution_viable = viable and apex_sizing_viable
     envelope = {
         "architecture": ARCHITECTURE_NAME,
         "envelope_id": f"runpod-scan-{stable_hash({'symbol': symbol, 'sources': required_sources})[:16]}",
@@ -1213,6 +1218,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "scanner_lane": lane,
         "user_algorithm_id": USER_ALGORITHM_ID,
         "scanner_viable": viable,
+        "execution_viable": execution_viable,
         "requested_codex_activation": viable,
         "plugins_execute_trades": False,
         "broker_order_submitted": False,
