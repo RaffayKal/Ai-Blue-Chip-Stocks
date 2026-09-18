@@ -1242,7 +1242,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     micro_math = micro_ledger.evaluate(micro_payload)
     # Fresh quotes alone are not an executable candidate. Missing APEX sizing
     # inputs must make the envelope non-viable, not merely watchlistable.
-    apex_sizing_viable = micro_math.get("RESULT") == "PASS"
+    apex_sizing_viable = micro_math.get("RESULT") in {"PASS", "SIZED CANDIDATE"}
     execution_viable = viable and apex_sizing_viable
     envelope = {
         "architecture": ARCHITECTURE_NAME,
