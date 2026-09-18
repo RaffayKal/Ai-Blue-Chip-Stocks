@@ -4,6 +4,13 @@ Deterministic capital algorithm for Codex operations.
 
 This is a rules engine, not a promise of profit.
 
+This gate validates whether a single candidate is structurally eligible to
+enter -- it has no concept of hold time or cadence and does not decide when
+to exit. The wait/grow/harvest exit-patience doctrine (see
+rules/APEX_AUM_COMPOUNDING_ALGORITHM.md and
+rules/APEX_MICRO_CRYPTO_UNIT_LEDGER.md) governs that separately: this
+engine's role is entry validation only, not scalping speed.
+
 ## Required Inputs
 
 Each evaluation requires:
@@ -87,3 +94,19 @@ Agents must not output:
 - crypto assumptions applied to stocks
 - stock-session assumptions applied to crypto
 - position sizing without user capital settings
+# APEX MICRO-CAPITAL SKYSCRAPER CAPITAL CONTROL
+
+Governing engine: `rules/APEX_AGENTIC_TRADING_ENGINE.md`.
+
+The governing capital algorithm uses settled deployable capital only:
+
+`D_t = max(0, settled_cash - protected_reserve - tax_reserve - pending_orders)`
+
+Ledger quantum is `q = $0.00000007`; use Decimal or integer nano-dollars.
+Floors are credited only after closed-position settlement, positive realized
+net P/L after all costs, and reconciliation. Unrealized P/L, deposits, and
+forecasts do not create trading performance or new floors.
+
+Execution is `NO ACTION` unless fresh evidence, source quorum, broker state,
+numeric notional, positive after-cost edge, and all risk/duplicate/preview
+gates pass.

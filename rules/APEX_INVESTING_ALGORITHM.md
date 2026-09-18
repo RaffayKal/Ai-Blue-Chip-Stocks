@@ -1,5 +1,21 @@
 # APEX_INVESTING_ALGORITHM.md
 
+Governing code: `rules/APEX_AGENTIC_TRADING_ENGINE.md`. APEX may modify
+candidate, sizing, hold, harvest, and execution decisions only through that
+engine's validated state machine and gates.
+
+## GOVERNING MICRO-CAPITAL SKYSCRAPER ALGORITHM
+
+The APEX Micro-Capital Skyscraper non-interest AUM specification is part of
+this main algorithm. Use integer/Decimal ledger accounting, settled deployable
+capital, realized net P/L only, loss-first sizing, probability-weighted
+after-cost edge, and the state machine:
+
+`SCAN -> VALIDATE -> FORECAST -> SIZE -> GATE -> REVIEW -> EXECUTE -> RECONCILE`
+
+No fresh quorum, no numeric notional, no positive net edge, no settled profit,
+or no verified fill means `NO ACTION`; do not create a floor or claim execution.
+
 Executable algorithm ID:
 
 ```text
@@ -30,7 +46,16 @@ The algorithm must automatically adapt as deposits, withdrawals, holdings, profi
 ```text
 BLUE-CHIP TECH GIANTS = MAIN INVESTMENT ASSETS AND PRIMARY COMPOUNDING MECHANISM
 MOST VOLATILE VERIFIED ROBINHOOD-SUPPORTED CRYPTO = 24/7 TACTICAL COMPOUNDING / MICRO-NET-PROFIT MECHANISM
+LONG-TERM WAIT / GROW / HARVEST = PREFERRED CAPITAL-RETURN HORIZON
+TACTICAL MICRO-TRADING = SECONDARY, OPPORTUNITY-ONLY, NEVER THE DEFAULT
 ```
+
+The preferred objective is patient capital growth: wait for a verified long-term
+investment opportunity, hold while the growth thesis remains valid, and harvest
+only after a confirmed review shows that harvesting or reallocating is better
+than continued growth. Tactical micro-trading may continue as a separate
+secondary lane, but it must never displace a qualified long-term opportunity,
+force turnover, or convert short-term noise into an investment decision.
 
 ## Layered Tactical Standards
 
@@ -192,7 +217,9 @@ The active crypto target must be selected from verified Robinhood-supported cryp
 
 BTC is allowed only as a fallback or winner of the volatility ranking. BTC is not the fixed default focus.
 
-- Minimum capital allocation permitted by venue is the venue minimum, currently `$1.00` for Robinhood crypto buys unless live broker capability proves otherwise.
+- Fractional spot crypto minimums are routing-aware: `$0.01` for market-maker routing and `$0.03` for smart-exchange routing, subject to the live Robinhood preview and any asset-specific restriction. These are ticket floors, not viability or profitability thresholds.
+- Each participating system must verify its own live Robinhood MCP connection and timestamp before contributing a micro-trade envelope; one system's feed must not be represented as another system's broker authority.
+- RunPod lanes and ChatGPT scanners may produce 24/7 micro-trade envelopes, but Codex remains the viability gate and the corresponding Robinhood MCP remains the inspection, preview, and execution authority.
 - Operate continuously only while the execution automation is active.
 - Seek positive net profit after spread, fees, slippage, and execution costs.
 - Every realized positive net profit returns to compounding capital.
@@ -214,11 +241,18 @@ Scan these confirmed facts:
 - capital flow
 - technical confirmation
 
-Identify positive tactical appreciation opportunity, deploy available tactical capital only when market session, tradability, account permission, buying power, price, spread, liquidity, and risk limits are confirmed.
+Prioritize a verified long-term blue-chip growth opportunity and tolerate waiting
+when the thesis, valuation, liquidity, and risk profile remain sound. Deploy
+capital only when market session, tradability, account permission, buying power,
+price, spread, liquidity, and risk limits are confirmed. Use the tactical lane
+only for a separate candidate that does not conflict with the long-term priority.
 
 If net profit is positive, realized proceeds become next-cycle compounding capital.
 
-Repeat continuously while the market is tradable.
+Repeat continuously while the market is tradable, but do not trade merely to
+create activity. `WAIT` is the preferred result when no long-term opportunity
+passes; `NO ACTION` remains mandatory when any required fact is missing, stale,
+contradictory, or unverified.
 
 ## Major-Spike Rule
 

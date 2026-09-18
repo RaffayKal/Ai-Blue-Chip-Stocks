@@ -5,6 +5,7 @@
     "COMMANDS.md",
     "START_TODAY.md",
     "algorithms/CAPITAL_ALGORITHM.md",
+    "rules/APEX_AGENTIC_TRADING_ENGINE.md",
     "rules/MARKET_SESSION_RULES.md",
     "rules/CAPITAL_RULES.md",
     "rules/DATA_SOURCE_RULES.md",
@@ -15,6 +16,7 @@
     "rules/APEX_INVESTING_ALGORITHM.md",
     "rules/MULTI_PLUGIN_AGENTIC_ORCHESTRATION.md",
     "rules/MULTI_LANE_SYNERGY_RESEARCH_LAW.md",
+    "rules/APEX_MICRO_CRYPTO_UNIT_LEDGER.md",
     "rules/RUNPOD_FIRST_TRADING_ARCHITECTURE.md",
     "rules/user_settings.json",
     "rules/brokerage_intake.json",
@@ -32,6 +34,7 @@
     "scripts/stream_independent_crypto_market_data.py",
     "rules/plugin_runtime_stack.json",
     "algorithms/candidate_envelope_gate.py",
+    "algorithms/apex_micro_crypto_ledger.py",
     "data/sample_qualified_candidate_envelope.json",
     "data/sample_robinhood_volatile_crypto_input.json",
     "scripts/run_autonomous_if_viable.sh"

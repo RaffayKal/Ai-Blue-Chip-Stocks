@@ -1,6 +1,21 @@
 # APEX_110_EXECUTION_ALGORITHM.md
 
+Governing code: `rules/APEX_AGENTIC_TRADING_ENGINE.md`. This execution layer
+must follow its freshness, loss-first sizing, preview, reconciliation, and
+automatic-demotion controls.
+
 Algorithm ID: `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING`
+
+## MAIN ALGORITHM CAPITAL CONTROL
+
+The APEX Micro-Capital Skyscraper specification governs this execution
+algorithm: q is ledger precision only; settled deployable capital controls
+size; unrealized P/L cannot raise floors; and every order requires fresh
+quorum, broker verification, numeric notional, positive net edge, loss-budget
+compliance, duplicate clearance, and exact preview/review.
+
+Required state machine: `SCAN -> VALIDATE -> FORECAST -> SIZE -> GATE -> REVIEW
+-> EXECUTE -> RECONCILE`. Any failed condition returns `NO ACTION`.
 
 ## NON-DEFERRED VERBATIM PROCEDURE
 
