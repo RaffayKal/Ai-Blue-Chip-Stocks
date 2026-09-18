@@ -72,6 +72,12 @@ fi
 
 if [ "${ROBINHOOD_STREAM_MARKET_DATA:-false}" = "true" ]; then
   mkdir -p "$ROOT/data"
+  if [ -n "${ROBINHOOD_MCP_RELAY_URL:-}" ] && [ -n "${ROBINHOOD_MCP_RELAY_TOKEN:-}" ]; then
+    "$PYTHON3_BIN" scripts/poll_robinhood_mcp_relay.py >> logs/robinhood_mcp_relay.out.log 2>&1 &
+    echo "ROBINHOOD_MCP_RELAY: STARTED"
+  else
+    echo "ROBINHOOD_MCP_RELAY: BLOCKED (ROBINHOOD_MCP_RELAY_URL and ROBINHOOD_MCP_RELAY_TOKEN are required)"
+  fi
   PROJECT_ROOT="$ROOT" "$PYTHON3_BIN" - <<'PY'
 import json
 import os
