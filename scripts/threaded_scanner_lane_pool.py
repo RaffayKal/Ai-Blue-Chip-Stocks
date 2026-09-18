@@ -222,7 +222,13 @@ async def async_main(args, executor):
     recent_results = deque(maxlen=min(5000, max(200, lane_count * 3)))
 
     synergy_symbols = synergy_engine.synergy_symbols()
-    dedicated_synergy_lanes = synergy_engine.dedicated_role_lane_count(lane_count, synergy_symbols)
+    # Reserve lane 1 for the primary scanner. It writes the global candidate
+    # envelope/status consumed by Codex; assigning it to a role lane leaves
+    # the fleet calculating while the status surface reports UNKNOWN.
+    dedicated_synergy_lanes = min(
+        max(0, lane_count - 1),
+        synergy_engine.dedicated_role_lane_count(lane_count, synergy_symbols),
+    )
     lane_manifest = {
         "timestamp_utc": scanner.iso_now(),
         "fleet_size_configured": lane_count,
@@ -251,11 +257,9 @@ async def async_main(args, executor):
     tasks = []
     for index in range(1, lane_count + 1):
         lane = lane_name_for(index)
-        assignment = (
-            synergy_engine.role_assignment(index, synergy_symbols)
-            if index <= dedicated_synergy_lanes
-            else None
-        )
+        assignment = None
+        if index > 1 and index - 1 <= dedicated_synergy_lanes:
+            assignment = synergy_engine.role_assignment(index - 1, synergy_symbols)
         if assignment is not None:
             symbol, role = assignment
             tasks.append(
