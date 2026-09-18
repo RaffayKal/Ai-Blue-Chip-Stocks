@@ -64,11 +64,15 @@ USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 APEX_VALUE_DOCTRINE = "MICRO TRADES - ABSOLUTE INFINITE +775% OPTIMALLY APPRECIATE TACTICAL COMPOUNDING OF CAPITAL"
 MAX_SOURCE_AGE_SECONDS = 90  # ceiling for optional/cross-check sources (e.g. CoinGecko); see per-provider overrides for required crypto quotes
 DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS = 420
-# RunPod cannot consume Robinhood MCP directly. Its market quorum is therefore
-# Coinbase plus one independent exchange; Robinhood remains mandatory later for
-# Codex broker/account/preview validation.
+# RunPod cannot consume Robinhood MCP directly. Its external market quorum is
+# Coinbase, Binance, and Kraken; Alpaca and CoinGecko remain additional live
+# evidence sources. Robinhood remains mandatory later for Codex broker/account
+# and order validation.
 REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Robinhood", "Coinbase")
 RUNPOD_EXTERNAL_QUORUM_PROVIDERS = ("Coinbase", "Binance", "Kraken")
+FALLBACK_CRYPTO_MARKET_DATA_PROVIDERS = (
+    "Robinhood", "Alpaca", "Coinbase", "Binance", "Kraken", "CoinGecko"
+)
 MIN_LOOP_INTERVAL_SECONDS = 4.0
 MAX_LOOP_INTERVAL_SECONDS = 420.0
 
@@ -295,8 +299,8 @@ def load_crypto_quote(symbol):
             missing_required = ["Binance_or_Kraken"] if "Coinbase" in required_fresh else ["Coinbase", "Binance_or_Kraken"]
     source_conflict = quote_sources_conflict(list(required_fresh.values()), settings)
     required_quorum_ok = not missing_required and not source_conflict
-    # Alpaca is legacy optional data only. It must never become the selected
-    # quote for a new candidate when the broker-authoritative source is absent.
+    # A fallback quote may inform a candidate, but it never grants execution
+    # authority. Robinhood refresh/validation remains a separate hard gate.
     primary = required_fresh.get("Robinhood") or required_fresh.get("Coinbase") or next(
         (source for source in quote_sources if source["fresh"] and source["provider"] != "Alpaca"),
         next((source for source in quote_sources if source["provider"] != "Alpaca"), None),
@@ -765,6 +769,9 @@ def source_refresh_policy():
         "medium_weight_interval_max_seconds": MAX_LOOP_INTERVAL_SECONDS,
         "freshness_model": "websocket/live-feed artifacts first; REST snapshots only as bounded fallback or independent cross-check",
         "required_quote_sources": list(REQUIRED_CRYPTO_QUOTE_PROVIDERS),
+        "fallback_market_data_sources": list(FALLBACK_CRYPTO_MARKET_DATA_PROVIDERS),
+        "execution_authority": "Robinhood MCP only",
+        "fallback_execution_rule": "Fallback sources may create evidence/envelopes; Robinhood MCP must refresh and validate before preview or execution.",
         "market_data_sources": [
             {"name": "Alpaca", "artifact": "data/alpaca_crypto_quote_snapshot.json", "role": "websocket quote/trade freshness"},
             {"name": "Robinhood", "artifact": "data/robinhood_crypto_quote_snapshot.json", "role": "broker-side quote/capital confirmation"},
