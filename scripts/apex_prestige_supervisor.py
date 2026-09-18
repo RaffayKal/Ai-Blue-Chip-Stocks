@@ -118,6 +118,8 @@ def supervisor_once(config_path):
         "health_check_cadence": "EVERY_SUPERVISOR_LOOP_AND_AT_LEAST_HOURLY",
         "hourly_check_requirement": "SATISFIED_BY_4_SECOND_SUPERVISOR_LOOP",
         "repair_policy": "RERUN_GATES_AND_RESTART_SCANNER_ON_FAILURE; NEVER_GRANT_EXECUTION_FROM_HEALTH_CHECK",
+        "hourly_operations_report": "ACTIVE",
+        "hourly_operations_actions": ["REPORT", "CHECK", "FIX_SAFE_RUNTIME_FAILURES", "REINFORCE_GATES", "CONTINUE_24_7"],
         "night_report_required": True,
         "zero_market_operations": False,
         "monitor_interval_seconds": load_interval(config_path),
