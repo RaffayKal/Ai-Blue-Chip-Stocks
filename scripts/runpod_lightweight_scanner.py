@@ -397,6 +397,7 @@ def load_crypto_capital_snapshot():
         return {}
     return {
         "crypto_buying_power_usd": round(value, 6),
+        "account_net_worth_usd": valid_positive_number(snapshot.get("account_net_worth_usd")),
         "crypto_capital_source": source,
         "crypto_capital_retrieved_at": retrieved_at,
         "crypto_capital_age_seconds": round(age_seconds, 3),
@@ -1194,7 +1195,11 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "source_freshness": crypto_quote.get("required_quote_quorum_ok") is True,
         "risk_gates_passed": risk_status == "pass",
         "risk_fraction": crypto_quote["payload"].get("risk_fraction", 0.0025),
-        "position_cap": crypto_quote["payload"].get("maximum_position_size_usd"),
+        "position_cap": crypto_quote["payload"].get("maximum_position_size_usd") or (
+            numeric(crypto_quote["payload"].get("crypto_buying_power_usd"))
+            * (valid_positive_number((load_json(USER_SETTINGS, {}).get("asset_limits") or {}).get("crypto_max_allocation_decimal")) or 0.2)
+            if numeric(crypto_quote["payload"].get("crypto_buying_power_usd")) is not None else None
+        ),
         "expected_edge": crypto_projection["projection_scores"].get("net_opportunity_score", 0) / 100.0,
         "expected_cost": crypto_quote["payload"].get("expected_total_cost", 0),
         "projected_drawdown": crypto_quote["payload"].get("projected_drawdown", 0),
