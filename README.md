@@ -38,6 +38,7 @@ The executable user algorithm is `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING` in `rul
 - Night report: send one concise operations report after the day session showing smooth/not-smooth status and blockers.
 - Codex/APEX heavy checks do not run on the heartbeat; they stay asleep unless a fresh viable event requires the gate workflow.
 - Trading execution remains OFF unless every scanner, broker, Robinhood, risk, preview, idempotency, and APEX gate passes.
+- Major tactical operations follow the explicit loop: RunPod 24/7 engine -> Codex Robinhood live feed plus ChatGPT/RunPod fresh sources and calculations -> timestamped envelopes -> Codex Robinhood MCP refresh -> enriched envelope -> Codex viability gate -> Robinhood inspection/preview -> explicit user confirmation -> Robinhood execution -> operations loop. Missing or stale facts produce `NO ACTION`.
 
 ## Absolute Operating Truth
 

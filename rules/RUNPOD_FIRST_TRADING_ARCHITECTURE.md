@@ -5,6 +5,40 @@ TACTICAL APPRECIATION OPERATIONS COMPOUNDING
 
 APEX PRESTIGE RUNPOD-FIRST MINIMUM-HEAVY-USAGE TRADING ARCHITECTURE
 
+## CANONICAL FOREVER OPERATIONS PIPELINE
+
+```text
+RunPod MCP/live sources
+    -> Codex Robinhood live feed plus ChatGPT/RunPod fresh sources,
+       projections, forecasting, math, and calculations
+    -> timestamped envelopes
+    -> Codex Robinhood MCP market-data refresh
+    -> enriched envelope
+    -> Codex viability gate
+    -> Robinhood inspection and preview
+    -> Robinhood explicit user confirmation
+    -> Robinhood execution
+    -> operations ledger and monitoring
+    -> loop
+```
+
+This is the major tactical operating procedure. Envelopes may be produced
+whenever their required source, freshness, symbol, venue, account,
+buying-power, spread, liquidity, risk, and calculation fields are present.
+Envelope production never authorizes execution. Missing, stale, contradictory,
+or unavailable facts produce `NO ACTION`. No forecast, projection, lane count,
+or RunPod status is user confirmation.
+
+This is the permanent operating mode: RunPod and ChatGPT produce lightweight
+envelopes, Codex performs heavy work only at the viability gate, and Robinhood
+MCP remains the broker-side authority for current quotes, buying power, account
+state, inspection, preview, and execution. A lane, scanner, MCP connection, or
+envelope never grants execution authority by itself.
+
+The pipeline remains fail-closed. Missing, stale, contradictory, or unverified
+broker data produces `NO ACTION`. Continuous operation is not a promise to
+trade, a promise of profit, or a guarantee of capital growth.
+
 CONTROL SPLIT
 
 ChatGPT/plugins may perform continuous scanning, calculations, projections, catalyst review, sentiment review, quote comparison, and candidate qualification.
