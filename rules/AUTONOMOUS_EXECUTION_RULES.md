@@ -33,6 +33,23 @@ Robinhood refresh, enriches the envelope, and owns the viability gate. No
 cached Robinhood quote, heartbeat, or prior account snapshot may authorize a
 new preview or order.
 
+## Reinforced APEX Candidate Sequence
+
+```text
+1. Refresh Robinhood MCP account and quote data.
+2. Reject the refresh if stale, incomplete, contradictory, or failed.
+3. Use the live executable ask as the spot-buy entry when no model entry exists.
+4. Derive invalidation dynamically at the break-even boundary where verified
+   execution friction makes projected net profit non-positive.
+5. Run APEX loss-first sizing and accept the ledger result `SIZED CANDIDATE`
+   when all failure checks are empty.
+6. Require positive net edge, fresh quorum, broker validation, preview, and
+   explicit confirmation before Robinhood placement.
+```
+
+`SIZED CANDIDATE` is not a fill or execution authorization. It is the handoff
+state between APEX sizing and broker preview.
+
 
 ## RunPod-First Runtime Gate
 
