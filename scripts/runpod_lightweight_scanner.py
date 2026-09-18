@@ -689,6 +689,39 @@ def build_medium8_projection(source_records, session_confirmed, sentiment, tempe
     }
 
 
+def derive_spot_break_even_invalidation(payload):
+    """Derive the long-spot invalidation at the projected net-profit boundary.
+
+    For a spot buy, net profit becomes non-positive when the price loss reaches
+    the verified execution-friction rate. This is dynamic per quote, not a
+    hard-coded stop percentage. Missing price or friction remains a hard fail.
+    """
+    entry = valid_positive_number(payload.get("entry_price_usd"))
+    existing_invalidation = valid_positive_number(payload.get("invalidation_price_usd"))
+    if entry is not None and existing_invalidation is not None:
+        return
+    if entry is None:
+        entry = valid_positive_number(payload.get("ask"))
+        if entry is not None:
+            payload["entry_price_usd"] = entry
+    bid = valid_positive_number(payload.get("bid"))
+    ask = valid_positive_number(payload.get("ask"))
+    if entry is None or bid is None or ask is None or ask < bid:
+        return
+    spread_rate = (ask - bid) / ((ask + bid) / 2)
+    expected_cost = valid_positive_number(payload.get("expected_total_cost")) or 0.0
+    notional = valid_positive_number(payload.get("requested_notional_usd"))
+    cost_rate = spread_rate + ((expected_cost / notional) if notional else 0.0)
+    if cost_rate <= 0 or cost_rate >= 1:
+        return
+    invalidation = entry * (1.0 - cost_rate)
+    if invalidation > 0:
+        payload["invalidation_price_usd"] = invalidation
+        payload["stop_distance_usd"] = abs(entry - invalidation)
+        payload["stop_distance_pct"] = abs(entry - invalidation) / entry
+        payload["invalidation_basis"] = "DYNAMIC_NET_PROFIT_BREAK_EVEN_FROM_VERIFIED_EXECUTION_FRICTION"
+
+
 def build_aum_compounding_score(payload, settings):
     """Rank candidates using verified realized economics without inventing AUM.
 
@@ -1050,6 +1083,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     if chatgpt_reinforcement["status"] != "fresh":
         failed.append("chatgpt medium-scanner reinforcement is missing, stale, or failed")
     micro_trade_value = build_micro_trade_value(crypto_quote)
+    derive_spot_break_even_invalidation(crypto_quote["payload"])
     requested_notional, requested_notional_source, sizing_inputs = apex_requested_notional(
         crypto_quote["payload"],
         settings,
