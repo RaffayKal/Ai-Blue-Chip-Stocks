@@ -35,6 +35,16 @@ import lane_synergy_engine as synergy_engine
 import runpod_lightweight_scanner as scanner
 
 SYNERGY_STATUS_PATH = ROOT / "data" / "fleet_synergy_status.json"
+LANE_MANIFEST_PATH = ROOT / "data" / "fleet_lane_manifest.json"
+SHARED_INPUT_CHANNELS = (
+    "Robinhood_MCP_quote",
+    "Alpaca_quote",
+    "Coinbase_quote",
+    "Binance_quote",
+    "Kraken_quote",
+    "CoinGecko_quote",
+    "ChatGPT_scanner_envelopes",
+)
 
 
 def lane_name_for(index):
@@ -213,6 +223,24 @@ async def async_main(args, executor):
 
     synergy_symbols = synergy_engine.synergy_symbols()
     dedicated_synergy_lanes = synergy_engine.dedicated_role_lane_count(lane_count, synergy_symbols)
+    lane_manifest = {
+        "timestamp_utc": scanner.iso_now(),
+        "fleet_size_configured": lane_count,
+        "lanes": [lane_name_for(index) for index in range(1, lane_count + 1)],
+        "shared_input_channels": list(SHARED_INPUT_CHANNELS),
+        "envelope_output": "data/current_candidate_envelope.json",
+        "consensus_output": str(SYNERGY_STATUS_PATH.relative_to(ROOT)),
+        "codex_viability_gate": "algorithms/candidate_envelope_gate.py",
+        "robinhood_inspection": "Robinhood MCP only",
+        "execution_authority": False,
+        "note": "Every lane reads shared source artifacts and emits analysis only; Codex is the single viability gate.",
+    }
+    scanner.write_json(LANE_MANIFEST_PATH, lane_manifest)
+    print(
+        "FLEET_LANE_MANIFEST: "
+        f"lanes={lane_count} channels={len(SHARED_INPUT_CHANNELS)} "
+        "envelope_only=true execution_authority=false"
+    )
     if dedicated_synergy_lanes:
         print(
             "MULTI_LANE_SYNERGY_RESEARCH_LAW: "
