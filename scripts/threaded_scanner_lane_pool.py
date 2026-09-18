@@ -101,7 +101,7 @@ async def run_lane(lane, codex_heavy_state, interval_seconds, once, executor, lo
             lock.close()
 
 
-async def run_role_lane(symbol, role, lane_label, interval_seconds, once, executor, loop, stop_event):
+async def run_role_lane(symbol, role, lane_label, codex_heavy_state, interval_seconds, once, executor, loop, stop_event, recent_results):
     """Dedicated MATH/HISTORY/RESEARCH/TEMPORAL lane for one symbol, per
     rules/MULTI_LANE_SYNERGY_RESEARCH_LAW.md.
 
@@ -117,6 +117,20 @@ async def run_role_lane(symbol, role, lane_label, interval_seconds, once, execut
     print(f"STARTED_SYNERGY_LANE: {lane_label} symbol={symbol} role={role}")
     while not stop_event.is_set():
         try:
+            # Every lane runs the common scanner/micro-math cycle. The role
+            # calculation is additive; it never replaces envelope production.
+            status = await loop.run_in_executor(
+                executor, scanner.scan_once, codex_heavy_state, lane_label
+            )
+            recent_results.append(
+                {
+                    "lane": lane_label,
+                    "timestamp_utc": status.get("timestamp_utc"),
+                    "candidate_decision": status.get("candidate_decision"),
+                    "scanner_viable": bool(status.get("scanner_viable")),
+                    "net_opportunity_score": extract_net_opportunity(status),
+                }
+            )
             await loop.run_in_executor(executor, synergy_engine.run_role, symbol, role)
         except Exception as exc:  # noqa: BLE001 - keep the lane alive
             print(f"SYNERGY_LANE_CYCLE_ERROR: lane={lane_label} symbol={symbol} role={role} error={exc!r}")
@@ -268,11 +282,13 @@ async def async_main(args, executor):
                         symbol,
                         role,
                         lane,
+                        args.codex_heavy_state,
                         args.interval_seconds,
                         args.once,
                         executor,
                         loop,
                         stop_event,
+                        recent_results,
                     )
                 )
             )
