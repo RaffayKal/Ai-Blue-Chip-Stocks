@@ -52,4 +52,22 @@ done
 
 echo "OK: required control files found"
 
+# Legacy envelope bridges are forbidden: they create a second writer and can
+# reintroduce stale broker requirements after deployment.
+for forbidden in \
+  "com.raffaykal.runpod-envelope-bridge.plist" \
+  "scripts/pull_runpod_envelope_bridge.sh"; do
+  if [ -e "$forbidden" ]; then
+    echo "BLOCKED: deleted legacy envelope bridge is present: $forbidden"
+    exit 1
+  fi
+done
+
+if ! rg -q 'REQUIRED_CRYPTO_QUOTE_PROVIDERS[[:space:]]*=[[:space:]]*\(ROBINHOOD_FRONTLINE_PROVIDER,\)' scripts/runpod_lightweight_scanner.py; then
+  echo "BLOCKED: Robinhood is not the sole required crypto quote provider."
+  exit 1
+fi
+
+echo "OK: legacy envelope bridge absent; Robinhood is sole required crypto quote provider"
+
 ./scripts/verify_algorithm_sources.sh || exit 1
