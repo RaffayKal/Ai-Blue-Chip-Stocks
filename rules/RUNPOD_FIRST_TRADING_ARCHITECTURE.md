@@ -8,7 +8,7 @@ APEX PRESTIGE RUNPOD-FIRST MINIMUM-HEAVY-USAGE TRADING ARCHITECTURE
 ## CANONICAL FOREVER OPERATIONS PIPELINE
 
 ```text
-runpod 24/7 engine - >  codex/live source/robinhoon live market feeds +
+runpod 24/7 engine - >  independent live market feeds +
   ChatGPT sources/prjections/math/calculations/forecatsing/etc.  → envelopes →
   Codex Robinhood MCP
     refresh → enriched envelope → viability gate → preview → execution only
@@ -18,12 +18,21 @@ runpod 24/7 engine - >  codex/live source/robinhoon live market feeds +
 
 This verbatim procedure is controlling and must not be deferred, reordered, or replaced.
 
+## FRONTLINE ROBINHOOD MCP RULE
+
+For every active operation, status report, hourly check, candidate, and
+execution decision, Codex must refresh Robinhood MCP first. Robinhood is the
+frontline broker-data authority, not a passive background source. The fresh
+account/quote result then enters the envelope, APEX calculations, and viability
+gate. A stale, failed, missing, or contradictory refresh produces `NO ACTION`
+and keeps 24/7 scanning active.
+
 ```text
 RunPod MCP/live sources
-    -> Codex Robinhood live feed plus ChatGPT/RunPod fresh sources,
+    -> ChatGPT/RunPod fresh sources and independent live feeds,
        projections, forecasting, math, and calculations
     -> timestamped envelopes
-    -> Codex Robinhood MCP market-data refresh
+    -> Codex Robinhood MCP market-data refresh only at final broker revalidation
     -> enriched envelope
     -> Codex viability gate
     -> Robinhood inspection and preview
@@ -34,8 +43,10 @@ RunPod MCP/live sources
 ```
 
 This is the major tactical operating procedure. Envelopes may be produced
-whenever their required source, freshness, symbol, venue, account,
-buying-power, spread, liquidity, risk, and calculation fields are present.
+whenever their independent market-data quorum, freshness, symbol, venue,
+spread, liquidity, risk, and calculation fields are present. Robinhood quote
+and account usage is deferred until final Codex broker revalidation. The final
+Robinhood refresh remains mandatory before preview or execution.
 Envelope production never authorizes execution. Missing, stale, contradictory,
 or unavailable facts produce `NO ACTION`. No forecast, projection, lane count,
 or RunPod status is user confirmation.
