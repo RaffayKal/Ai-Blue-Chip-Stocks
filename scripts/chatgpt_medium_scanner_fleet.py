@@ -55,6 +55,11 @@ ROLES = (
     ("forward_projection", "Produce bounded future-window projections and explicit uncertainty."),
 )
 
+# ChatGPT remains a seven-role synthesis layer over the scanner lanes. The
+# cap documents and reinforces the minimum lane breadth it can consume without
+# turning every lane into an independent paid model invocation.
+CHATGPT_MEDIUM_SCANNER_LANE_CAP = max(70, int(os.environ.get("CHATGPT_MEDIUM_SCANNER_LANE_CAP", "70")))
+
 SCANNER_INSTRUCTIONS = (
     "You are one regular ChatGPT medium-weight scanner in a market-analysis fleet. "
     "Use only supplied data. Do not invent quotes, timestamps, liquidity, or forecasts. "

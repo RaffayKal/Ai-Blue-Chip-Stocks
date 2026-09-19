@@ -9,10 +9,12 @@ ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 class RunpodScannerStartupConfigTests(unittest.TestCase):
     def test_runpod_defaults_to_moderate_fourteen_lane_fanout(self):
         startup = (ROOT / "scripts" / "start_runpod_scanner_24_7.sh").read_text(encoding="utf-8")
-        self.assertIn('export RUNPOD_SCANNER_LANES="${RUNPOD_SCANNER_LANES:-14}"', startup)
+        self.assertIn('export RUNPOD_SCANNER_LANES="${RUNPOD_SCANNER_LANES:-auto}"', startup)
+        self.assertIn('RUNPOD_SAFE_MEDIUM_WEIGHT_LANES:-70', startup)
+        self.assertIn('RUNPOD_MAX_MEDIUM_WEIGHT_LANES:-13000', startup)
 
         fleet = (ROOT / "scripts" / "start_lightweight_scanner_fleet.sh").read_text(encoding="utf-8")
-        self.assertIn('RUNPOD_MIN_LIGHTWEIGHT_LANES:-7', fleet)
+        self.assertIn('RUNPOD_MIN_LIGHTWEIGHT_LANES:-70', fleet)
         self.assertIn('RUNPOD_MAX_LIGHTWEIGHT_LANES:-13000', fleet)
 
     def test_fleet_startup_surfaces_a_visible_scanning_proof_heartbeat(self):
