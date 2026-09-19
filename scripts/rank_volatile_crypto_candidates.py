@@ -120,6 +120,10 @@ def write_active_symbol(ranked, fresh_symbols):
         "fallback_symbol": fallback_symbol,
         "tracked_symbols": list(ROBINHOOD_SUPPORTED_TRACKED_SYMBOLS),
         "volatility_scores": {symbol: score for symbol, score in ranked},
+        "ranked_symbols": [
+            {"symbol": symbol, "volatility_percent": score}
+            for symbol, score in ranked
+        ],
         "fresh_symbols": sorted(fresh_symbols),
         "ranked_at": iso_now(),
     }

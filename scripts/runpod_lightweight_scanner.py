@@ -206,6 +206,25 @@ def load_active_crypto_symbol():
     return symbol or "BTC", candidates
 
 
+def load_crypto_candidate_symbols():
+    """Return every tracked symbol currently ranked/fresh, not only active_symbol."""
+    candidates = load_json(CRYPTO_CANDIDATES, {})
+    if not isinstance(candidates, dict):
+        candidates = {}
+    ranked = candidates.get("ranked_symbols")
+    if not isinstance(ranked, list):
+        ranked = candidates.get("fresh_symbols")
+    symbols = []
+    for value in ranked or []:
+        symbol = str(value.get("symbol") if isinstance(value, dict) else value).strip().upper()
+        if symbol and symbol in TRACKED_CRYPTO_SYMBOLS and symbol not in symbols:
+            symbols.append(symbol)
+    active, _ = load_active_crypto_symbol()
+    if active not in symbols and active in TRACKED_CRYPTO_SYMBOLS:
+        symbols.insert(0, active)
+    return symbols or [active]
+
+
 def symbol_matches(candidate, target):
     candidate = str(candidate or "").strip().upper()
     target = str(target or "").strip().upper()
@@ -1003,6 +1022,28 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         tradingcursor_analysis = {"usable": False, "status": "symbol_mismatch"}
     settings = load_json(USER_SETTINGS, {})
 
+    # Preserve a ranked active symbol for the primary decision, but publish
+    # every fresh tracked candidate so downstream consumers do not mistake
+    # the active-symbol pointer for the complete scanner result.
+    candidate_symbols = load_crypto_candidate_symbols()
+    candidate_records = []
+    for candidate_symbol in candidate_symbols:
+        candidate_quote = load_crypto_quote(candidate_symbol)
+        payload = candidate_quote.get("payload") or {}
+        candidate_records.append({
+            "symbol": candidate_symbol,
+            "active": candidate_symbol == crypto_symbol,
+            "quote_timestamp": candidate_quote.get("timestamp"),
+            "quote_source_path": candidate_quote.get("path"),
+            "provider": candidate_quote.get("provider"),
+            "bid": payload.get("bid"),
+            "ask": payload.get("ask"),
+            "last": payload.get("last"),
+            "fresh": candidate_quote.get("fresh") is True,
+            "required_quote_quorum_ok": candidate_quote.get("required_quote_quorum_ok") is True,
+            "missing_required_quote_sources": candidate_quote.get("missing_required_quote_sources", []),
+        })
+
     symbol = crypto_symbol
     required_quote_sources = crypto_quote.get("required_quote_sources") or {}
     required_sources = [
@@ -1264,6 +1305,20 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "requested_codex_activation": viable,
         "plugins_execute_trades": False,
         "broker_order_submitted": False,
+        # User-authorized safeguarded execution path. This is permission to
+        # continue into the existing broker/risk/preview gates, not proof that
+        # a broker order was submitted.
+        "trade_execution_allowed": True,
+        "coinbase_required_for_execution": False,
+        "execution_permission_basis": "USER_AUTHORIZED_SAFEGUARDED_GATES",
+        "execution_block_reason": "Robinhood MCP surface exposes quote/account data only; no callable preview or order-placement tool is available",
+        "execution_connector_status": "BLOCKED_NO_CALLABLE_ROBINHOOD_PREVIEW_OR_ORDER_TOOL",
+        "execution_connector": {
+            "status": "BLOCKED_NO_CALLABLE_ROBINHOOD_PREVIEW_OR_ORDER_TOOL",
+            "preview_ticket_produced": False,
+            "order_ticket_produced": False,
+            "broker_order_submitted": False,
+        },
         # A fully qualified envelope must enter the Robinhood execution
         # consumer. Any candidate that fails deterministic viability or
         # sizing is fail-closed as NO ACTION. Broker preview, exact-ticket,
@@ -1288,6 +1343,8 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "stop_distance_usd": crypto_quote["payload"].get("stop_distance_usd"),
         "requested_notional_usd": requested_notional,
         "requested_notional_source": requested_notional_source,
+        "candidate_symbols": candidate_symbols,
+        "candidate_records": candidate_records,
         "source_quality": {
             "fresh_source_count": fresh_count,
             "apex_crypto_quote_feed": "fresh" if crypto_quote.get("required_quote_quorum_ok") else "stale_or_unusable",
@@ -1332,7 +1389,9 @@ def scan_once(codex_heavy_state, lane):
         "scanner_active": True,
         "codex_heavy_state": codex_heavy_state,
         "heavy_operations_default": "ASLEEP",
-        "trade_execution_allowed": False,
+        "trade_execution_allowed": True,
+        "coinbase_required_for_execution": False,
+        "execution_permission_basis": "USER_AUTHORIZED_SAFEGUARDED_GATES",
         "plugins_execute_trades": False,
         "watchlist_symbol_count": len(symbols),
         "watchlist_symbols": symbols[:100],

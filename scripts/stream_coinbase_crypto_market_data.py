@@ -27,7 +27,7 @@ def _configured_products():
     raw = (
         os.environ.get("COINBASE_CRYPTO_PRODUCTS")
         or os.environ.get("COINBASE_CRYPTO_PRODUCT")
-        or "BTC-USD,ETH-USD,SOL-USD,XRP-USD,ADA-USD,DOGE-USD,LTC-USD,DOT-USD,AVAX-USD,LINK-USD"
+        or "BTC-USD,ETH-USD,SOL-USD,XRP-USD,ADA-USD,DOGE-USD,LTC-USD,DOT-USD,AVAX-USD,LINK-USD,BCH-USD,ETC-USD,XLM-USD,HBAR-USD,ALGO-USD,UNI-USD,NEAR-USD,ATOM-USD,SUI-USD"
     )
     products = [p.strip().upper() for p in raw.split(",") if p.strip()]
     return products or ["BTC-USD"]
