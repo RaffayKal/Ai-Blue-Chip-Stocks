@@ -21,7 +21,21 @@ fi
 # This worker is CPU-only. Do not let a stale environment variable request
 # thousands of asyncio lanes on a small pod: prior runs on 4 GB RAM were OOM
 # killed with exit code 137. Derive a hard safety ceiling from actual memory.
-TOTAL_MEMORY_GB="$(awk '/MemTotal:/ {printf "%d", ($2/1024/1024)+0.5; exit}' /proc/meminfo 2>/dev/null || printf '4')"
+MEMORY_LIMIT_BYTES=""
+for memory_limit_path in /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory/memory.limit_in_bytes; do
+  if [ -r "$memory_limit_path" ]; then
+    candidate_limit="$(sed -n '1p' "$memory_limit_path")"
+    if [ "$candidate_limit" != "max" ] && [ "$candidate_limit" -gt 0 ] 2>/dev/null; then
+      MEMORY_LIMIT_BYTES="$candidate_limit"
+      break
+    fi
+  fi
+done
+if [ -n "$MEMORY_LIMIT_BYTES" ]; then
+  TOTAL_MEMORY_GB="$(awk -v bytes="$MEMORY_LIMIT_BYTES" 'BEGIN {printf "%d", (bytes/1024/1024/1024)+0.5}')"
+else
+  TOTAL_MEMORY_GB="$(awk '/MemTotal:/ {printf "%d", ($2/1024/1024)+0.5; exit}' /proc/meminfo 2>/dev/null || printf '4')"
+fi
 if [ "$TOTAL_MEMORY_GB" -le 6 ]; then
   RESOURCE_SAFE_LANES=70
 elif [ "$TOTAL_MEMORY_GB" -le 16 ]; then
