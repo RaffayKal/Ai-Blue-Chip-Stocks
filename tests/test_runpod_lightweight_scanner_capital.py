@@ -179,7 +179,7 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             )
         self.assertEqual(
             [record["source"] for record in envelope["data_provenance"]],
-            ["volatile_crypto_candidates.active_symbol", "Robinhood.crypto_quote", "Coinbase.crypto_quote", "Binance.crypto_quote", "Kraken.crypto_quote"],
+            ["volatile_crypto_candidates.active_symbol", "Robinhood.crypto_quote"],
         )
 
     def test_lightweight_viability_does_not_require_heavy_lane_to_be_awake(self):
@@ -284,11 +284,11 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             with patch.object(scanner, "CRYPTO_QUOTE_INPUTS", [alpaca, robinhood, coinbase, binance, kraken, sample]):
                 result = scanner.load_crypto_quote("BTC")
             self.assertTrue(result["required_quote_quorum_ok"])
-            self.assertEqual(result["fresh_quote_source_count"], 4)
-            self.assertEqual(result["fresh_optional_quote_source_count"], 2)
+            self.assertEqual(result["fresh_quote_source_count"], 1)
+            self.assertGreaterEqual(result["fresh_optional_quote_source_count"], 1)
         self.assertFalse(result["source_conflict"])
 
-    def test_load_crypto_quote_requires_fresh_coinbase_cross_check(self):
+    def test_load_crypto_quote_does_not_require_coinbase_cross_check(self):
         with tempfile.TemporaryDirectory() as tmp:
             robinhood = Path(tmp) / "robinhood_crypto_quote_snapshot.json"
             coinbase = Path(tmp) / "coinbase_crypto_quote_snapshot.json"
@@ -303,14 +303,14 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             scanner.write_json(robinhood, {**base, "provider": "Robinhood"})
             with patch.object(scanner, "CRYPTO_QUOTE_INPUTS", [robinhood]):
                 result = scanner.load_crypto_quote("BTC")
-            self.assertFalse(result["required_quote_quorum_ok"])
-            self.assertEqual(result["missing_required_quote_sources"], ["Coinbase", "Binance", "Kraken"])
+            self.assertTrue(result["required_quote_quorum_ok"])
+            self.assertEqual(result["missing_required_quote_sources"], [])
 
             scanner.write_json(coinbase, {**base, "provider": "Coinbase"})
             with patch.object(scanner, "CRYPTO_QUOTE_INPUTS", [robinhood, coinbase]):
                 result = scanner.load_crypto_quote("BTC")
-            self.assertFalse(result["required_quote_quorum_ok"])
-            self.assertEqual(result["fresh_quote_source_count"], 2)
+            self.assertTrue(result["required_quote_quorum_ok"])
+            self.assertEqual(result["fresh_quote_source_count"], 1)
 
     def test_load_crypto_quote_blocks_missing_required_provider(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -327,7 +327,7 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             with patch.object(scanner, "CRYPTO_QUOTE_INPUTS", [alpaca]):
                 result = scanner.load_crypto_quote("BTC")
             self.assertFalse(result["required_quote_quorum_ok"])
-            self.assertEqual(result["missing_required_quote_sources"], ["Robinhood", "Coinbase", "Binance", "Kraken"])
+            self.assertEqual(result["missing_required_quote_sources"], ["Robinhood"])
 
     def test_alpaca_never_becomes_primary_candidate_quote(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -519,7 +519,7 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
         quote = self.quote(
             fresh_quote_source_count=0,
             required_quote_quorum_ok=False,
-            missing_required_quote_sources=["Coinbase", "Binance", "Kraken"],
+            missing_required_quote_sources=["Robinhood"],
             required_quote_sources={},
         )
         with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
@@ -527,7 +527,7 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
              patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
             envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
         self.assertFalse(envelope["scanner_viable"])
-        self.assertIn("required crypto quote sources not satisfied: missing Coinbase, Binance, Kraken", envelope["failed_checks"])
+        self.assertIn("required crypto quote sources not satisfied: missing Robinhood", envelope["failed_checks"])
 
     def test_missing_apex_stop_does_not_block_scanner_candidate(self):
         quote = self.quote(payload={"invalidation_price_usd": None, "stop_distance_usd": None})

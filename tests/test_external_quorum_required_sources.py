@@ -67,9 +67,10 @@ def external_quorum_quote():
     }
 
 
-class ExternalQuorumRequiredSourcesTests(unittest.TestCase):
-    def test_external_quorum_envelope_does_not_falsely_mark_robinhood_missing(self):
+class RobinhoodOnlyRequiredSourceTests(unittest.TestCase):
+    def test_robinhood_is_the_only_required_source(self):
         quote = external_quorum_quote()
+        quote["quorum_providers"] = None
         with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
              patch.object(scanner, "load_crypto_quote", return_value=quote), \
              patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
@@ -77,16 +78,13 @@ class ExternalQuorumRequiredSourcesTests(unittest.TestCase):
 
         source_names = [item["source"] for item in envelope["required_sources"]]
         self.assertIn("Robinhood.crypto_quote", source_names)
-        self.assertIn("Coinbase.crypto_quote", source_names)
-        self.assertIn("Binance.crypto_quote", source_names)
-        self.assertIn("Kraken.crypto_quote", source_names)
-        # Every configured quorum provider is actually fresh in this fixture,
-        # so nothing should be reported as a missing/stale source.
+        self.assertNotIn("Coinbase.crypto_quote", source_names)
+        self.assertNotIn("Binance.crypto_quote", source_names)
+        self.assertNotIn("Kraken.crypto_quote", source_names)
         statuses = {item["source"]: item["status"] for item in envelope["required_sources"]}
-        for name in ("Robinhood.crypto_quote", "Coinbase.crypto_quote", "Binance.crypto_quote", "Kraken.crypto_quote"):
-            self.assertEqual(statuses[name], "fresh", statuses)
+        self.assertEqual(statuses["Robinhood.crypto_quote"], "fresh", statuses)
 
-    def test_default_quorum_uses_independent_sources_without_robinhood(self):
+    def test_default_quorum_does_not_require_independent_sources(self):
         quote = external_quorum_quote()
         quote["quorum_providers"] = None  # use configured frontline quorum
         quote["required_quote_sources"] = {
@@ -99,10 +97,8 @@ class ExternalQuorumRequiredSourcesTests(unittest.TestCase):
             envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
 
         source_names = [item["source"] for item in envelope["required_sources"]]
-        self.assertIn("Coinbase.crypto_quote", source_names)
-        self.assertIn("Binance.crypto_quote", source_names)
-        self.assertIn("Kraken.crypto_quote", source_names)
         self.assertIn("Robinhood.crypto_quote", source_names)
+        self.assertEqual(source_names.count("Robinhood.crypto_quote"), 1)
 
 
 if __name__ == "__main__":

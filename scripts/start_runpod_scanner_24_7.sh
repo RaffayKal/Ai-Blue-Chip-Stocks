@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -u
-export RUNPOD_MARKET_QUORUM=external
+# Robinhood is the sole required live market-data authority. Peer feeds are
+# optional diagnostics and must never become a startup or viability blocker.
+export RUNPOD_MARKET_QUORUM=robinhood
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 INTERVAL_SECONDS="${RUNPOD_SCANNER_INTERVAL_SECONDS:-7}"

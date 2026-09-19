@@ -94,6 +94,12 @@ When sources conflict:
 4. If conflict remains, output `NO ACTION`.
 # Tier-1 Broker Data Resource
 
+For live operations, authenticated Robinhood MCP quote and account data are
+the sole hard-required market-data authority. Coinbase, Binance, Kraken,
+CoinGecko, Alpaca, and other feeds are optional corroboration or diagnostic
+inputs only; their absence, staleness, outage, or disagreement must never
+block a Robinhood operation when Robinhood data is fresh and complete.
+
 The authenticated Robinhood MCP surface is classified as a Tier-1 broker-authoritative data resource when available. It may provide current quote, account, position, buying-power, and tradability confirmation to the validation layers. It does not bypass APEX, Codex, preview, authorization, idempotency, or execution gates.
 
 The Robinhood Legend browser URL is a presentation surface, not itself a machine-readable data authority. No password, MFA code, browser cookie, or session token may be placed in project files, RunPod startup commands, logs, or chat. Execution remains permitted only through the existing authorized MCP execution path, after independent APEX and Codex validation.

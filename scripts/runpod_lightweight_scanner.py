@@ -65,11 +65,13 @@ USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 APEX_VALUE_DOCTRINE = "MICRO TRADES - ABSOLUTE INFINITE +775% OPTIMALLY APPRECIATE TACTICAL COMPOUNDING OF CAPITAL"
 MAX_SOURCE_AGE_SECONDS = 90  # ceiling for optional/cross-check sources (e.g. CoinGecko); see per-provider overrides for required crypto quotes
 DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS = 420
-# Robinhood is the frontline broker/data authority. Independent exchange feeds
-# remain required corroboration, but they cannot replace a fresh Robinhood
-# quote/account artifact. A missing or stale Robinhood artifact fails closed.
+# Robinhood is the sole required market-data and broker authority. Exchange
+# artifacts are optional diagnostics only; their outage, staleness, or price
+# disagreement must never block a live Robinhood operation. The authenticated
+# Robinhood MCP refresh remains mandatory before account validation, preview,
+# execution, and fill confirmation.
 ROBINHOOD_FRONTLINE_PROVIDER = "Robinhood"
-REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Robinhood", "Coinbase", "Binance", "Kraken")
+REQUIRED_CRYPTO_QUOTE_PROVIDERS = (ROBINHOOD_FRONTLINE_PROVIDER,)
 RUNPOD_EXTERNAL_QUORUM_PROVIDERS = REQUIRED_CRYPTO_QUOTE_PROVIDERS
 FALLBACK_CRYPTO_MARKET_DATA_PROVIDERS = (
     "Robinhood", "Alpaca", "Coinbase", "Binance", "Kraken", "Finnhub", "CoinGecko"
@@ -805,13 +807,13 @@ def source_refresh_policy():
         "runs_24_7": True,
         "medium_weight_interval_min_seconds": MIN_LOOP_INTERVAL_SECONDS,
         "medium_weight_interval_max_seconds": MAX_LOOP_INTERVAL_SECONDS,
-        "freshness_model": "websocket/live-feed artifacts first; REST snapshots only as bounded fallback or independent cross-check",
+        "freshness_model": "authenticated Robinhood live-feed/MCP data first; other feeds are optional diagnostics only",
         "required_quote_sources": list(REQUIRED_CRYPTO_QUOTE_PROVIDERS),
         "fallback_market_data_sources": list(FALLBACK_CRYPTO_MARKET_DATA_PROVIDERS),
         "blue_chip_market_data_sources": list(BLUE_CHIP_MARKET_DATA_PROVIDERS),
         "blue_chip_source_rule": "Each source may provide fresh quote evidence only after timestamp, symbol, session, entitlement, and bid/ask validation.",
         "execution_authority": "Robinhood MCP only",
-        "fallback_execution_rule": "Fallback sources may create evidence/envelopes; Robinhood MCP must refresh and validate before preview or execution.",
+        "fallback_execution_rule": "No market-data fallback can replace Robinhood; optional peer sources never block or authorize operations.",
         "market_data_sources": [
             {"name": "Alpaca", "artifact": "data/alpaca_crypto_quote_snapshot.json", "role": "websocket quote/trade freshness"},
             {"name": "Robinhood", "artifact": "data/robinhood_crypto_quote_snapshot.json", "role": "broker-side quote/capital confirmation"},
@@ -1015,13 +1017,9 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "max_age_seconds": MAX_SOURCE_AGE_SECONDS,
         }
     ]
-    # This must match whatever quorum load_crypto_quote() actually used
-    # (RUNPOD_MARKET_QUORUM=external swaps Robinhood+Coinbase for
-    # Coinbase+Binance+Kraken, since RunPod cannot reach Robinhood MCP
-    # directly). Using the wrong constant here would permanently mark a
-    # provider outside the active quorum as "missing" in required_sources,
-    # dragging down freshness/source-depth scoring and the envelope's
-    # data_provenance check regardless of how fresh the real quorum is.
+    # This must match whatever quorum load_crypto_quote() actually used.
+    # Robinhood is the only hard-required market-data provider; peer feeds
+    # remain optional diagnostics and cannot lower live Robinhood viability.
     active_quorum_providers = crypto_quote.get("quorum_providers") or list(REQUIRED_CRYPTO_QUOTE_PROVIDERS)
     for provider in active_quorum_providers:
         required_sources.append(
