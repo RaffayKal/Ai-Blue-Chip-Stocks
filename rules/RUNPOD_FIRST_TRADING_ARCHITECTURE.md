@@ -32,6 +32,28 @@ and hourly cycle—with bounded backoff, fresh retries, and repeated
 reconciliation—until the Robinhood feed is cured. Execution remains blocked
 while unhealthy; 24/7 scanning continues.
 
+## Autonomous Recovery Safety State Machine
+
+```text
+HEALTHY_24_7_AUTONOMOUS
+    -> stale/failed Robinhood refresh
+EXECUTION_FROZEN_RECOVERY_ACTIVE
+    -> retry MCP + reconcile account/quotes + refresh artifacts
+    -> rerun source, freshness, APEX, risk, and broker gates
+    -> failure: remain in recovery and retry on the next cycle
+    -> success: require full gate pass and verified preview
+READY_24_7_AUTONOMOUS
+    -> resume only after the complete readiness record is fresh
+```
+
+Safety invariants:
+
+- Never stop the minimal recovery supervisor when broker data is stale.
+- Never resume from a cached success, old envelope, or prior authorization.
+- Never label operations fully ready without a current readiness record.
+- Never place an order while recovery is active.
+- Preserve idempotency, preview, broker reconciliation, and verified-fill logging.
+
 ```text
 RunPod MCP/live sources
     -> ChatGPT/RunPod fresh sources and independent live feeds,
