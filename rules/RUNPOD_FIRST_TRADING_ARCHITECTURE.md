@@ -24,8 +24,10 @@ For every active operation, status report, hourly check, candidate, and
 execution decision, Codex must refresh Robinhood MCP first. Robinhood is the
 frontline broker-data authority, not a passive background source. The fresh
 account/quote result then enters the envelope, APEX calculations, and viability
-gate. A stale, failed, missing, or contradictory refresh produces `NO ACTION`
-and keeps 24/7 scanning active.
+gate. A stale, failed, missing, or contradictory refresh triggers Codex action:
+retry the MCP read, reacquire account and quote data, reconcile timestamps and
+symbols, refresh the broker artifact, reinforce the gate, and recheck. If the
+refresh still fails, return `NO ACTION` and keep 24/7 scanning active.
 
 ```text
 RunPod MCP/live sources
