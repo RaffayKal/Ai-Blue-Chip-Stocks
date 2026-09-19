@@ -63,7 +63,13 @@ for forbidden in \
   fi
 done
 
-if ! rg -q 'REQUIRED_CRYPTO_QUOTE_PROVIDERS[[:space:]]*=[[:space:]]*\(ROBINHOOD_FRONTLINE_PROVIDER,\)' scripts/runpod_lightweight_scanner.py; then
+required_provider_pattern='REQUIRED_CRYPTO_QUOTE_PROVIDERS[[:space:]]*=[[:space:]]*\(ROBINHOOD_FRONTLINE_PROVIDER,\)'
+if command -v rg >/dev/null 2>&1; then
+  provider_check=(rg -q "$required_provider_pattern" scripts/runpod_lightweight_scanner.py)
+else
+  provider_check=(grep -Eq "$required_provider_pattern" scripts/runpod_lightweight_scanner.py)
+fi
+if ! "${provider_check[@]}"; then
   echo "BLOCKED: Robinhood is not the sole required crypto quote provider."
   exit 1
 fi
