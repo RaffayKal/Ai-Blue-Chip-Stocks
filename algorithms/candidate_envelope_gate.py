@@ -51,6 +51,20 @@ def main() -> None:
     if envelope.get("candidate_decision") not in ALLOWED_SCANNER_DECISIONS:
         failed.append("candidate_decision is not allowed")
 
+    # Robinhood is the sole hard-required market-data authority. A persisted
+    # envelope that names a peer feed as required is stale legacy state and
+    # must never reach the autonomous workflow.
+    required_sources = envelope.get("required_sources") or []
+    required_source_names = {
+        str(item.get("source") or "")
+        for item in required_sources
+        if isinstance(item, dict)
+    }
+    if any("Coinbase" in name or "Binance" in name or "Kraken" in name for name in required_source_names):
+        failed.append("legacy peer-feed requirement detected; Robinhood must be the only required market-data source")
+    if not any("Robinhood" in name for name in required_source_names):
+        failed.append("Robinhood required market-data source missing")
+
     provenance = envelope.get("data_provenance")
     if not isinstance(provenance, list) or len(provenance) < 2:
         failed.append("data_provenance must contain at least two source records")
