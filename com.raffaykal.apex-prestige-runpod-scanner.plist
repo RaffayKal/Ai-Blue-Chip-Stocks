@@ -18,11 +18,11 @@
     <key>RUNPOD_SCANNER_LANES</key>
     <string>auto</string>
     <key>RUNPOD_MIN_MEDIUM_WEIGHT_LANES</key>
-    <string>7</string>
+    <string>70</string>
     <key>RUNPOD_SAFE_MEDIUM_WEIGHT_LANES</key>
-    <string>14</string>
+    <string>70</string>
     <key>RUNPOD_MAX_MEDIUM_WEIGHT_LANES</key>
-    <string>700</string>
+    <string>13000</string>
     <key>RUNPOD_ALLOW_HIGH_MEDIUM_WEIGHT_FANOUT</key>
     <string>true</string>
     <key>MEDIUM_SCANNER_ENABLED</key>
