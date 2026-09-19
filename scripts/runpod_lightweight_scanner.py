@@ -41,7 +41,7 @@ CRYPTO_QUOTE_INPUTS = [
     ROOT / "data" / "sample_crypto_input.json",
 ] + [
     ROOT / "data" / f"{provider}_crypto_quote_snapshot_{symbol}.json"
-    for provider in ("coinbase", "binance", "kraken", "finnhub", "coingecko")
+    for provider in ("robinhood", "coinbase", "binance", "kraken", "finnhub", "coingecko")
     for symbol in TRACKED_CRYPTO_SYMBOLS
 ]
 USER_SETTINGS = ROOT / "rules" / "user_settings.json"
@@ -305,12 +305,10 @@ def load_crypto_quote(symbol):
     ]
     source_conflict = quote_sources_conflict(list(required_fresh.values()), settings)
     required_quorum_ok = not missing_required and not source_conflict
-    # Robinhood is the frontline quote. Peer feeds corroborate it but never
-    # replace it for the primary executable candidate.
-    primary = required_fresh.get(ROBINHOOD_FRONTLINE_PROVIDER) or next(
-        (source for source in quote_sources if source["fresh"] and source["provider"] != "Alpaca"),
-        next((source for source in quote_sources if source["provider"] != "Alpaca"), None),
-    )
+    # Robinhood is the frontline quote. Peer feeds are diagnostic only and
+    # must never replace it as the primary candidate or appear as live proof
+    # when the required Robinhood source is absent.
+    primary = required_fresh.get(ROBINHOOD_FRONTLINE_PROVIDER)
     if primary is not None:
         primary = {**primary}
         primary["quote_sources"] = quote_sources
