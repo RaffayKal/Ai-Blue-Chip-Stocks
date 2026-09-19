@@ -120,6 +120,7 @@ def supervisor_once(config_path):
         "repair_policy": "RERUN_GATES_AND_RESTART_SCANNER_ON_FAILURE; NEVER_GRANT_EXECUTION_FROM_HEALTH_CHECK",
         "hourly_operations_report": "ACTIVE",
         "hourly_operations_actions": ["REPORT", "CHECK", "FIX_SAFE_RUNTIME_FAILURES", "REINFORCE_GATES", "CONTINUE_24_7"],
+        "frontline_broker_refresh": "REQUIRED_ROBINHOOD_MCP_BEFORE_REPORT_OR_GATE_STATUS",
         "night_report_required": True,
         "zero_market_operations": False,
         "monitor_interval_seconds": load_interval(config_path),

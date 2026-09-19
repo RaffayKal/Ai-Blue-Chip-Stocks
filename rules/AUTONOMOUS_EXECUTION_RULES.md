@@ -53,6 +53,12 @@ new preview or order.
 `SIZED CANDIDATE` is not a fill or execution authorization. It is the handoff
 state between APEX sizing and broker preview.
 
+Every hourly operations report/check/fix cycle must place the Robinhood MCP
+refresh on the frontline before reporting broker freshness, APEX viability, or
+execution readiness. If that refresh is stale or fails, the cycle records the
+failure, retries/reconciles, reinforces the gate, and reports `NO ACTION` while
+the 24/7 scanner continues.
+
 
 ## RunPod-First Runtime Gate
 
