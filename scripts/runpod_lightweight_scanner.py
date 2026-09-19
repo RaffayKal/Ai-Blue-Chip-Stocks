@@ -1311,10 +1311,12 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "trade_execution_allowed": True,
         "coinbase_required_for_execution": False,
         "execution_permission_basis": "USER_AUTHORIZED_SAFEGUARDED_GATES",
-        "execution_block_reason": "Robinhood MCP surface exposes quote/account data only; no callable preview or order-placement tool is available",
-        "execution_connector_status": "BLOCKED_NO_CALLABLE_ROBINHOOD_PREVIEW_OR_ORDER_TOOL",
+        "execution_block_reason": None,
+        "execution_connector_status": "ROBINHOOD_MCP_HOST_EXECUTION_GATE_AVAILABLE",
         "execution_connector": {
-            "status": "BLOCKED_NO_CALLABLE_ROBINHOOD_PREVIEW_OR_ORDER_TOOL",
+            "status": "ROBINHOOD_MCP_HOST_EXECUTION_GATE_AVAILABLE",
+            "authority": "authenticated Robinhood MCP",
+            "execution_surface": ["preview_crypto_order", "place_crypto_order", "review_equity_order", "place_equity_order"],
             "preview_ticket_produced": False,
             "order_ticket_produced": False,
             "broker_order_submitted": False,
@@ -1464,7 +1466,7 @@ def scan_once(codex_heavy_state, lane):
     print(f"CODEX_HEAVY_STATE: {codex_heavy_state}")
     print(f"CANDIDATE_DECISION: {envelope['candidate_decision']}")
     print(f"SCANNER_VIABLE: {str(envelope['scanner_viable']).lower()}")
-    print("TRADE_EXECUTION_ALLOWED: false")
+    print(f"TRADE_EXECUTION_ALLOWED: {str(envelope['trade_execution_allowed']).lower()}")
     print("HEAVY_OPERATIONS_DEFAULT: ASLEEP")
     return status
 

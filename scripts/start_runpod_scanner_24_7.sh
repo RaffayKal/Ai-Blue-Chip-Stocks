@@ -117,10 +117,10 @@ from pathlib import Path
 path = Path(os.environ["PROJECT_ROOT"]) / "data" / "robinhood_stream_status.json"
 payload = {
     "status": "MCP_ONLY",
-    "reason": "RunPod does not require direct Robinhood MCP access; Codex refreshes Robinhood at the execution gate",
+    "reason": "Robinhood MCP is the execution authority; RunPod delegates qualified envelopes to the authenticated host execution gate",
     "timestamp_utc": datetime.now(timezone.utc).replace(microsecond=0).isoformat().replace("+00:00", "Z"),
-    "execution_authority": False,
-    "trade_execution_allowed": False,
+    "execution_authority": "AUTHENTICATED_ROBINHOOD_MCP_HOST",
+    "trade_execution_allowed": True,
 }
 path.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
 print(f"ROBINHOOD_STREAM_STATUS: {payload['status']} - {payload['reason']}")
