@@ -54,6 +54,20 @@ Safety invariants:
 - Never place an order while recovery is active.
 - Preserve idempotency, preview, broker reconciliation, and verified-fill logging.
 
+## Seven-Layer Reinforcement Stack
+
+1. **Connection** — verify Robinhood MCP availability and authenticated account access.
+2. **Freshness** — verify timestamps, age limits, clock validity, and quote continuity.
+3. **Source** — verify quorum, symbol, venue, session, and conflict status.
+4. **Capital** — refresh settled cash, buying power, reserves, pending orders, and deployable AUM.
+5. **APEX math** — calculate dynamic break-even invalidation, loss-first sizing, caps, costs, and net edge.
+6. **Execution** — require fresh envelope, idempotency, permission, preview, authorization, and order constraints.
+7. **Reconciliation** — verify order status, actual fill, costs, net P/L, ledger update, and readiness.
+
+Any layer may freeze execution. Recovery retries the failed layer and reruns all
+seven layers before autonomous operation resumes. Scanning and recovery remain
+active during the freeze.
+
 ```text
 RunPod MCP/live sources
     -> ChatGPT/RunPod fresh sources and independent live feeds,
