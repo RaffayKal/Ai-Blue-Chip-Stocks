@@ -34,6 +34,32 @@ Ace Knowledge Graph is always last for final synthesis mapping. Missing plugin o
 
 No single plugin is final authority.
 
+## Peer Live-Market-Data Rule
+
+For fresh market-data production across both US equities and crypto, connected independent sources are peer inputs:
+Robinhood, Alpaca, Twelve Data, authenticated Finnhub, exchange feeds, Longbridge, and other
+verified live quote providers may each contribute timestamped quote, spread,
+volume, liquidity, session, and provenance records to the same source quorum.
+No source is downgraded merely because it is not Robinhood.
+
+Peer market-data status does not grant broker authority. Robinhood remains the
+authoritative source for the selected account's buying power, holdings,
+sellable quantity, tradability, order preview, order placement, and order/fill
+confirmation. A peer source may help produce a candidate envelope, but the
+envelope must still contain fresh independent provenance, pass local APEX
+validation, and be revalidated against the live Robinhood broker state before
+any preview or execution step.
+
+Peer-source data may be used to recommend and drive a Robinhood buy or sell
+ticket through the existing execution path. Execution remains permitted only
+when the qualified envelope, live Robinhood account state, risk limits,
+tradability, exact ticket match, idempotency, required preview, and explicit
+confirmation gates all pass. Peer data may identify the action; Robinhood
+must still validate and execute it.
+
+If peer sources disagree, the affected symbol fails closed until the conflict
+is resolved. A fresh peer quote alone never authorizes an order.
+
 ## Stocktwits Widget Rule
 
 `widgets/stocktwits_cards_widget.html` is a browser display surface for fresh Stocktwits cards and market-pricing context. The live loader fetches the widget manifest with no-store behavior, so the widget may display fresh pricing and sentiment cards in a browser.

@@ -48,7 +48,9 @@
     "supports_us_equity_after_hours": "limit orders only; verify symbol/session tradability first",
     "supports_us_equity_overnight": "limit orders only on eligible 24 Hour Market symbols",
     "supports_fractional_shares": true,
-    "minimum_order_value_usd": 1.0,
+    "minimum_order_value_usd": 0.01,
+    "crypto_minimum_order_value_usd_market_maker": 0.01,
+    "crypto_minimum_order_value_usd_smart_exchange": 0.03,
     "live_quotes_available": null,
     "api_or_plugin_connected": "robinhood-trading MCP configured locally; verify get_accounts and agentic_allowed before orders",
     "margin_approved": false,
@@ -71,6 +73,8 @@
     "spread_crypto_allocations_required_when_possible": true
   },
   "operations": {
+    "max_capital_staleness_days": 7,
+    "capital_staleness_action": "REFRESH_RECONCILE_RECALCULATE_OR_NO_ACTION",
     "mode": "EVENT_TRIGGER_ONLY_CODEX_DORMANT",
     "system_state": "ACTIVE",
     "freeze_reason": null,

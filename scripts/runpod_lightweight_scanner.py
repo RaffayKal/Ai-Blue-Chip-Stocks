@@ -65,11 +65,12 @@ USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 APEX_VALUE_DOCTRINE = "MICRO TRADES - ABSOLUTE INFINITE +775% OPTIMALLY APPRECIATE TACTICAL COMPOUNDING OF CAPITAL"
 MAX_SOURCE_AGE_SECONDS = 90  # ceiling for optional/cross-check sources (e.g. CoinGecko); see per-provider overrides for required crypto quotes
 DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS = 420
-# Scanner-stage market quorum intentionally avoids Robinhood MCP usage.
-# Independent live feeds establish market evidence; Robinhood is consumed only
-# at Codex's final broker/account revalidation, preview, and execution boundary.
-REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Coinbase", "Binance", "Kraken")
-RUNPOD_EXTERNAL_QUORUM_PROVIDERS = ("Coinbase", "Binance", "Kraken")
+# Robinhood is the frontline broker/data authority. Independent exchange feeds
+# remain required corroboration, but they cannot replace a fresh Robinhood
+# quote/account artifact. A missing or stale Robinhood artifact fails closed.
+ROBINHOOD_FRONTLINE_PROVIDER = "Robinhood"
+REQUIRED_CRYPTO_QUOTE_PROVIDERS = ("Robinhood", "Coinbase", "Binance", "Kraken")
+RUNPOD_EXTERNAL_QUORUM_PROVIDERS = REQUIRED_CRYPTO_QUOTE_PROVIDERS
 FALLBACK_CRYPTO_MARKET_DATA_PROVIDERS = (
     "Robinhood", "Alpaca", "Coinbase", "Binance", "Kraken", "Finnhub", "CoinGecko"
 )
@@ -302,9 +303,9 @@ def load_crypto_quote(symbol):
     ]
     source_conflict = quote_sources_conflict(list(required_fresh.values()), settings)
     required_quorum_ok = not missing_required and not source_conflict
-    # A fallback quote may inform a candidate, but it never grants execution
-    # authority. Robinhood refresh/validation remains a separate hard gate.
-    primary = required_fresh.get("Robinhood") or required_fresh.get("Coinbase") or next(
+    # Robinhood is the frontline quote. Peer feeds corroborate it but never
+    # replace it for the primary executable candidate.
+    primary = required_fresh.get(ROBINHOOD_FRONTLINE_PROVIDER) or next(
         (source for source in quote_sources if source["fresh"] and source["provider"] != "Alpaca"),
         next((source for source in quote_sources if source["provider"] != "Alpaca"), None),
     )

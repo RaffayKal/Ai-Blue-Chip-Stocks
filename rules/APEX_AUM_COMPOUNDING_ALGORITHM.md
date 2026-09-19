@@ -2,6 +2,33 @@
 
 Algorithm ID: `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING`
 
+## APEX MICRO-CAPITAL SKYSCRAPER — GOVERNING SPECIFICATION
+
+The user-supplied **APEX MICRO-CAPITAL SKYSCRAPER: NON-INTEREST AUM
+COMPOUNDING SPECIFICATION** is the governing specification for this engine.
+Its controlling invariants are:
+
+- `q = $0.00000007` is ledger precision only; broker minimums, asset precision,
+  tick size, and settled cash control executable orders.
+- Deployable capital is settled cash less protected reserve, tax reserve, and
+  pending orders; unrealized P/L never raises a confirmed floor.
+- A floor is credited only after a closed position, settled proceeds, positive
+  net realized P/L after all costs, and reconciliation.
+- Use Decimal or integer nano-dollar accounting; never binary floating-point
+  rounding for ledger quanta.
+- Size from loss-first risk cash, invalidation distance, liquidity, position
+  caps, and deployable capital.
+- Require fresh quorum, no source conflict, broker/account verification,
+  settled cash, numeric notional, positive after-cost edge, risk pass,
+  duplicate-order clearance, and exact preview/review before execution.
+- The state machine is `SCAN -> VALIDATE -> FORECAST -> SIZE -> GATE -> REVIEW
+  -> EXECUTE -> RECONCILE`.
+- Any failed, stale, contradictory, or missing condition yields `NO ACTION`;
+  scanning and forecasting continue.
+
+The quantum-inspired probability layer is an uncertainty model only. It never
+creates certainty, capital, broker authority, or an execution exception.
+
 V5 is primarily a medium-scanner control layer. Scanners classify and rank
 evidence; they never create broker authority, submit previews, place orders, or
 credit AUM.
@@ -24,6 +51,12 @@ inputs; missing sizing inputs block execution, not source ingestion.
 
 Mode: realized-net-profit compounding. Interest, broker-borrowed capital,
 
+Capital freshness ceiling: verified deployable cash, trading capital, and
+liquidated proceeds may not remain stale for more than 7 days. Before that
+ceiling, refresh authoritative broker state, reconcile the AUM ledger,
+recalculate permitted allocation, and evaluate current candidates. If no
+candidate passes the APEX gates, preserve the capital and return `NO ACTION`.
+
 Scanner source-of-truth priority: `projection.aum_compounding.compounding_score`
 is the primary medium-scanner ranking field. It ranks verified realized
 history when available and otherwise uses only the explicitly labeled
@@ -37,6 +70,17 @@ risk, entry, invalidation, liquidity, allocation, and friction inputs.
 leverage, options, margin, short selling, guaranteed profit, unrealized profit,
 and projected profit are excluded from compounding. Legally transferred family
 capital is included after broker confirmation.
+
+## Wait / grow / harvest pacing doctrine
+
+This engine is not optimized for fast money or high-frequency cycling. A
+position is realized (harvested) only after it clears both a minimum hold
+duration and the next configured floor's required percentage gain -- not on
+every favorable tick. A stop-loss or confirmed setup invalidation always
+overrides patience; capital preservation beats waiting. Absent that, holding
+toward the next floor and harvesting there is the default, not an exception.
+`economically superior waiting` (see V4/V5 pause gates above) is the normal
+operating mode, not a fallback.
 
 ## Controlling objective
 

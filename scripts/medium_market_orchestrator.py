@@ -1,7 +1,8 @@
 #!/usr/bin/env python3
 """Read-only medium-cadence stock/crypto scanner for RunPod or a local host.
 
-Alpaca is the live provider. ChatGPT MCP/plugin observations may be supplied as
+Robinhood is the frontline broker/data authority. Alpaca is corroboration only.
+ChatGPT MCP/plugin observations may be supplied as
 timestamped JSON via PLUGIN_INPUT_FILE; MCP tools are not directly callable from
 an external Python process.
 """
@@ -42,6 +43,8 @@ CRYPTO_URL = "https://data.alpaca.markets/v1beta3/crypto/us/latest/quotes"
 CRYPTO_TRADE_URL = "https://data.alpaca.markets/v1beta3/crypto/us/latest/trades"
 ALPACA_ACCOUNT_URL = os.getenv("ALPACA_ACCOUNT_URL", "https://paper-api.alpaca.markets/v2/account")
 ALPACA_CLOCK_URL = os.getenv("ALPACA_CLOCK_URL", "https://paper-api.alpaca.markets/v2/clock")
+ROBINHOOD_EQUITY_CAPITAL = ROOT / "data" / "robinhood_equity_capital_snapshot.json"
+ROBINHOOD_EQUITY_QUOTE_DIR = ROOT / "data"
 WATCHLIST = Path(os.getenv("WATCHLIST_FILE", "data/blue_chip_watchlist.txt"))
 CRYPTO_WATCHLIST = Path(os.getenv("CRYPTO_WATCHLIST_FILE", "data/crypto_watchlist.txt"))
 MAX_AGE = float(os.getenv("QUOTE_MAX_AGE_SECONDS", "120"))
@@ -122,7 +125,7 @@ def quote_age_seconds(timestamp):
     return (datetime.now(timezone.utc) - parsed).total_seconds()
 
 
-def normalize_quote(symbol: str, asset_class: str, raw: dict, trade: dict | None = None) -> dict:
+def normalize_quote(symbol: str, asset_class: str, raw: dict, trade: dict | None = None, provider: str = "alpaca") -> dict:
     bid = number(raw.get("bp"))
     ask = number(raw.get("ap"))
     trade = trade or {}
@@ -143,7 +146,7 @@ def normalize_quote(symbol: str, asset_class: str, raw: dict, trade: dict | None
     stale = age is None or age < 0 or age > MAX_AGE
     ok = not missing and not stale
     return {
-        "provider": "alpaca",
+        "provider": provider,
         "symbol": symbol,
         "asset_class": asset_class,
         "bid": bid,
@@ -237,6 +240,51 @@ def alpaca_capital_status() -> dict:
         "crypto_buying_power_usd": crypto_buying_power,
         "missing": missing,
     }
+
+
+def robinhood_equity_capital_status() -> dict:
+    """Load the fresh Robinhood account artifact; never substitute Alpaca."""
+    try:
+        payload = json.loads(ROBINHOOD_EQUITY_CAPITAL.read_text())
+    except (OSError, json.JSONDecodeError):
+        payload = {}
+    buying_power = number(payload.get("buying_power_usd"))
+    retrieved_at = payload.get("capital_retrieved_at") or payload.get("timestamp")
+    parsed = parse_ts(retrieved_at)
+    age = (datetime.now(timezone.utc) - parsed).total_seconds() if parsed else None
+    valid = (
+        buying_power is not None
+        and payload.get("capital_source") == "robinhood.get_account.buying_power"
+        and age is not None
+        and 0 <= age <= MAX_AGE
+    )
+    return {
+        "label": "capital",
+        "account_type": "robinhood",
+        "status": "OK" if valid else "NO ACTION",
+        "source": "Robinhood",
+        "buying_power_usd": buying_power if valid else None,
+        "missing": [] if valid else ["fresh Robinhood buying_power_usd"],
+        "age_seconds": age,
+    }
+
+
+def robinhood_equity_quotes(symbols_: list[str]) -> dict:
+    """Return only fresh per-symbol Robinhood quote artifacts."""
+    result = {}
+    for symbol in symbols_:
+        path = ROBINHOOD_EQUITY_QUOTE_DIR / f"robinhood_equity_quote_snapshot_{symbol}.json"
+        try:
+            payload = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        timestamp = payload.get("quote_timestamp") or payload.get("timestamp")
+        parsed = parse_ts(timestamp)
+        age = (datetime.now(timezone.utc) - parsed).total_seconds() if parsed else None
+        if payload.get("provider") != "Robinhood" or parsed is None or not (0 <= age <= MAX_AGE):
+            continue
+        result[symbol] = payload
+    return result
 
 
 def alpaca_market_session() -> dict:
@@ -340,17 +388,20 @@ def scan() -> dict:
         session_info = alpaca_market_session()
     except Exception as exc:
         errors.append(f"clock: {exc}")
-    capital_status = {"status": "NO ACTION", "reason": "dynamic broker lookup required"}
+    capital_status = {"status": "NO ACTION", "reason": "fresh Robinhood broker artifact required"}
     try:
-        capital_status = alpaca_capital_status()
+        # Robinhood is frontline for equities. Crypto remains handled by the
+        # dedicated Robinhood crypto-capital artifact in the APEX scanner;
+        # this legacy medium orchestrator must not promote Alpaca to stock
+        # authority.
+        capital_status = robinhood_equity_capital_status() if stocks else alpaca_capital_status()
     except Exception as exc:
         errors.append(f"capital: {exc}")
     try:
         if stocks:
-            stock_trades = latest_trades(STOCK_TRADE_URL, stocks, os.getenv("ALPACA_STOCK_FEED", "iex"))
-            payload = alpaca_get(STOCK_URL, stocks, os.getenv("ALPACA_STOCK_FEED", "iex"))
-            for symbol, q in payload.get("quotes", {}).items():
-                quotes.append(normalize_quote(symbol, "stock", q, stock_trades.get(symbol)))
+            robinhood_quotes = robinhood_equity_quotes(stocks)
+            for symbol, q in robinhood_quotes.items():
+                quotes.append(normalize_quote(symbol, "stock", q, q, provider="robinhood"))
         if crypto:
             crypto_trades = latest_trades(CRYPTO_TRADE_URL, crypto)
             payload = alpaca_get(CRYPTO_URL, crypto)

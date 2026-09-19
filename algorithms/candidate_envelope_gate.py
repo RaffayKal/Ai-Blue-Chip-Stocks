@@ -55,16 +55,22 @@ def main() -> None:
     if not isinstance(provenance, list) or len(provenance) < 2:
         failed.append("data_provenance must contain at least two source records")
     else:
+        source_names = []
         for index, source in enumerate(provenance, start=1):
             if not isinstance(source, dict):
                 failed.append(f"data_provenance[{index}] must be an object")
                 continue
-            if not source.get("source"):
+            source_name = source.get("source")
+            if not source_name:
                 failed.append(f"data_provenance[{index}] source missing")
+            else:
+                source_names.append(str(source_name))
             if not source.get("timestamp"):
                 failed.append(f"data_provenance[{index}] timestamp missing")
             if source.get("status") != "fresh":
                 failed.append(f"data_provenance[{index}] status is not fresh")
+        if len(source_names) != len(set(source_names)):
+            failed.append("data_provenance must contain unique independent sources")
 
     market_input = envelope.get("market_input")
     if not isinstance(market_input, dict):

@@ -1,9 +1,35 @@
 {
-  "error": "RuntimeError",
-  "error_detail": "OpenAI HTTP 429: {\n  \"error\": {\n    \"message\": \"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"credit_balance_exhausted\"\n  }\n}",
+  "candidate_decision": "NO ACTION",
   "execution_authority": false,
-  "input_fingerprint": "f27b3d193dae847a879bc8837d81d8efce94d9ffeb9b460899899ef5f9d5a8d1",
+  "fallback_source": "RUNPOD_MEDIUM_WEIGHT_SCANNER_DETERMINISTIC",
+  "input_fingerprint": "e95345fb31d5ad3c8188ee40376b59310b28c00983a25164f9e77ad04bf00c6f",
+  "missing_facts": [],
+  "openai_error": "RuntimeError: OpenAI HTTP 400: {\n  \"error\": {\n    \"message\": \"Invalid 'input': string too long. Expected a string with maximum length 10485760, but got a string with length 72340005 instead.\",\n    \"type\": \"invalid_request_error\",\n    \"param\": \"input\",\n    \"code\": \"string_above_max_length\"\n  }\n}",
+  "projection": {
+    "blue_chips": {
+      "capital_fit_score": 100.0,
+      "continuation_probability": 31.8,
+      "freshness_score": 33.333,
+      "market_temperature_score": 41.0,
+      "net_opportunity_score": 2.097,
+      "sentiment_score": 26.0,
+      "session_confirmation_score": 0.0,
+      "source_depth_score": 20.0
+    },
+    "crypto": {
+      "capital_fit_score": 100.0,
+      "continuation_probability": 46.8,
+      "freshness_score": 33.333,
+      "market_temperature_score": 41.0,
+      "net_opportunity_score": 22.347,
+      "sentiment_score": 26.0,
+      "session_confirmation_score": 100.0,
+      "source_depth_score": 20.0
+    }
+  },
+  "reason": "RunPod deterministic fallback: identical medium8 forward-projection math the scanner already computes every cycle.",
   "role": "forward_projection",
-  "status": "ERROR",
-  "timestamp": "2026-09-17T17:18:12.950611Z"
+  "scanner_viable": false,
+  "status": "OK_DETERMINISTIC_FALLBACK",
+  "timestamp": "2026-09-19T03:21:25.779801Z"
 }

@@ -1,4 +1,12 @@
 #!/usr/bin/env python3
+"""Entry-validation gate for a single candidate (see CAPITAL_ALGORITHM.md).
+
+Structural eligibility only -- no concept of hold time or cadence, and it
+does not decide when to exit. The wait/grow/harvest exit-patience doctrine
+lives in rules/APEX_AUM_COMPOUNDING_ALGORITHM.md and
+apex_micro_crypto_ledger.should_harvest(); this module never authorizes
+fast cycling or scalping speed on its own.
+"""
 import json
 import math
 import sys
@@ -26,6 +34,15 @@ EXTENDED_EQUITY_SESSIONS = {"PRE_MARKET", "AFTER_HOURS", "OVERNIGHT"}
 BROKER_MINIMUM_ORDER_USD = {
     "robinhood": 1.0,
 }
+# Robinhood crypto fractional-order minimums differ by routing: $0.01 for
+# confirmed market-maker routing, $0.03 for smart exchange routing. Without
+# a confirmed routing on the candidate, use the higher (more conservative)
+# figure so a sized order is never rejected by the broker as too small.
+ROBINHOOD_CRYPTO_MINIMUM_BY_ROUTING_USD = {
+    "market maker routing": 0.01,
+    "smart exchange routing": 0.03,
+}
+ROBINHOOD_CRYPTO_MINIMUM_DEFAULT_USD = 0.03
 BROKER_MARGIN_MINIMUM_USD = {
     "robinhood": 2000.0,
 }
@@ -141,7 +158,13 @@ def evaluate(data: dict) -> dict:
     account_net_worth = number(data.get("account_net_worth_usd"), "account_net_worth_usd", failed) if data.get("account_net_worth_usd") is not None else None
     explicit_execution_authorization = data.get("explicit_execution_authorization") is True
 
-    broker_minimum = BROKER_MINIMUM_ORDER_USD.get(broker_name)
+    if broker_name == "robinhood" and asset_class == "CRYPTO":
+        routing = str(data.get("routing") or "").strip().lower()
+        broker_minimum = ROBINHOOD_CRYPTO_MINIMUM_BY_ROUTING_USD.get(
+            routing, ROBINHOOD_CRYPTO_MINIMUM_DEFAULT_USD
+        )
+    else:
+        broker_minimum = BROKER_MINIMUM_ORDER_USD.get(broker_name)
     if broker_minimum is not None and requested_notional is not None and requested_notional < broker_minimum:
         failed.append(f"{broker_name.title()} minimum order is ${broker_minimum:.2f}")
 

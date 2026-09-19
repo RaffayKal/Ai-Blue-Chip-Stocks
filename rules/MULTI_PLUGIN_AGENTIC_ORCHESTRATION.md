@@ -16,7 +16,25 @@ Their maximum authority is a qualified candidate envelope with:
 - at least two fresh provenance records
 - a `market_input` payload that passes local APEX validation
 
+Operations may emit an unlimited number of envelopes over time. There is no
+fixed envelope-count quota or artificial inter-envelope delay. Each envelope
+must still be new, idempotent, independently timestamped, source-quorum
+validated, conflict-free, risk-valid, and locally accepted. Repeated,
+stale, contradictory, or otherwise invalid envelopes remain rejected.
+
 Codex starts from `FULL_AGENT = OFF`. It independently validates the envelope through `algorithms/candidate_envelope_gate.py`.
+
+All connected, verified live-market-data providers are peer inputs for fresh
+market-data quorum and candidate-envelope production, including Robinhood,
+Alpaca, Twelve Data, Finnhub, exchange feeds, and Longbridge. This peer status
+applies only to market observations and provenance. Robinhood remains the
+broker-authoritative source for account state, buying power, tradability,
+preview, placement, and fill confirmation. A peer-produced envelope must pass
+the same freshness, conflict, risk, idempotency, and local APEX gates before
+Robinhood revalidation. Once those gates pass, peer-source data may drive a
+Robinhood buy or sell ticket; Robinhood must still validate the exact ticket,
+complete the required preview, receive the required confirmation, and provide
+the order/fill confirmation.
 
 If validation prints `VIABLE: false`, Codex stays dormant and the scanner continues. If validation prints `VIABLE: true` and `AUTONOMOUS_BUY_SELL: ENABLED_AFTER_GATE_PASS`, Codex may run the existing autonomous agentic buy/sell workflow, then return to sleep.
 

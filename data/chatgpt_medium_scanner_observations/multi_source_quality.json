@@ -1,9 +1,18 @@
 {
-  "error": "RuntimeError",
-  "error_detail": "OpenAI HTTP 429: {\n  \"error\": {\n    \"message\": \"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"credit_balance_exhausted\"\n  }\n}",
+  "candidate_decision": "NO ACTION",
   "execution_authority": false,
-  "input_fingerprint": "f27b3d193dae847a879bc8837d81d8efce94d9ffeb9b460899899ef5f9d5a8d1",
+  "fallback_source": "RUNPOD_MEDIUM_WEIGHT_SCANNER_DETERMINISTIC",
+  "input_fingerprint": "e95345fb31d5ad3c8188ee40376b59310b28c00983a25164f9e77ad04bf00c6f",
+  "missing_facts": [],
+  "openai_error": "RuntimeError: OpenAI transport error: <urlopen error The write operation timed out>",
+  "projection": {
+    "fresh_source_count": 1,
+    "source_conflict": false,
+    "total_source_count": 3
+  },
+  "reason": "RunPod deterministic fallback: source freshness/conflict read directly from the scanner's own quote quorum.",
   "role": "multi_source_quality",
-  "status": "ERROR",
-  "timestamp": "2026-09-17T17:18:12.978875Z"
+  "scanner_viable": false,
+  "status": "OK_DETERMINISTIC_FALLBACK",
+  "timestamp": "2026-09-19T03:21:28.052691Z"
 }

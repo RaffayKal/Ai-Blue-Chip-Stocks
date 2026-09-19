@@ -31,7 +31,11 @@
     <string>7</string>
     <key>ALPACA_STREAM_MARKET_DATA</key>
     <string>true</string>
+    <key>ROBINHOOD_STREAM_MARKET_DATA</key>
+    <string>true</string>
     <key>COINGECKO_STREAM_MARKET_DATA</key>
+    <string>true</string>
+    <key>FINNHUB_STREAM_MARKET_DATA</key>
     <string>true</string>
     <key>CODEX_LIGHT_HEALTH_SECONDS</key>
     <string>18000</string>

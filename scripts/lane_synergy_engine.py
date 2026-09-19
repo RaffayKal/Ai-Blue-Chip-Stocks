@@ -39,7 +39,7 @@ ROLLUP_PATH = ROOT / "data" / "lane_synergy_status.json"
 # and runpod_lightweight_scanner.TRACKED_CRYPTO_SYMBOLS, which stay limited
 # to what the broker can actually execute. Adding a coin here never grants
 # it execution eligibility.
-TRACKED_CRYPTO_SYMBOLS = ("BTC", "ETH", "SOL", "XRP", "BNB", "ADA", "DOGE", "LTC", "DOT", "AVAX", "LINK")
+TRACKED_CRYPTO_SYMBOLS = ("BTC", "ETH", "SOL", "XRP", "BNB", "ADA", "DOGE", "LTC", "DOT", "AVAX", "LINK", "BCH", "ETC", "XLM", "HBAR", "ALGO", "UNI", "NEAR", "ATOM", "SUI")
 ROLES = ("MATH", "HISTORY", "RESEARCH", "TEMPORAL")
 
 PRESENT_STALE_SECONDS = 120

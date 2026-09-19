@@ -60,7 +60,7 @@ def iso_now():
 
 def write_json(path, data):
     path.parent.mkdir(parents=True, exist_ok=True)
-    tmp = path.with_suffix(path.suffix + ".tmp")
+    tmp = path.with_suffix(path.suffix + f".{os.getpid()}.tmp")
     with tmp.open("w", encoding="utf-8") as handle:
         json.dump(data, handle, indent=2, sort_keys=True)
         handle.write("\n")

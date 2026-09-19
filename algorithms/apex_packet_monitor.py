@@ -90,7 +90,7 @@ def load_config(path: Path) -> dict[str, Any]:
     config.setdefault("freshness", {"max_quote_age_seconds": 420, "max_provenance_age_seconds": 420})
     config.setdefault("viability", {"min_apex_score": 75, "min_confidence": 0.65})
     config.setdefault("retry", {"max_attempts": 3, "base_backoff_seconds": 1.0, "max_backoff_seconds": 30.0})
-    config.setdefault("rate_limit", {"min_emit_interval_seconds": 18000})
+    config.setdefault("rate_limit", {"min_emit_interval_seconds": 0})
     config.setdefault("circuit_breaker", {"failure_threshold": 3, "cooldown_seconds": 900})
     config.setdefault("heartbeat", {"path": str(ROOT / "data" / "apex_packet_monitor_health.json")})
     for key in ("scanner_output_path", "state_path", "log_path"):
@@ -468,7 +468,9 @@ def monitor_once(config: dict[str, Any]) -> str:
         log_event(log_path, "transport_failed", error=str(exc), idempotency_key=idempotency_key)
         return "transport_failed"
 
-    state["emitted_idempotency_keys"] = (state["emitted_idempotency_keys"] + [idempotency_key])[-500:]
+    # Keep the complete consumed-key ledger. There is no artificial envelope
+    # count cap; every envelope is still independently deduplicated and gated.
+    state["emitted_idempotency_keys"].append(idempotency_key)
     state["last_emit_at"] = iso_now()
     state["consecutive_transport_failures"] = 0
     state["circuit_open_until"] = None

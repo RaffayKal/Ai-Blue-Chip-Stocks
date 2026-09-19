@@ -77,7 +77,7 @@ def write_snapshot(ticker):
     body = json.dumps(payload, indent=2, sort_keys=True) + "\n"
     for path in snapshot_paths(symbol):
         path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_suffix(path.suffix + f".{symbol}.tmp")
+        temporary = path.with_suffix(path.suffix + f".{symbol}.{os.getpid()}.tmp")
         temporary.write_text(body, encoding="utf-8")
         temporary.replace(path)
 

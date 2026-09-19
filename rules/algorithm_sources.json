@@ -32,6 +32,7 @@
     "scripts/robinhood_mcp_relay.py",
     "scripts/poll_robinhood_mcp_relay.py",
     "scripts/stream_independent_crypto_market_data.py",
+    "scripts/stream_finnhub_market_data.py",
     "rules/plugin_runtime_stack.json",
     "algorithms/candidate_envelope_gate.py",
     "algorithms/apex_micro_crypto_ledger.py",

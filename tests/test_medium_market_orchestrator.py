@@ -24,7 +24,12 @@ class MediumMarketOrchestratorTests(unittest.TestCase):
         self.assertFalse(any("/" in symbol.strip() for symbol in blue_chip_symbols if symbol.strip()))
 
     def test_separate_crypto_watchlist_contains_approved_pairs(self):
-        self.assertEqual(orchestrator.read_crypto_symbols(), ["BTC/USD", "ETH/USD"])
+        expected = [
+            line.strip()
+            for line in orchestrator.CRYPTO_WATCHLIST.read_text().splitlines()
+            if line.strip() and not line.strip().startswith("#")
+        ]
+        self.assertEqual(orchestrator.read_crypto_symbols(), expected)
 
     def test_paper_buying_power_labeled_paper(self):
         with patch.object(orchestrator, "alpaca_request", return_value={
@@ -75,20 +80,14 @@ class MediumMarketOrchestratorTests(unittest.TestCase):
                  "market_session_source": "alpaca_clock",
                  "raw": {},
              }), \
-             patch.object(orchestrator, "alpaca_capital_status", return_value={
+             patch.object(orchestrator, "robinhood_equity_capital_status", return_value={
                  "label": "capital",
-                 "account_type": "paper",
+                 "account_type": "robinhood",
                  "status": "OK",
                  "buying_power_usd": 400000.0,
-                 "crypto_buying_power_usd": 1000.0,
                  "missing": [],
              }), \
-             patch.object(orchestrator, "latest_trades", return_value={
-                 "AAPL": {"p": "100.1", "t": iso_before(3)}
-             }), \
-             patch.object(orchestrator, "alpaca_get", return_value={
-                 "quotes": {"AAPL": {"bp": "100", "ap": "100.2", "t": iso_before(2)}}
-             }), \
+             patch.object(orchestrator, "robinhood_equity_quotes", return_value={"AAPL": {"provider": "Robinhood", "bp": "100", "ap": "100.2", "p": "100.1", "t": iso_before(2)}}), \
              patch.object(orchestrator, "print_stale_quote_diagnostics"):
             result = orchestrator.scan()
         self.assertTrue(result["data_viable"])
@@ -102,20 +101,14 @@ class MediumMarketOrchestratorTests(unittest.TestCase):
                  "market_session_source": "alpaca_clock",
                  "raw": {},
              }), \
-             patch.object(orchestrator, "alpaca_capital_status", return_value={
+             patch.object(orchestrator, "robinhood_equity_capital_status", return_value={
                  "label": "capital",
-                 "account_type": "paper",
+                 "account_type": "robinhood",
                  "status": "NO ACTION",
-                 "buying_power_usd": 400000.0,
-                 "crypto_buying_power_usd": None,
-                 "missing": ["crypto_buying_power_usd"],
+                 "buying_power_usd": None,
+                 "missing": ["fresh Robinhood buying_power_usd"],
              }), \
-             patch.object(orchestrator, "latest_trades", return_value={
-                 "AAPL": {"p": "100.1", "t": iso_before(3)}
-             }), \
-             patch.object(orchestrator, "alpaca_get", return_value={
-                 "quotes": {"AAPL": {"bp": "100", "ap": "100.2", "t": iso_before(2)}}
-             }), \
+             patch.object(orchestrator, "robinhood_equity_quotes", return_value={"AAPL": {"provider": "Robinhood", "bp": "100", "ap": "100.2", "p": "100.1", "t": iso_before(2)}}), \
              patch.object(orchestrator, "print_stale_quote_diagnostics"):
             result = orchestrator.scan()
         self.assertTrue(result["data_viable"])
@@ -156,28 +149,22 @@ class MediumMarketOrchestratorTests(unittest.TestCase):
                  "market_session_source": "alpaca_clock",
                  "raw": {},
              }), \
-             patch.object(orchestrator, "alpaca_capital_status", return_value={
+             patch.object(orchestrator, "robinhood_equity_capital_status", return_value={
                  "label": "capital",
-                 "account_type": "paper",
+                 "account_type": "robinhood",
                  "status": "NO ACTION",
-                 "buying_power_usd": 400000.0,
-                 "crypto_buying_power_usd": None,
-                 "missing": ["crypto_buying_power_usd"],
+                 "buying_power_usd": None,
+                 "missing": ["fresh Robinhood buying_power_usd"],
              }), \
-             patch.object(orchestrator, "latest_trades", side_effect=[
-                 {"AAPL": {"p": "100.1", "t": iso_before(3)}},
-                 {"BTC/USD": {"p": "100005", "t": iso_before(1)}},
-             ]), \
-             patch.object(orchestrator, "alpaca_get", side_effect=[
-                 {"quotes": {"AAPL": {"bp": "100", "ap": "100.2", "t": iso_before(orchestrator.MAX_AGE + 60)}}},
-                 {"quotes": {"BTC/USD": {"bp": "100000", "ap": "100010", "t": iso_before(2)}}},
-             ]), \
+             patch.object(orchestrator, "robinhood_equity_quotes", return_value={}), \
+             patch.object(orchestrator, "latest_trades", return_value={"BTC/USD": {"p": "100005", "t": iso_before(1)}}), \
+             patch.object(orchestrator, "alpaca_get", return_value={"quotes": {"BTC/USD": {"bp": "100000", "ap": "100010", "t": iso_before(2)}}}), \
              patch.object(orchestrator, "print_stale_quote_diagnostics"):
             result = orchestrator.scan()
         self.assertTrue(result["data_viable"])
         self.assertFalse(result["scanner_viable"])
         self.assertFalse(result["execution_allowed"])
-        self.assertEqual(result["equity_data_status"]["reason"], "stale equity quotes are expected outside market hours")
+        self.assertEqual(result["equity_data_status"]["reason"], "no symbols configured")
         self.assertEqual(result["crypto_data_status"]["status"], "OK")
 
 

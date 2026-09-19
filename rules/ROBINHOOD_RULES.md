@@ -21,7 +21,7 @@ Robinhood buying power must be verified from the connected broker at runtime.
 - Robinhood fractional equity orders require market orders in the agentic tool route.
 - Robinhood extended-hours and 24 Hour Market equity orders require limit orders, not market orders.
 - Robinhood Crypto can trade 24/7, except scheduled maintenance and account restrictions.
-- Robinhood Crypto orders can start at `$1.00`.
+- Robinhood Crypto fractional spot orders can start at `$0.01` with market-maker routing or `$0.03` with smart-exchange routing, subject to live account, asset, routing, and preview validation.
 - Robinhood Crypto is separate from Robinhood Financial.
 - Autonomous allocation is dynamically bounded between 3% and 20% of verified buying power, with one open position maximum.
 - Accepted spread target is 0.02%-0.07%; 0.07% is the hard ceiling.
@@ -88,7 +88,7 @@ Regular-hours fractional/dollar stock orders use market orders. Pre-market, afte
 
 For blue-chip stocks and ETFs:
 
-- regular hours fractional/dollar order: market order only, `$1.00` minimum
+- crypto fractional spot order: routing-aware minimum of `$0.01` market-maker or `$0.03` smart-exchange; equity fractional minimum remains separate.
 - extended hours: limit order only, no fractional/dollar market order
 - all-day/24-hour market: limit order only, no fractional/dollar market order
 - unsupported fractional eligibility returns `WATCHLIST ONLY`
@@ -101,5 +101,5 @@ For crypto:
 - Crypto can be checked 24/7.
 - Scheduled maintenance blocks action.
 - Account restrictions block action.
-- Minimum order evaluation is `$1.00`.
+- Minimum crypto order evaluation is routing-aware: `$0.01` market-maker or `$0.03` smart-exchange. The live Robinhood preview remains authoritative.
 - Crypto cannot be used as margin collateral for stock positions.

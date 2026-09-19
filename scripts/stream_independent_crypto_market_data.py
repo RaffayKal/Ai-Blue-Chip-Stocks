@@ -74,7 +74,7 @@ def write_snapshot(provider, venue, symbol, bid, ask, last, timestamp):
         paths.append(ROOT / "data" / f"{provider.lower()}_crypto_quote_snapshot.json")
     for path in paths:
         path.parent.mkdir(parents=True, exist_ok=True)
-        temporary = path.with_suffix(path.suffix + f".{symbol}.tmp")
+        temporary = path.with_suffix(path.suffix + f".{symbol}.{os.getpid()}.tmp")
         temporary.write_text(body, encoding="utf-8")
         temporary.replace(path)
     announce_key = (provider, symbol)

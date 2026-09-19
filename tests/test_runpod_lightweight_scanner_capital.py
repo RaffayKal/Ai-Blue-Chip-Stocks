@@ -54,8 +54,8 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             "path": "test",
             "age_seconds": 1,
             "max_age_seconds": 15,
-            "quote_source_count": 2,
-            "fresh_quote_source_count": 2,
+            "quote_source_count": 3,
+            "fresh_quote_source_count": 3,
             "fresh_optional_quote_source_count": 0,
             "source_conflict": False,
             "has_bid_ask_last": True,
@@ -63,17 +63,6 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             "required_quote_quorum_ok": True,
             "missing_required_quote_sources": [],
             "required_quote_sources": {
-                "Robinhood": {
-                    "provider": "Robinhood",
-                    "fresh": True,
-                    "timestamp": iso_before(1),
-                    "path": "data/robinhood_crypto_quote_snapshot.json",
-                    "age_seconds": 1,
-                    "max_age_seconds": 15,
-                    "bid": 100.0,
-                    "ask": 100.1,
-                    "last": 100.05,
-                },
                 "Coinbase": {
                     "provider": "Coinbase",
                     "fresh": True,
@@ -84,6 +73,16 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
                     "bid": 100.0,
                     "ask": 100.1,
                     "last": 100.05,
+                },
+                "Binance": {
+                    "provider": "Binance", "fresh": True, "timestamp": iso_before(1),
+                    "path": "data/binance_crypto_quote_snapshot.json", "age_seconds": 1,
+                    "max_age_seconds": 15, "bid": 100.0, "ask": 100.1, "last": 100.05,
+                },
+                "Kraken": {
+                    "provider": "Kraken", "fresh": True, "timestamp": iso_before(1),
+                    "path": "data/kraken_crypto_quote_snapshot.json", "age_seconds": 1,
+                    "max_age_seconds": 15, "bid": 100.0, "ask": 100.1, "last": 100.05,
                 },
             },
             "payload": payload,
@@ -180,7 +179,7 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             )
         self.assertEqual(
             [record["source"] for record in envelope["data_provenance"]],
-            ["volatile_crypto_candidates.active_symbol", "Robinhood.crypto_quote", "Coinbase.crypto_quote"],
+            ["volatile_crypto_candidates.active_symbol", "Robinhood.crypto_quote", "Coinbase.crypto_quote", "Binance.crypto_quote", "Kraken.crypto_quote"],
         )
 
     def test_lightweight_viability_does_not_require_heavy_lane_to_be_awake(self):
@@ -275,14 +274,18 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             }
             scanner.write_json(alpaca, {**base, "provider": "Alpaca"})
             coinbase = Path(tmp) / "coinbase_crypto_quote_snapshot.json"
+            binance = Path(tmp) / "binance_crypto_quote_snapshot.json"
+            kraken = Path(tmp) / "kraken_crypto_quote_snapshot.json"
             scanner.write_json(robinhood, {**base, "provider": "Robinhood"})
             scanner.write_json(coinbase, {**base, "provider": "Coinbase"})
+            scanner.write_json(binance, {**base, "provider": "Binance"})
+            scanner.write_json(kraken, {**base, "provider": "Kraken"})
             scanner.write_json(sample, {**base, "provider": "Robinhood", "bid": 1.0, "ask": 1.1, "last": 1.05})
-            with patch.object(scanner, "CRYPTO_QUOTE_INPUTS", [alpaca, robinhood, coinbase, sample]):
+            with patch.object(scanner, "CRYPTO_QUOTE_INPUTS", [alpaca, robinhood, coinbase, binance, kraken, sample]):
                 result = scanner.load_crypto_quote("BTC")
-        self.assertTrue(result["required_quote_quorum_ok"])
-        self.assertEqual(result["fresh_quote_source_count"], 2)
-        self.assertEqual(result["fresh_optional_quote_source_count"], 2)
+            self.assertTrue(result["required_quote_quorum_ok"])
+            self.assertEqual(result["fresh_quote_source_count"], 4)
+            self.assertEqual(result["fresh_optional_quote_source_count"], 2)
         self.assertFalse(result["source_conflict"])
 
     def test_load_crypto_quote_requires_fresh_coinbase_cross_check(self):
@@ -301,13 +304,13 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             with patch.object(scanner, "CRYPTO_QUOTE_INPUTS", [robinhood]):
                 result = scanner.load_crypto_quote("BTC")
             self.assertFalse(result["required_quote_quorum_ok"])
-            self.assertEqual(result["missing_required_quote_sources"], ["Coinbase"])
+            self.assertEqual(result["missing_required_quote_sources"], ["Coinbase", "Binance", "Kraken"])
 
             scanner.write_json(coinbase, {**base, "provider": "Coinbase"})
             with patch.object(scanner, "CRYPTO_QUOTE_INPUTS", [robinhood, coinbase]):
                 result = scanner.load_crypto_quote("BTC")
-        self.assertTrue(result["required_quote_quorum_ok"])
-        self.assertEqual(result["fresh_quote_source_count"], 2)
+            self.assertFalse(result["required_quote_quorum_ok"])
+            self.assertEqual(result["fresh_quote_source_count"], 2)
 
     def test_load_crypto_quote_blocks_missing_required_provider(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -323,8 +326,8 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             })
             with patch.object(scanner, "CRYPTO_QUOTE_INPUTS", [alpaca]):
                 result = scanner.load_crypto_quote("BTC")
-        self.assertFalse(result["required_quote_quorum_ok"])
-        self.assertEqual(result["missing_required_quote_sources"], ["Robinhood", "Coinbase"])
+            self.assertFalse(result["required_quote_quorum_ok"])
+            self.assertEqual(result["missing_required_quote_sources"], ["Robinhood", "Coinbase", "Binance", "Kraken"])
 
     def test_alpaca_never_becomes_primary_candidate_quote(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -509,14 +512,14 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
              patch.object(scanner, "load_crypto_quote", return_value=self.quote()), \
              patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
             envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
-        self.assertEqual(envelope["fresh_quote_source_count"], 2)
+        self.assertEqual(envelope["fresh_quote_source_count"], 3)
         self.assertTrue(envelope["market_input"]["scanner_quote_stream"]["required_quote_quorum_ok"])
 
     def test_missing_robinhood_data_blocks_viability(self):
         quote = self.quote(
             fresh_quote_source_count=0,
             required_quote_quorum_ok=False,
-            missing_required_quote_sources=["Robinhood", "Coinbase"],
+            missing_required_quote_sources=["Coinbase", "Binance", "Kraken"],
             required_quote_sources={},
         )
         with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
@@ -524,7 +527,7 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
              patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
             envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
         self.assertFalse(envelope["scanner_viable"])
-        self.assertIn("required crypto quote sources not satisfied: missing Robinhood, Coinbase", envelope["failed_checks"])
+        self.assertIn("required crypto quote sources not satisfied: missing Coinbase, Binance, Kraken", envelope["failed_checks"])
 
     def test_missing_apex_stop_does_not_block_scanner_candidate(self):
         quote = self.quote(payload={"invalidation_price_usd": None, "stop_distance_usd": None})
