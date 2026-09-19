@@ -22,6 +22,7 @@ fi
 # thousands of asyncio lanes on a small pod: prior runs on 4 GB RAM were OOM
 # killed with exit code 137. Derive a hard safety ceiling from actual memory.
 MEMORY_LIMIT_BYTES=""
+TOTAL_MEMORY_GB="${RUNPOD_MEMORY_GB:-}"
 for memory_limit_path in /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory/memory.limit_in_bytes; do
   if [ -r "$memory_limit_path" ]; then
     candidate_limit="$(sed -n '1p' "$memory_limit_path")"
@@ -31,7 +32,9 @@ for memory_limit_path in /sys/fs/cgroup/memory.max /sys/fs/cgroup/memory/memory.
     fi
   fi
 done
-if [ -n "$MEMORY_LIMIT_BYTES" ]; then
+if [ -n "$TOTAL_MEMORY_GB" ] && [ "$TOTAL_MEMORY_GB" -gt 0 ] 2>/dev/null; then
+  :
+elif [ -n "$MEMORY_LIMIT_BYTES" ]; then
   TOTAL_MEMORY_GB="$(awk -v bytes="$MEMORY_LIMIT_BYTES" 'BEGIN {printf "%d", (bytes/1024/1024/1024)+0.5}')"
 else
   TOTAL_MEMORY_GB="$(awk '/MemTotal:/ {printf "%d", ($2/1024/1024)+0.5; exit}' /proc/meminfo 2>/dev/null || printf '4')"
