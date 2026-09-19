@@ -1241,6 +1241,12 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     # inputs must make the envelope non-viable, not merely watchlistable.
     apex_sizing_viable = micro_math.get("RESULT") in {"PASS", "SIZED CANDIDATE"}
     execution_viable = viable and apex_sizing_viable
+    requested_side = str(
+        crypto_quote["payload"].get("candidate_side")
+        or crypto_quote["payload"].get("side")
+        or "BUY"
+    ).upper()
+    candidate_side = requested_side if requested_side in {"BUY", "SELL"} else "BUY"
     envelope = {
         "architecture": ARCHITECTURE_NAME,
         "envelope_id": f"runpod-scan-{stable_hash({'symbol': symbol, 'sources': required_sources})[:16]}",
@@ -1258,7 +1264,12 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "requested_codex_activation": viable,
         "plugins_execute_trades": False,
         "broker_order_submitted": False,
-        "candidate_decision": "NO ACTION" if failed else "WATCHLIST ONLY",
+        # A fully qualified envelope must enter the Robinhood execution
+        # consumer. Any candidate that fails deterministic viability or
+        # sizing is fail-closed as NO ACTION. Broker preview, exact-ticket,
+        # authorization, idempotency, and broker confirmation remain required
+        # before any order placement.
+        "candidate_decision": f"{candidate_side} CANDIDATE" if execution_viable else "NO ACTION",
         "apex_score": 0,
         "confidence": 0,
         "codex_heavy_state": codex_heavy_state,
