@@ -1,4 +1,12 @@
 {
+  "profit_objective": {
+    "primary_objective": "POSITIVE_REALIZED_NET_PROFIT_AND_CAPITAL_GROWTH",
+    "capital_amount_is_not_the_objective": true,
+    "net_profit_definition": "REALIZED_PROCEEDS_MINUS_COST_BASIS_FEES_SPREAD_SLIPPAGE_AND_EXECUTION_COSTS",
+    "only_realized_net_profit_increases_compounding_capital": true,
+    "unrealized_profit_authorizes_nothing": true,
+    "negative_or_unverified_net_profit_action": "NO ACTION"
+  },
   "capital": {
     "buying_power_usd": null,
     "crypto_buying_power_usd": null,
