@@ -2,6 +2,10 @@
 
 Primary agentic broker: Robinhood.
 
+Execution routing is fixed: Robinhood MCP is the sole primary order-placement
+authority. RunPod may scan and provide backup data continuity; Claude and other
+systems may orchestrate or validate. No alternate system may place orders.
+
 Effective date: `2026-09-10`.
 
 Configured local MCP route:

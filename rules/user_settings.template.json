@@ -36,6 +36,10 @@
   },
   "broker": {
     "name": null,
+    "primary_execution_authority": "Robinhood MCP",
+    "backup_execution_authorities": [],
+    "runpod_role": "SCANNER_AND_BACKUP_DATA_ONLY",
+    "claude_role": "ORCHESTRATION_AND_VALIDATION_ONLY",
     "supports_crypto_24_7": null,
     "supports_us_equity_after_hours": null,
     "supports_us_equity_overnight": null,
