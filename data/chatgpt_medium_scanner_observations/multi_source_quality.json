@@ -2,9 +2,9 @@
   "candidate_decision": "NO ACTION",
   "execution_authority": false,
   "fallback_source": "RUNPOD_MEDIUM_WEIGHT_SCANNER_DETERMINISTIC",
-  "input_fingerprint": "e95345fb31d5ad3c8188ee40376b59310b28c00983a25164f9e77ad04bf00c6f",
+  "input_fingerprint": "2851ec793b6603f955869365d657c56f43b74b86ac6fa4cadd26e09040123984",
   "missing_facts": [],
-  "openai_error": "RuntimeError: OpenAI transport error: <urlopen error The write operation timed out>",
+  "openai_error": "RuntimeError: OpenAI transport error: <urlopen error [Errno 8] nodename nor servname provided, or not known>",
   "projection": {
     "fresh_source_count": 1,
     "source_conflict": false,
@@ -14,5 +14,5 @@
   "role": "multi_source_quality",
   "scanner_viable": false,
   "status": "OK_DETERMINISTIC_FALLBACK",
-  "timestamp": "2026-09-19T03:21:28.052691Z"
+  "timestamp": "2026-09-24T19:36:09.322868Z"
 }

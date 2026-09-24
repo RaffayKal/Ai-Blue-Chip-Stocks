@@ -20,6 +20,8 @@ data_quality:
 
 execution_quality:
   max_spread_decimal_crypto: null
+  max_spread_decimal_crypto_market_maker: null
+  max_spread_decimal_crypto_smart_exchange: null
   max_spread_decimal_us_equity_regular: null
   max_spread_decimal_us_equity_extended: null
   min_liquidity_usd: null

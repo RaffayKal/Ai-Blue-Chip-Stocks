@@ -36,9 +36,11 @@
     "max_allowed_source_price_difference_decimal": 0.002
   },
   "execution_quality": {
-    "min_spread_decimal": 0.0002,
+    "min_spread_decimal": 0.0,
     "max_spread_decimal": 0.0007,
     "max_spread_decimal_crypto": 0.0007,
+    "max_spread_decimal_crypto_market_maker": 0.02,
+    "max_spread_decimal_crypto_smart_exchange": 0.007,
     "max_spread_decimal_us_equity_regular": 0.0007,
     "max_spread_decimal_us_equity_extended": 0.0007,
     "min_liquidity_usd": null,

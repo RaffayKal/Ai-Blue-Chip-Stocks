@@ -18,7 +18,7 @@ Signal strength never overrides risk failure.
 - Allocation: dynamically 3%-20% of verified buying power.
 - Maximum open positions: 1.
 - Liquidity: require confirmed positive liquidity sufficient for the positive net-profit calculation; no invented fixed dollar threshold.
-- Spread: 0.02%-0.07%; 0.07% is the hard ceiling and tighter is better.
+- Equity spread: 0.00%-0.07%. Crypto spread is routing-aware: market-maker up to 2.00%, smart-exchange up to 0.70%. There is no minimum spread requirement; preview and positive after-cost-profit checks still control execution.
 - Quote freshness: use available live sources within the configured 0.0007-second-to-7-minute operating range; stale or contradictory data returns `NO ACTION`.
 
 ## Dynamic Capital Rule

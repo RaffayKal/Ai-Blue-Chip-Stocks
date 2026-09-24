@@ -447,7 +447,13 @@ def build_micro_trade_value(crypto_quote):
     execution_quality = settings.get("execution_quality", {}) if isinstance(settings, dict) else {}
     max_allocation_decimal = valid_positive_number(asset_limits.get("maximum_allocation_decimal")) or 0.2
     minimum_allocation_decimal = valid_positive_number(asset_limits.get("minimum_allocation_decimal")) or 0.03
-    max_spread_decimal = valid_positive_number(execution_quality.get("max_spread_decimal_crypto")) or 0.0007
+    routing = str(payload.get("routing") or payload.get("crypto_routing") or "").strip().lower()
+    if "market maker" in routing or "market-maker" in routing:
+        max_spread_decimal = valid_positive_number(execution_quality.get("max_spread_decimal_crypto_market_maker")) or 0.02
+    elif "smart exchange" in routing or "smart-exchange" in routing:
+        max_spread_decimal = valid_positive_number(execution_quality.get("max_spread_decimal_crypto_smart_exchange")) or 0.007
+    else:
+        max_spread_decimal = valid_positive_number(execution_quality.get("max_spread_decimal_crypto")) or 0.0007
     max_micro_notional = buying_power * max_allocation_decimal if buying_power is not None else None
     spread = ask - bid if bid is not None and ask is not None else None
     mid = (ask + bid) / 2 if bid is not None and ask is not None else None
@@ -472,6 +478,7 @@ def build_micro_trade_value(crypto_quote):
         "max_allocation_decimal": max_allocation_decimal,
         "minimum_allocation_decimal": minimum_allocation_decimal,
         "max_spread_decimal": max_spread_decimal,
+        "routing": payload.get("routing") or payload.get("crypto_routing"),
         "max_micro_notional_usd": round(max_micro_notional, 6) if max_micro_notional is not None else None,
         "ticket_within_cap": ticket_within_cap,
         "bid": bid,
@@ -672,8 +679,22 @@ def build_medium8_projection(source_records, session_confirmed, sentiment, tempe
     spread_decimal = numeric((micro_trade_value or {}).get("spread_decimal"))
     settings = load_json(USER_SETTINGS, {})
     execution_quality = settings.get("execution_quality", {}) if isinstance(settings, dict) else {}
-    max_spread_decimal = valid_positive_number(execution_quality.get("max_spread_decimal_crypto")) or 0.0007
-    spread_quality_score = 100.0 if spread_decimal is not None and spread_decimal <= max_spread_decimal else 0.0
+    routing = str((micro_trade_value or {}).get("routing") or "").strip().lower()
+    if "market maker" in routing or "market-maker" in routing:
+        max_spread_decimal = valid_positive_number(execution_quality.get("max_spread_decimal_crypto_market_maker")) or 0.02
+    elif "smart exchange" in routing or "smart-exchange" in routing:
+        max_spread_decimal = valid_positive_number(execution_quality.get("max_spread_decimal_crypto_smart_exchange")) or 0.007
+    else:
+        max_spread_decimal = valid_positive_number(execution_quality.get("max_spread_decimal_crypto")) or 0.0007
+    # Treat spread as a tactical priority signal, not a minimum-floor gate:
+    # a near-zero spread receives the strongest quality score, while a spread
+    # at the routing ceiling receives only a passing score. The ledger still
+    # hard-blocks non-positive after-cost economics.
+    spread_quality_score = (
+        clamp(100.0 * (1.0 - (spread_decimal / max_spread_decimal)))
+        if spread_decimal is not None and max_spread_decimal > 0 and spread_decimal <= max_spread_decimal
+        else 0.0
+    )
     net_opportunity_score = clamp(continuation_probability - reversal_risk_score * 0.35 + spread_quality_score * 0.1)
     medium8 = {
         "freshness_score": round(freshness_score, 3),
@@ -684,6 +705,7 @@ def build_medium8_projection(source_records, session_confirmed, sentiment, tempe
         "source_depth_score": round(source_depth_score, 3),
         "continuation_probability": round(continuation_probability, 3),
         "net_opportunity_score": round(net_opportunity_score, 3),
+        "spread_priority": "TACTICAL_HIGH" if spread_quality_score >= 90 else "TACTICAL_PASS" if spread_quality_score > 0 else "BLOCKED",
     }
     return {
         "tier": tier,

@@ -24,7 +24,7 @@ Robinhood buying power must be verified from the connected broker at runtime.
 - Robinhood Crypto fractional spot orders can start at `$0.01` with market-maker routing or `$0.03` with smart-exchange routing, subject to live account, asset, routing, and preview validation.
 - Robinhood Crypto is separate from Robinhood Financial.
 - Autonomous allocation is dynamically bounded between 3% and 20% of verified buying power, with one open position maximum.
-- Accepted spread target is 0.02%-0.07%; 0.07% is the hard ceiling.
+- Crypto spread is routing-aware: market-maker quotes may pass up to 2.00% because Robinhood live market-maker quotes can be materially wider; smart-exchange quotes remain capped at 0.70%. There is no minimum spread requirement. The live Robinhood preview and positive after-cost-profit check remain authoritative.
 - Quotes must come from available live sources within the configured 0.0007-second-to-7-minute operating range.
 - Robinhood margin access is not automatic.
 - Robinhood margin requires eligibility and at least `$2,000` portfolio value.
