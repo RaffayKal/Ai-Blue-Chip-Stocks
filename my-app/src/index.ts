@@ -7,6 +7,7 @@ type QuoteSnapshot = {
 	ask: number;
 	last: number;
 	quote_timestamp: string;
+	routing?: string;
 	source: "robinhood";
 	execution_authority: "robinhood";
 };
@@ -30,7 +31,8 @@ function parseSnapshot(value: unknown): QuoteSnapshot | null {
 		item.source !== "robinhood" || item.execution_authority !== "robinhood" ||
 		typeof item.symbol !== "string" || !item.symbol ||
 		numbers.some((value) => typeof value !== "number" || !Number.isFinite(value) || value <= 0) ||
-		typeof item.quote_timestamp !== "string" || !Number.isFinite(Date.parse(item.quote_timestamp))) return null;
+		typeof item.quote_timestamp !== "string" || !Number.isFinite(Date.parse(item.quote_timestamp)) ||
+		(item.asset_class === "crypto" && (typeof item.routing !== "string" || !item.routing.trim()))) return null;
 	return item as QuoteSnapshot;
 }
 

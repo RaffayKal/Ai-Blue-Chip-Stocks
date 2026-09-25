@@ -34,6 +34,8 @@ Every market action must be based on confirmed facts:
 
 If any required fact is missing, stale, contradictory, or unverified, the only valid output is `NO ACTION`.
 
+For Robinhood crypto quote ingestion, preserve the broker-reported routing on each symbol snapshot and apply the matching routing-specific spread limits in `rules/ROBINHOOD_RULES.md`. Use the generic fallback only when routing is genuinely unavailable; missing/stale route or quote data must fail closed. Never synthesize liquidity, quorum, risk, or account-eligibility evidence from a quote.
+
 ## Market Reality Rule
 
 Crypto, equities, options, ETFs, and funds do not share the same trading clock.

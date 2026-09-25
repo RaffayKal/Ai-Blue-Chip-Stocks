@@ -15,6 +15,22 @@ INTERVAL = max(4.0, min(420.0, float(os.getenv("ROBINHOOD_MCP_RELAY_INTERVAL_SEC
 SNAPSHOT = ROOT / "data" / "robinhood_crypto_quote_snapshot.json"
 
 
+def normalized_symbol(value):
+    symbol = str(value or "").strip().upper().replace("-", "")
+    if symbol.endswith("USD"):
+        symbol = symbol[:-3]
+    if not symbol:
+        raise ValueError("relay payload has an invalid crypto symbol")
+    return symbol
+
+
+def write_snapshot(path, payload):
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    temporary.replace(path)
+
+
 def poll_once():
     request = urllib.request.Request(URL, headers={"Authorization": f"Bearer {TOKEN}"})
     with urllib.request.urlopen(request, timeout=10) as response:
@@ -22,12 +38,12 @@ def poll_once():
     payload = response_payload.get("snapshot", response_payload)
     if payload.get("source") != "robinhood" or payload.get("asset_class") != "crypto":
         raise ValueError("relay payload is not a Robinhood crypto snapshot")
-    for field in ("bid", "ask", "last", "quote_timestamp", "symbol"):
+    for field in ("bid", "ask", "last", "quote_timestamp", "symbol", "routing"):
         if not payload.get(field):
             raise ValueError(f"relay payload missing {field}")
     payload = {
         **payload,
-        "symbol": str(payload["symbol"]).upper().removesuffix("USD"),
+        "symbol": normalized_symbol(payload["symbol"]),
         "asset_class": "CRYPTO",
         "session": "CRYPTO_24_7",
         "venue": "Robinhood Crypto",
@@ -36,10 +52,12 @@ def poll_once():
         "data_status": "fresh",
         "source": "Robinhood.get_crypto_quotes",
     }
-    SNAPSHOT.parent.mkdir(parents=True, exist_ok=True)
-    temporary = SNAPSHOT.with_suffix(".json.tmp")
-    temporary.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    temporary.replace(SNAPSHOT)
+    # The scanner selects quotes by symbol. Keep the latest snapshot for each
+    # symbol as well as the legacy "latest quote" file; otherwise a dynamic
+    # candidate can silently fall back to a stale or wrong-symbol snapshot.
+    symbol_snapshot = SNAPSHOT.with_name(f"robinhood_crypto_quote_snapshot_{payload['symbol']}.json")
+    write_snapshot(symbol_snapshot, payload)
+    write_snapshot(SNAPSHOT, payload)
 
 
 if __name__ == "__main__":
