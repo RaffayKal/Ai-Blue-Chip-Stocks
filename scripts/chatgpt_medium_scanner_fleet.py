@@ -9,6 +9,7 @@ They cannot authorize, preview, or place broker orders.
 from __future__ import annotations
 
 import hashlib
+import fcntl
 import json
 import os
 import ssl
@@ -59,13 +60,15 @@ ROLES = (
 # cap documents and reinforces the minimum lane breadth it can consume without
 # turning every lane into an independent paid model invocation.
 CHATGPT_MEDIUM_SCANNER_LANE_CAP = max(70, int(os.environ.get("CHATGPT_MEDIUM_SCANNER_LANE_CAP", "70")))
+MAX_PROMPT_CHARS = 120_000
+MAX_INPUT_AGE_SECONDS = 180
 
 SCANNER_INSTRUCTIONS = (
     "You are one regular ChatGPT medium-weight scanner in a market-analysis fleet. "
     "Use only supplied data. Do not invent quotes, timestamps, liquidity, or forecasts. "
     "Evaluate factor-diverse evidence including value, momentum, quality, liquidity, "
     "spread, slippage, and fees where supplied. Treat source disagreement, missing data, "
-    "and uncertain execution economics as reasons for WATCHLIST ONLY or NO ACTION. "
+    "and uncertain execution economics as reasons for LOOKING, WATCHLIST ONLY, or NO ACTION. "
     "Do not claim guaranteed returns. Do not execute, preview, authorize, or request a trade. "
     "Never override deterministic gates. Return JSON only. scanner_viable must be false "
     "if required facts are missing, stale, or conflicting."
@@ -92,13 +95,68 @@ def atomic_write(path: Path, value: dict) -> None:
 
 
 def inputs() -> list[dict]:
-    paths = sorted(INPUT_DIR.glob("*.json"))
+    # Retired fleets leave thousands of lane files behind. Only read current
+    # lanes, newest first, and actually enforce the configured synthesis cap.
+    cutoff = time.time() - MAX_INPUT_AGE_SECONDS
+    dated_paths = []
+    for path in INPUT_DIR.glob("*.json"):
+        try:
+            modified = path.stat().st_mtime
+        except OSError:
+            continue
+        if modified >= cutoff:
+            dated_paths.append((modified, path))
+    paths = [path for _, path in sorted(dated_paths, reverse=True)[:CHATGPT_MEDIUM_SCANNER_LANE_CAP]]
     values = [load(path) for path in paths]
     values = [value for value in values if value]
     if not values:
         value = load(FALLBACK_INPUT)
         values = [value] if value else []
     return values
+
+
+def prompt_lane(lane: dict) -> dict:
+    """Keep current evidence; exclude repeated fleet records and prior output."""
+    result = {key: lane[key] for key in (
+        "envelope_id", "scanner_lane", "scanner_viable", "candidate_decision",
+        "market_input", "required_sources", "failed_checks", "source_quality",
+        "watchlist_symbols", "watchlist_symbol_count", "robinhood_watchlist_snapshot",
+        "robinhood_watchlist_crypto_symbols",
+    ) if key in lane}
+    projection = lane.get("projection") or {}
+    result["projection"] = {
+        name: {key: item[key] for key in (
+            "projection_scores", "reversal_risk_score", "stale_penalty_score",
+            "effective_evidence", "forecast_horizon",
+        ) if key in item}
+        for name in ("crypto", "blue_chips")
+        if isinstance(item := projection.get(name), dict)
+    }
+    return result
+
+
+def prompt_lanes(lanes: list[dict]) -> list[dict]:
+    """Collapse identical evidence from redundant lanes, retaining conflicts."""
+    volatile = {"envelope_id", "scanner_lane", "age_seconds", "quote_age_seconds",
+                "scanner_refresh_timestamp", "scanner_quote_stream_refresh_timestamp",
+                "quote_stream_refresh_timestamp"}
+
+    def stable(value):
+        if isinstance(value, dict):
+            return {k: stable(v) for k, v in value.items() if k not in volatile}
+        if isinstance(value, list):
+            return [stable(v) for v in value]
+        return value
+
+    groups = {}
+    for lane in lanes:
+        summary = prompt_lane(lane)
+        identity = fingerprint([stable(summary)])
+        if identity in groups:
+            groups[identity]["equivalent_lane_count"] += 1
+        else:
+            groups[identity] = {**summary, "equivalent_lane_count": 1}
+    return list(groups.values())
 
 
 def fingerprint(values: list[dict]) -> str:
@@ -162,15 +220,17 @@ def scan_once(model: str, role: str, instruction: str, lanes: list[dict], fp: st
     prompt = json.dumps({
         "role": role,
         "instruction": instruction,
-        "candidate_lanes": lanes,
+        "candidate_lanes": prompt_lanes(lanes),
         "required_result": {
             "scanner_viable": "boolean",
-            "candidate_decision": "BUY CANDIDATE|SELL CANDIDATE|WATCHLIST ONLY|NO ACTION",
+            "candidate_decision": "BUY CANDIDATE|SELL CANDIDATE|LOOKING|WATCHLIST ONLY|NO ACTION",
             "projection": "object",
             "reason": "string",
             "missing_facts": "array",
         },
-    }, sort_keys=True)
+    }, sort_keys=True, separators=(",", ":"))
+    if len(prompt) > MAX_PROMPT_CHARS:
+        raise ValueError(f"scanner evidence exceeds bounded prompt budget: {len(prompt)} characters")
     response = call_responses_api(
         model,
         instructions=SCANNER_INSTRUCTIONS,
@@ -190,7 +250,7 @@ def scan_once(model: str, role: str, instruction: str, lanes: list[dict], fp: st
         raise RuntimeError("no parseable scanner JSON")
     if not isinstance(result.get("scanner_viable"), bool):
         raise ValueError("scanner_viable must be boolean")
-    if result.get("candidate_decision") not in {"BUY CANDIDATE", "SELL CANDIDATE", "WATCHLIST ONLY", "NO ACTION"}:
+    if result.get("candidate_decision") not in {"BUY CANDIDATE", "SELL CANDIDATE", "LOOKING", "WATCHLIST ONLY", "NO ACTION"}:
         raise ValueError("invalid candidate_decision")
     return {
         "timestamp": now(),
@@ -312,6 +372,13 @@ def run_role(model: str, role: str, instruction: str, lanes: list[dict], fp: str
 
 
 def main() -> None:
+    (ROOT / "data").mkdir(exist_ok=True)
+    instance_lock = (ROOT / "data" / "chatgpt_medium_scanner_fleet.lock").open("w")
+    try:
+        fcntl.flock(instance_lock, fcntl.LOCK_EX | fcntl.LOCK_NB)
+    except BlockingIOError:
+        print("CHATGPT_MEDIUM_SCANNER_FLEET: ALREADY_RUNNING", flush=True)
+        return
     # RunPod does the medium-scanner's job itself whenever ChatGPT is down
     # (missing key, exhausted credits, transport failure) rather than the
     # whole fleet process exiting or every role going to ERROR. Re-check the

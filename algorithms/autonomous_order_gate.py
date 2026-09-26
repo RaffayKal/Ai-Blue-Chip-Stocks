@@ -84,6 +84,14 @@ def main() -> None:
 
     failed = []
     verify_algorithm_sources(failed)
+    if market_input.get("side") not in (None, order_ticket.get("side")):
+        failed.append("ticket side does not match market input")
+    market_input["side"] = order_ticket.get("side")
+    if order_ticket.get("quantity_mode") == "AUTO_SELLABLE_POSITION":
+        # Bind the sizing check to the fresh inventory quantity carried by
+        # the verified market input. Robinhood preview remains the final
+        # authority for the exact executable quantity and proceeds.
+        market_input["requested_quantity"] = market_input.get("sellable_quantity")
     decision = evaluate(market_input)
 
     required_result = order_ticket.get("requires_algorithm_result", "VALIDATED SETUP")
@@ -172,18 +180,23 @@ def main() -> None:
             order_ticket["dollar_amount"] = f"{ticket_amount:.2f}"
             has_dollar_amount = True
     if has_quantity_mode:
-        if asset_class != "CRYPTO":
-            failed.append("quantity_mode is supported only for crypto sellable-position tickets")
+        if asset_class not in EXECUTABLE_ASSET_CLASSES:
+            failed.append("quantity_mode requires a supported sellable-position asset class")
         if order_ticket.get("side") != "sell":
             failed.append("quantity_mode is allowed only for sell tickets")
         if order_ticket.get("quantity_mode") != "AUTO_SELLABLE_POSITION":
             failed.append("unsupported quantity_mode")
         min_quantity = decimal_value(order_ticket.get("min_quantity", "0.00000001"), "min_quantity", failed)
+        sellable_quantity = decimal_value(market_input.get("sellable_quantity"), "sellable_quantity", failed)
+        if sellable_quantity is not None and min_quantity is not None and sellable_quantity < min_quantity:
+            failed.append("broker-confirmed sellable quantity below ticket minimum")
         max_quantity = order_ticket.get("max_quantity")
         if max_quantity is not None:
             parsed_max_quantity = decimal_value(max_quantity, "max_quantity", failed)
             if min_quantity is not None and parsed_max_quantity is not None and parsed_max_quantity < min_quantity:
                 failed.append("max_quantity below min_quantity")
+            if sellable_quantity is not None and parsed_max_quantity is not None and sellable_quantity > parsed_max_quantity:
+                failed.append("broker-confirmed sellable quantity exceeds ticket maximum")
 
     if ticket_amount is not None:
         if ticket_amount is not None and broker_minimum is not None and ticket_amount < broker_minimum:

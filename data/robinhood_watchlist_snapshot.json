@@ -1,0 +1,20 @@
+{
+  "source": "Robinhood MCP",
+  "retrieved_at": "2026-09-25T19:33:14Z",
+  "lists": [
+    {
+      "name": "Anthropic",
+      "list_id": "ce345e85-3c5f-48bf-b8e1-2aa1197ed7ca",
+      "stocks": ["NVDA", "GOOGL", "AAPL", "MSFT", "AMZN", "META", "SPCX"],
+      "cryptos": ["BTC", "DOGE"]
+    },
+    {
+      "name": "Cryptos to Watch",
+      "list_id": "c8e53f81-0db7-4800-ae0c-7c533f0acb65",
+      "stocks": [],
+      "cryptos": ["DOGE", "ETC", "BTC"]
+    }
+  ],
+  "stocks": ["NVDA", "GOOGL", "AAPL", "MSFT", "AMZN", "META", "SPCX"],
+  "cryptos": ["BTC", "DOGE", "ETC"]
+}

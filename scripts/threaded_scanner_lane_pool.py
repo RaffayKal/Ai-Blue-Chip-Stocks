@@ -186,7 +186,29 @@ async def synergy_aggregator(recent_results, lane_count, interval_seconds, once,
         window = list(recent_results)
         if window:
             decisions = Counter(item["candidate_decision"] for item in window)
-            consensus_decision, consensus_count = decisions.most_common(1)[0]
+            execution_gate_decision, consensus_count = decisions.most_common(1)[0]
+            viable_count = sum(1 for item in window if item["scanner_viable"])
+            # A fleet with no currently viable lane is still actively
+            # searching. Keep the old majority execution result separately so
+            # reporting cannot turn a fail-closed execution outcome into a
+            # false claim that discovery stopped.
+            consensus_decision = (
+                "LOOKING"
+                if viable_count == 0
+                else execution_gate_decision
+            )
+            discovery_state = (
+                "LOOKING_FOR_VIABLE_CANDIDATES"
+                if viable_count == 0
+                else "VIABLE_CANDIDATE_PRESENT"
+            )
+            execution_consensus_decision = consensus_decision
+            execution_gate_decision = consensus_decision
+            execution_search_state = (
+                "SCANNING_FOR_VIABLE_BUY_SELL_CANDIDATES"
+                if viable_count == 0
+                else "VIABLE_BUY_SELL_CANDIDATE_PRESENT"
+            )
             scores = [item["net_opportunity_score"] for item in window if isinstance(item["net_opportunity_score"], (int, float))]
             payload = {
                 "timestamp_utc": scanner.iso_now(),
@@ -194,8 +216,12 @@ async def synergy_aggregator(recent_results, lane_count, interval_seconds, once,
                 "sample_count": len(window),
                 "distinct_lanes_represented": len({item["lane"] for item in window}),
                 "consensus_decision": consensus_decision,
+                "execution_consensus_decision": execution_consensus_decision,
+                "execution_gate_decision": execution_gate_decision,
+                "execution_search_state": execution_search_state,
+                "discovery_state": discovery_state,
                 "agreement_ratio": round(consensus_count / len(window), 4),
-                "viable_ratio": round(sum(1 for item in window if item["scanner_viable"]) / len(window), 4),
+                "viable_ratio": round(viable_count / len(window), 4),
                 "net_opportunity_score_avg": round(statistics.fmean(scores), 3) if scores else None,
                 "net_opportunity_score_min": round(min(scores), 3) if scores else None,
                 "net_opportunity_score_max": round(max(scores), 3) if scores else None,
@@ -208,7 +234,10 @@ async def synergy_aggregator(recent_results, lane_count, interval_seconds, once,
             scanner.write_json(SYNERGY_STATUS_PATH, payload)
             print(
                 f"FLEET_SYNERGY: lanes={lane_count} samples={payload['sample_count']} "
-                f"consensus={consensus_decision} agreement={payload['agreement_ratio'] * 100:.1f}% "
+                f"consensus={consensus_decision} execution={execution_consensus_decision} "
+                f"gate={execution_gate_decision} "
+                f"search={execution_search_state} "
+                f"agreement={payload['agreement_ratio'] * 100:.1f}% "
                 f"viable_ratio={payload['viable_ratio'] * 100:.1f}% "
                 f"net_opportunity_avg={payload['net_opportunity_score_avg']}"
             )

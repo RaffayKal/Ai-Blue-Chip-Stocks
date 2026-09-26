@@ -90,7 +90,7 @@ def run_once(client: OpenAI, model: str) -> None:
     prompt = json.dumps({
         "candidate_envelope": envelope,
         "task": "Perform scanner-side projections and qualification only.",
-        "required_result": {"scanner_viable": "boolean", "candidate_decision": "BUY CANDIDATE|SELL CANDIDATE|WATCHLIST ONLY|NO ACTION", "projection": "object", "reason": "string"},
+        "required_result": {"scanner_viable": "boolean", "candidate_decision": "BUY CANDIDATE|SELL CANDIDATE|LOOKING|WATCHLIST ONLY|NO ACTION", "projection": "object", "reason": "string"},
     }, sort_keys=True)
     session = client.beta.agents.sessions.create(
         environment={"type": "none"},
@@ -120,7 +120,7 @@ def run_once(client: OpenAI, model: str) -> None:
         raise RuntimeError("Agents API returned no parseable scanner JSON")
     if not isinstance(result.get("scanner_viable"), bool):
         raise ValueError("scanner_viable must be boolean")
-    if result.get("candidate_decision") not in {"BUY CANDIDATE", "SELL CANDIDATE", "WATCHLIST ONLY", "NO ACTION"}:
+    if result.get("candidate_decision") not in {"BUY CANDIDATE", "SELL CANDIDATE", "LOOKING", "WATCHLIST ONLY", "NO ACTION"}:
         raise ValueError("invalid candidate_decision")
     atomic_write(OUTPUT, {"timestamp": iso_now(), "status": "OK", "execution_authority": False, "input_fingerprint": fingerprint, "model": model, **result})
     log("observation_written", decision=result["candidate_decision"], scanner_viable=result["scanner_viable"])

@@ -13,11 +13,13 @@ from pathlib import Path
 from project_root import ROOT
 sys.path.insert(0, str(ROOT / "algorithms"))
 import apex_micro_crypto_ledger as micro_ledger
+from capital_engine import evaluate as evaluate_capital_candidate
 
 STATUS = ROOT / "data" / "runpod_lightweight_scanner_status.json"
 LOCK = ROOT / "data" / "runpod_lightweight_scanner.lock"
 LOG = ROOT / "logs" / "runpod_lightweight_scanner.jsonl"
 WATCHLIST = ROOT / "data" / "blue_chip_watchlist.txt"
+ROBINHOOD_WATCHLIST_SNAPSHOT = ROOT / "data" / "robinhood_watchlist_snapshot.json"
 CRYPTO_CANDIDATES = ROOT / "data" / "volatile_crypto_candidates.json"
 # Tracked symbols the volatility ranker (rank_volatile_crypto_candidates.py)
 # can select as the active symbol. Must stay in sync with that script's
@@ -28,7 +30,15 @@ CRYPTO_CANDIDATES = ROOT / "data" / "volatile_crypto_candidates.json"
 # Robinhood (robinhood.com/us/en/support/articles/coin-availability/,
 # checked 2026-09-17) and has a real live quote source (CoinGecko at
 # minimum; see stream_coingecko_market_data.py).
-TRACKED_CRYPTO_SYMBOLS = ("BTC", "ETH", "SOL", "XRP", "BNB", "ADA", "DOGE", "LTC", "DOT", "AVAX", "LINK", "BCH", "ETC", "XLM", "HBAR", "ALGO", "UNI", "NEAR", "ATOM", "SUI")
+TRACKED_CRYPTO_SYMBOLS = (
+    "FLR", "CC", "SKR", "SYRUP", "SEI", "XCN", "SUI", "VVV", "ORCA",
+    "MNT", "BIO", "W", "MORPHO", "AERO", "STRK", "PYTH", "QNT", "LDO",
+    "INJ", "IMX", "RAY", "VIRTUAL", "ENA", "FET", "BONK", "OP", "ARB",
+    "WIF", "RENDER", "PEPE", "AXS", "XTZ", "AAVE", "GRT", "CRV", "ZRX",
+    "BAT", "HBAR", "ALGO", "UNI", "LINK", "COMP", "NEAR", "ATOM", "SHIB",
+    "DOT", "AVAX", "SOL", "ADA", "XLM", "ZEC", "XRP", "LTC", "ETC", "DOGE",
+    "BCH", "ETH", "BTC",
+)
 CRYPTO_QUOTE_INPUTS = [
     ROOT / "data" / "alpaca_crypto_quote_snapshot.json",
     ROOT / "data" / "robinhood_crypto_quote_snapshot.json",
@@ -188,12 +198,28 @@ def acquire_lock(path):
 
 
 def load_watchlist():
-    if not WATCHLIST.exists():
+    symbols = []
+    source_lines = WATCHLIST.read_text(encoding="utf-8").splitlines() if WATCHLIST.exists() else []
+    for raw in source_lines:
+        symbol = raw.strip().upper()
+        if symbol and not symbol.startswith("#") and symbol not in symbols:
+            symbols.append(symbol)
+    snapshot = load_json(ROBINHOOD_WATCHLIST_SNAPSHOT, {})
+    for value in snapshot.get("stocks", []) if isinstance(snapshot, dict) else []:
+        symbol = str(value).strip().upper()
+        if symbol and symbol not in symbols:
+            symbols.append(symbol)
+    return symbols
+
+
+def load_robinhood_watchlist_cryptos():
+    snapshot = load_json(ROBINHOOD_WATCHLIST_SNAPSHOT, {})
+    if not isinstance(snapshot, dict):
         return []
     symbols = []
-    for raw in WATCHLIST.read_text(encoding="utf-8").splitlines():
-        symbol = raw.strip().upper()
-        if symbol and not symbol.startswith("#"):
+    for value in snapshot.get("cryptos", []):
+        symbol = str(value).strip().upper().replace("-USD", "").replace("/USD", "")
+        if symbol and symbol not in symbols:
             symbols.append(symbol)
     return symbols
 
@@ -207,22 +233,25 @@ def load_active_crypto_symbol():
 
 
 def load_crypto_candidate_symbols():
-    """Return every tracked symbol currently ranked/fresh, not only active_symbol."""
+    """Return the full broker-confirmed tracked universe, ranked first."""
     candidates = load_json(CRYPTO_CANDIDATES, {})
     if not isinstance(candidates, dict):
         candidates = {}
     ranked = candidates.get("ranked_symbols")
     if not isinstance(ranked, list):
         ranked = candidates.get("fresh_symbols")
+    active, _ = load_active_crypto_symbol()
     symbols = []
+    for symbol in [active, *load_robinhood_watchlist_cryptos(), *TRACKED_CRYPTO_SYMBOLS]:
+        if symbol in TRACKED_CRYPTO_SYMBOLS and symbol not in symbols:
+            symbols.append(symbol)
     for value in ranked or []:
         symbol = str(value.get("symbol") if isinstance(value, dict) else value).strip().upper()
         if symbol and symbol in TRACKED_CRYPTO_SYMBOLS and symbol not in symbols:
             symbols.append(symbol)
-    active, _ = load_active_crypto_symbol()
     if active not in symbols and active in TRACKED_CRYPTO_SYMBOLS:
         symbols.insert(0, active)
-    return symbols or [active]
+    return symbols
 
 
 def symbol_matches(candidate, target):
@@ -274,8 +303,26 @@ def load_crypto_quote(symbol):
         per_provider_max_age = {}
 
     quorum_providers = REQUIRED_CRYPTO_QUOTE_PROVIDERS
+    # Resolve only the base snapshots and files for this symbol. The previous
+    # global path scan multiplied quote-file reads by every tracked symbol for
+    # every scanner lane as coverage expanded.
+    quote_inputs = [
+        path for path in CRYPTO_QUOTE_INPUTS
+        if path.name in {
+            "alpaca_crypto_quote_snapshot.json",
+            "robinhood_crypto_quote_snapshot.json",
+            "coinbase_crypto_quote_snapshot.json",
+            "binance_crypto_quote_snapshot.json",
+            "kraken_crypto_quote_snapshot.json",
+            "finnhub_crypto_quote_snapshot.json",
+            "sample_robinhood_volatile_crypto_input.json",
+            "sample_robinhood_crypto_input.json",
+            "sample_crypto_input.json",
+        }
+        or path.name.endswith(f"_{symbol}.json")
+    ]
     quote_sources = []
-    for path in CRYPTO_QUOTE_INPUTS:
+    for path in quote_inputs:
         payload = load_json(path, {})
         if not isinstance(payload, dict) or payload.get("asset_class") != "CRYPTO":
             continue
@@ -1048,6 +1095,15 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     # every fresh tracked candidate so downstream consumers do not mistake
     # the active-symbol pointer for the complete scanner result.
     candidate_symbols = load_crypto_candidate_symbols()
+    asset_universe = []
+    seen_assets = set()
+    for asset_class, asset_symbols in (("CRYPTO", candidate_symbols), ("EQUITY", symbols)):
+        for symbol_name in asset_symbols:
+            key = (asset_class, symbol_name)
+            if key in seen_assets:
+                continue
+            seen_assets.add(key)
+            asset_universe.append({"symbol": symbol_name, "asset_class": asset_class})
     candidate_records = []
     for candidate_symbol in candidate_symbols:
         candidate_quote = load_crypto_quote(candidate_symbol)
@@ -1198,6 +1254,12 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         and broker_settings.get("explicit_execution_authorization") is True
     )
 
+    requested_side = str(
+        crypto_quote["payload"].get("candidate_side")
+        or crypto_quote["payload"].get("side")
+        or "BUY"
+    ).upper()
+    candidate_side = requested_side if requested_side in {"BUY", "SELL"} else "BUY"
     market_input = {
         **{
             key: crypto_quote["payload"].get(key)
@@ -1217,11 +1279,18 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
                 "invalidation_price_usd",
                 "stop_distance_usd",
                 "maximum_position_size_usd",
+                "sellable_quantity",
+                "requested_quantity",
+                "position_status",
+                "position_source",
+                "position_timestamp",
+                "position_account_matches_verified_account",
             )
             if key in crypto_quote["payload"]
         },
         "symbol": symbol,
         "asset_class": "CRYPTO",
+        "side": candidate_side.lower(),
         "session": "CRYPTO_24_7",
         "venue": crypto_quote["payload"].get("venue", "UNKNOWN"),
         "broker_name": crypto_quote["payload"].get("broker_name", "Robinhood"),
@@ -1300,16 +1369,19 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "drawdown_limit": crypto_quote["payload"].get("drawdown_limit", 0.05),
     }
     micro_math = micro_ledger.evaluate(micro_payload)
-    # Fresh quotes alone are not an executable candidate. Missing APEX sizing
-    # inputs must make the envelope non-viable, not merely watchlistable.
-    apex_sizing_viable = micro_math.get("RESULT") in {"PASS", "SIZED CANDIDATE"}
+    # BUY sizing requires broker cash buying power. A SELL is instead backed by
+    # exact, fresh Robinhood position inventory; zero cash buying power must not
+    # suppress a valid liquidation candidate. Proceeds become buy capital only
+    # after a later broker refresh confirms they are spendable.
+    if candidate_side == "SELL":
+        sell_decision = evaluate_capital_candidate(market_input)
+        apex_sizing_viable = sell_decision.get("RESULT") == "VALIDATED SETUP"
+    else:
+        # Fresh quotes alone are not an executable buy candidate. Missing APEX
+        # sizing inputs keep the envelope non-viable, not merely watchlistable.
+        sell_decision = None
+        apex_sizing_viable = micro_math.get("RESULT") in {"PASS", "SIZED CANDIDATE"}
     execution_viable = viable and apex_sizing_viable
-    requested_side = str(
-        crypto_quote["payload"].get("candidate_side")
-        or crypto_quote["payload"].get("side")
-        or "BUY"
-    ).upper()
-    candidate_side = requested_side if requested_side in {"BUY", "SELL"} else "BUY"
     envelope = {
         "architecture": ARCHITECTURE_NAME,
         "envelope_id": f"runpod-scan-{stable_hash({'symbol': symbol, 'sources': required_sources})[:16]}",
@@ -1333,7 +1405,11 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "trade_execution_allowed": True,
         "coinbase_required_for_execution": False,
         "execution_permission_basis": "USER_AUTHORIZED_SAFEGUARDED_GATES",
-        "execution_block_reason": None,
+        "execution_block_reason": (
+            "capital_or_sizing_gate_pending"
+            if viable and not execution_viable
+            else None
+        ),
         "execution_connector_status": "ROBINHOOD_MCP_HOST_EXECUTION_GATE_AVAILABLE",
         "execution_connector": {
             "status": "ROBINHOOD_MCP_HOST_EXECUTION_GATE_AVAILABLE",
@@ -1346,9 +1422,17 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         # A fully qualified envelope must enter the Robinhood execution
         # consumer. Any candidate that fails deterministic viability or
         # sizing is fail-closed as NO ACTION. Broker preview, exact-ticket,
-        # authorization, idempotency, and broker confirmation remain required
+        # authorization, idempotency, broker validation, and broker order/fill
+        # confirmation remain required; interactive per-order confirmation is
+        # supplied by the user's pre-authorized Agentic-account setting.
         # before any order placement.
-        "candidate_decision": f"{candidate_side} CANDIDATE" if execution_viable else "NO ACTION",
+        "candidate_decision": (
+            f"{candidate_side} CANDIDATE"
+            if execution_viable
+            else "LOOKING"
+            if viable
+            else "NO ACTION"
+        ),
         "apex_score": 0,
         "confidence": 0,
         "codex_heavy_state": codex_heavy_state,
@@ -1356,6 +1440,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "market_input": market_input,
         "micro_trade_value": micro_trade_value,
         "apex_micro_math": micro_math,
+        "apex_sell_validation": sell_decision,
         "chatgpt_reinforcement": chatgpt_reinforcement,
         "data_provenance": required_sources,
         "required_sources": required_sources,
@@ -1369,7 +1454,19 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "requested_notional_source": requested_notional_source,
         "candidate_symbols": candidate_symbols,
         "candidate_records": candidate_records,
+        "asset_universe": asset_universe,
+        "crypto_symbol_count": len(candidate_symbols),
+        "blue_chip_symbol_count": len(symbols),
+        "total_symbol_count": len(asset_universe),
+        "watchlist_symbol_count": len(symbols),
+        "watchlist_symbols": symbols[:100],
+        "robinhood_watchlist_snapshot": str(ROBINHOOD_WATCHLIST_SNAPSHOT),
+        "robinhood_watchlist_crypto_symbols": load_robinhood_watchlist_cryptos(),
         "source_quality": {
+            "crypto_symbols_tracked": len(candidate_symbols),
+            "blue_chip_symbols_tracked": len(symbols),
+            "total_symbols_tracked": len(asset_universe),
+            "asset_classes_tracked": ["CRYPTO", "EQUITY"],
             "fresh_source_count": fresh_count,
             "apex_crypto_quote_feed": "fresh" if crypto_quote.get("required_quote_quorum_ok") else "stale_or_unusable",
             "apex_crypto_quote_source": crypto_quote["path"],
@@ -1384,14 +1481,13 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "scanner_quote_stream_refresh_timestamp": crypto_quote["scanner_refresh_timestamp"],
             "crypto_24_7_session": crypto_session_confirmed,
             "equity_market_open": market_open,
-            "blue_chip_symbols_tracked": len(symbols),
             "sentiment_label": sentiment_label,
             "sentiment_score": sentiment_score,
             "market_temperature": temperature_value,
             "tradingcursor_available": not tradingcursor_rejected,
         },
         "failed_checks": failed,
-        "next_allowed_step": "continue crypto 24/7 medium8 scanning; do not wake Codex unless a new fresh non-duplicate crypto envelope passes every APEX gate",
+        "next_allowed_step": "continue mixed-asset scanning (crypto 24/7; blue-chip equities during verified equity sessions); do not wake Codex unless a new fresh non-duplicate envelope passes every APEX gate",
     }
     return envelope
 
@@ -1419,6 +1515,12 @@ def scan_once(codex_heavy_state, lane):
         "plugins_execute_trades": False,
         "watchlist_symbol_count": len(symbols),
         "watchlist_symbols": symbols[:100],
+        "asset_universe": envelope["asset_universe"],
+        "crypto_symbol_count": envelope["crypto_symbol_count"],
+        "blue_chip_symbol_count": envelope["blue_chip_symbol_count"],
+        "total_symbol_count": envelope["total_symbol_count"],
+        "robinhood_watchlist_snapshot": str(ROBINHOOD_WATCHLIST_SNAPSHOT),
+        "robinhood_watchlist_crypto_symbols": load_robinhood_watchlist_cryptos(),
         "plugin_snapshot_path": str(PLUGIN_SNAPSHOT),
         "plugin_stack_path": str(PLUGIN_STACK),
         "stocktwits_widget_display_path": str(STOCKTWITS_WIDGET),
@@ -1467,7 +1569,7 @@ def scan_once(codex_heavy_state, lane):
             "Ace Knowledge Graph",
         ],
         "plugin_execution_authority": "NONE",
-        "next_allowed_step": "continue scanning; wake heavy workflow only after fresh non-duplicate viability gates are true",
+        "next_allowed_step": "continue mixed-asset scanning; wake heavy workflow only after fresh non-duplicate viability gates are true",
     }
     write_json(status_path, status)
     if lane == "primary":

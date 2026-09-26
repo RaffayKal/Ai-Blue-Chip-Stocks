@@ -24,6 +24,16 @@ APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING
 
 This is the apex hierarchy investing rule for this folder.
 
+## Current Operations Funding Gate
+
+Operations start/resume daily at 4:00 AM America/New_York. Positive spendable
+crypto buying power must be confirmed by two fresh Robinhood reads before the
+24/7 scanning lane is enabled. With zero, stale, missing or contradictory
+funding, RunPod, ChatGPT, Codex and Claude heavy/scanner layers are limited to
+actual U.S. trading days from 4:00 AM through 8:00 PM ET and are dormant or
+paused outside that window. This policy does not convert equity sessions into
+24/7 sessions and does not bypass any execution gate.
+
 ## Dynamic Capital
 
 Capital is dynamic and must be read from the connected broker at runtime.
@@ -148,7 +158,7 @@ If viable trade value is false, keep `FULL_AGENT = OFF` and continue lightweight
 
 If viable trade value is true, wake the full agent to analyze the opportunity, validate market conditions, validate net-profit potential, and decide one of: `BUY CANDIDATE`, `SELL CANDIDATE`, `HOLD`, `PARTIAL SELL CANDIDATE`, or `RE-ENTER CANDIDATE`.
 
-For plugin-originated candidates, the decision words before Codex activation must be candidate words only: `BUY CANDIDATE`, `SELL CANDIDATE`, `HOLD CANDIDATE`, `WATCHLIST ONLY`, `HUMAN APPROVAL REQUIRED`, or `NO ACTION`. ChatGPT/plugins do not produce executable orders.
+For plugin-originated candidates, the decision words before Codex activation must be candidate words only: `BUY CANDIDATE`, `SELL CANDIDATE`, `HOLD CANDIDATE`, `WATCHLIST ONLY`, `AUTONOMOUS_EXECUTION_READY`, or `NO ACTION`. ChatGPT/plugins do not produce executable orders.
 
 After any approved action, recalculate capital, cost basis, realized net profit, remaining position, and the next viable trade value. If a major net profit condition is reached, liquidate 75% of net profit to available brokerage capital and retain 25% of net profit for appreciation and future compounding operations.
 

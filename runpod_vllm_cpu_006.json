@@ -1,0 +1,53 @@
+{
+  "pod_id": "t3yz4nrfl1utcr",
+  "pod_name": "apex-vllm-cpu-006",
+  "cloud": "SECURE",
+  "data_center_id": "US-GA-2",
+  "cpu_type_id": "cpu3c",
+  "vcpu_count": 2,
+  "memory_gb": 4,
+  "disk_gb": 20,
+  "runpod_reported_hourly_usd": 0.06,
+  "lifecycle": {
+    "purpose": "standing service; do not auto-stop or auto-terminate",
+    "locked": false,
+    "automatic_teardown_configured": false,
+    "container_disk_is_ephemeral": true
+  },
+  "image": "vllm/vllm-openai-cpu:latest-x86_64",
+  "observed_vllm_version": "0.30.0",
+  "container_startup": {
+    "entrypoint": ["vllm", "serve"],
+    "start_command_note": "RunPod args append to the image entrypoint. Do not prepend vllm or serve.",
+    "runpod_args_command": "facebook/opt-125m --host 0.0.0.0 --port 8000 --dtype bfloat16 --max-model-len 512 --max-num-seqs 1 --enforce-eager --kv-cache-memory-bytes 134217728",
+    "args": [
+      "facebook/opt-125m",
+      "--host", "0.0.0.0",
+      "--port", "8000",
+      "--dtype", "bfloat16",
+      "--max-model-len", "512",
+      "--max-num-seqs", "1",
+      "--enforce-eager",
+      "--kv-cache-memory-bytes", "134217728"
+    ]
+  },
+  "container_environment": {
+    "VLLM_API_KEY": "read from ignored .env.local",
+    "VLLM_CPU_NUM_OF_RESERVED_CPU": "1"
+  },
+  "ssh": {
+    "user_host": "t3yz4nrfl1utcr-644117fc@ssh.runpod.io",
+    "identity_file": "/Users/raffaykal/.runpod/ssh/runpodctl-ssh-key",
+    "requires_pty": true
+  },
+  "exposed_port": "8000/http",
+  "base_url": "https://t3yz4nrfl1utcr-8000.proxy.runpod.net",
+  "scanner_deployment": {
+    "remote_root": "/workspace/apex",
+    "lanes": 70,
+    "recovery_command": "python3 scripts/runpod_ops.py restore",
+    "persistent_mount_verified": false,
+    "private_broker_upload_requires_approval": true
+  },
+  "model": "facebook/opt-125m"
+}

@@ -166,6 +166,27 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             "robinhood.get_portfolio.crypto_buying_power.buying_power",
         )
 
+    def test_sell_candidate_carries_fresh_position_inputs_separately_from_buying_power(self):
+        quote = self.quote(payload={
+            "candidate_side": "SELL",
+            "sellable_quantity": 0.00006084,
+            "position_status": "fresh",
+            "position_source": "Robinhood.get_crypto_positions",
+            "position_timestamp": iso_before(1),
+            "position_account_matches_verified_account": True,
+            "crypto_buying_power_usd": 0.0,
+        })
+        with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
+             patch.object(scanner, "load_crypto_quote", return_value=quote), \
+             patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
+            envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
+        market_input = envelope["market_input"]
+        self.assertEqual(market_input["side"], "sell")
+        self.assertEqual(market_input["crypto_buying_power_usd"], 0.0)
+        self.assertEqual(market_input["sellable_quantity"], 0.00006084)
+        self.assertEqual(market_input["position_source"], "Robinhood.get_crypto_positions")
+        self.assertTrue(market_input["position_account_matches_verified_account"])
+
     def test_optional_alpaca_is_not_written_as_required_provenance(self):
         quote = self.quote()
         with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
@@ -545,6 +566,16 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
              patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
             envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
         self.assertFalse(envelope["plugins_execute_trades"])
+        self.assertFalse(envelope["broker_order_submitted"])
+
+    def test_viable_watch_state_is_labeled_looking_without_capital(self):
+        with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
+             patch.object(scanner, "load_crypto_quote", return_value=self.quote()), \
+             patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
+            envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
+        self.assertTrue(envelope["scanner_viable"])
+        self.assertEqual(envelope["candidate_decision"], "LOOKING")
+        self.assertEqual(envelope["execution_block_reason"], "capital_or_sizing_gate_pending")
         self.assertFalse(envelope["broker_order_submitted"])
 
 

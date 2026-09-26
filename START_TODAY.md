@@ -33,6 +33,24 @@ Read `rules/BROKERAGE_RULES.md` and `rules/ROBINHOOD_RULES.md` before treating a
 
 ## Operating Mode
 
+Current conditional operations policy: use 4:00 AM America/New_York as the
+daily operations start/resume and retain a 10-minute monitor. Two consecutive
+fresh Robinhood reads must confirm positive spendable crypto buying power before
+24/7 scanning is enabled. Until then, run watch/scanner operations only during
+actual U.S. trading days from 4:00 AM through 8:00 PM ET, including early,
+regular and late sessions; outside that window RunPod, Codex, ChatGPT and Claude
+heavy/scanner layers are dormant or paused. Equity buying power, total portfolio
+value, unsold holdings, projected profit and promised funding do not unlock
+24/7 mode. Asset-specific sessions, actual broker buying power, execution
+permissions and all existing trade gates remain unchanged. Read
+`RUNPOD_OPERATIONS.md` for the state-transition procedure and proof limits.
+
+Off-market pausing is provider-capability dependent. RunPod currently exposes
+`stop`, `restart` and `terminate` for the named pod, not a safe reversible
+`pause` with guaranteed autonomous resume. Do not use `stop` merely to save
+usage because this pod has ephemeral container storage; leave it untouched when
+no safe pause exists and keep the monitor/heavy-agent layers paused.
+
 Run two lanes:
 
 1. `CRYPTO_24_7`: continuous watch mode.
@@ -56,6 +74,8 @@ Crypto may run 24/7 only as checked watch mode.
 
 Allowed result types:
 
+- LOOKING — fresh, viable watch/scanner state; no executable ticket yet.
+
 - `NO ACTION`
 - `WATCHLIST ONLY`
 - `NEEDS USER CAPITAL SETTINGS`
@@ -73,6 +93,11 @@ Crypto action is blocked unless:
 - at least two source confirmations exist
 - no source conflict exists
 - live broker buying-power checks pass
+
+LOOKING does not authorize a buy or sell. It replaces the ambiguous watch-only
+NO ACTION label when scanner and quote gates are healthy but capital or sizing
+gates are still pending. NO ACTION remains the fail-closed execution result
+for missing, stale, contradictory, or failed required facts.
 
 ## Blue-Chip Lane
 

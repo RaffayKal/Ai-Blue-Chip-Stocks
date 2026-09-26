@@ -29,8 +29,16 @@ CANDIDATES_PATH = ROOT / "data" / "volatile_crypto_candidates.json"
 # Confirmed tradable on Robinhood as of 2026-09-17
 # (robinhood.com/us/en/support/articles/coin-availability/); each has a
 # live CoinGecko quote writer at minimum (stream_coingecko_market_data.py).
-ROBINHOOD_SUPPORTED_TRACKED_SYMBOLS = ("BTC", "ETH", "SOL", "XRP", "BNB", "ADA", "DOGE", "LTC", "DOT", "AVAX", "LINK", "BCH", "ETC", "XLM", "HBAR", "ALGO", "UNI", "NEAR", "ATOM", "SUI")
-PROVIDERS = ("coinbase", "binance", "kraken", "coingecko")
+ROBINHOOD_SUPPORTED_TRACKED_SYMBOLS = (
+    "FLR", "CC", "SKR", "SYRUP", "SEI", "XCN", "SUI", "VVV", "ORCA",
+    "MNT", "BIO", "W", "MORPHO", "AERO", "STRK", "PYTH", "QNT", "LDO",
+    "INJ", "IMX", "RAY", "VIRTUAL", "ENA", "FET", "BONK", "OP", "ARB",
+    "WIF", "RENDER", "PEPE", "AXS", "XTZ", "AAVE", "GRT", "CRV", "ZRX",
+    "BAT", "HBAR", "ALGO", "UNI", "LINK", "COMP", "NEAR", "ATOM", "SHIB",
+    "DOT", "AVAX", "SOL", "ADA", "XLM", "ZEC", "XRP", "LTC", "ETC", "DOGE",
+    "BCH", "ETH", "BTC",
+)
+PROVIDERS = ("robinhood", "coinbase", "binance", "kraken", "coingecko")
 MAX_QUOTE_AGE_SECONDS = 30.0
 MIN_VOLATILITY_SAMPLES = 3
 HISTORY_WINDOW_SECONDS = 300.0

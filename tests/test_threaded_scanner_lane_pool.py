@@ -5,6 +5,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -57,15 +58,34 @@ class ThreadedScannerLanePoolTests(unittest.TestCase):
                 {"lane": "lane_3", "candidate_decision": "BUY", "scanner_viable": True, "net_opportunity_score": 30.0},
             ]
             stop_event = asyncio.Event()
-            await pool.synergy_aggregator(recent_results, lane_count=3, interval_seconds=5, once=True, stop_event=stop_event)
+            with patch.object(pool.scanner, "write_json") as write_json:
+                await pool.synergy_aggregator(recent_results, lane_count=3, interval_seconds=5, once=True, stop_event=stop_event)
+                return write_json.call_args.args[1]
 
-        asyncio.run(scenario())
-        payload = json.loads(pool.SYNERGY_STATUS_PATH.read_text(encoding="utf-8"))
+        payload = asyncio.run(scenario())
         self.assertEqual(payload["consensus_decision"], "NO ACTION")
         self.assertEqual(payload["sample_count"], 3)
         self.assertAlmostEqual(payload["agreement_ratio"], 2 / 3, places=3)
         self.assertAlmostEqual(payload["viable_ratio"], 1 / 3, places=3)
         self.assertEqual(payload["net_opportunity_score_avg"], 20.0)
+
+    def test_synergy_aggregator_keeps_searching_when_no_lane_is_viable(self):
+        async def scenario():
+            recent_results = [
+                {"lane": "primary", "candidate_decision": "NO ACTION", "scanner_viable": False, "net_opportunity_score": 10.0},
+                {"lane": "lane_2", "candidate_decision": "NO ACTION", "scanner_viable": False, "net_opportunity_score": 20.0},
+            ]
+            stop_event = asyncio.Event()
+            with patch.object(pool.scanner, "write_json") as write_json:
+                await pool.synergy_aggregator(recent_results, lane_count=2, interval_seconds=5, once=True, stop_event=stop_event)
+                return write_json.call_args.args[1]
+
+        payload = asyncio.run(scenario())
+        self.assertEqual(payload["consensus_decision"], "LOOKING")
+        self.assertEqual(payload["execution_consensus_decision"], "LOOKING")
+        self.assertEqual(payload["execution_gate_decision"], "LOOKING")
+        self.assertEqual(payload["execution_search_state"], "SCANNING_FOR_VIABLE_BUY_SELL_CANDIDATES")
+        self.assertEqual(payload["discovery_state"], "LOOKING_FOR_VIABLE_CANDIDATES")
 
 
 if __name__ == "__main__":

@@ -2,6 +2,17 @@
 
 This file defines the mandatory multi-plugin agentic orchestration order for Apex investing operations.
 
+## Conditional Operations Window
+
+The daily operations start is 4:00 AM America/New_York. Two consecutive fresh
+Robinhood reads confirming positive spendable crypto buying power unlock 24/7
+scanner operation. Until then, RunPod, ChatGPT, Codex and Claude heavy/scanner
+layers operate only on actual U.S. trading days from 4:00 AM through 8:00 PM ET,
+including early, regular and late sessions, and remain dormant or paused outside
+that window. This controls when infrastructure runs; it never authorizes an
+order and never replaces the broker, freshness, risk, broker validation,
+idempotency or fill gates.
+
 ## ChatGPT/Plugin Scanner Boundary
 
 ChatGPT/plugins may run continuous scanning, calculations, projections, and candidate qualification. They do not execute trades and do not wake Codex directly by assertion.
@@ -33,8 +44,10 @@ preview, placement, and fill confirmation. A peer-produced envelope must pass
 the same freshness, conflict, risk, idempotency, and local APEX gates before
 Robinhood revalidation. Once those gates pass, peer-source data may drive a
 Robinhood buy or sell ticket; Robinhood must still validate the exact ticket,
-complete the required preview, receive the required confirmation, and provide
-the order/fill confirmation.
+complete broker-side preview/validation where exposed, and provide the
+order/fill confirmation. The user's pre-authorized Agentic-account setting
+satisfies manual per-order approval; the workflow does not wait for an
+additional interactive confirmation.
 
 If validation prints `VIABLE: false`, Codex stays dormant and the scanner continues. If validation prints `VIABLE: true` and `AUTONOMOUS_BUY_SELL: ENABLED_AFTER_GATE_PASS`, Codex may run the existing autonomous agentic buy/sell workflow, then return to sleep.
 

@@ -1,7 +1,12 @@
 #!/usr/bin/env python3
 import sys
 import unittest
+import json
+import os
+import tempfile
+import time
 from pathlib import Path
+from unittest.mock import patch
 
 ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -36,6 +41,47 @@ def lane_fixture(**overrides):
 
 
 class ChatGptFleetDeterministicFallbackTests(unittest.TestCase):
+    def test_inputs_exclude_retired_lanes_and_enforce_cap(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            for i in range(75):
+                path = root / f"lane_{i}.json"
+                path.write_text(json.dumps({"scanner_lane": i}))
+                os.utime(path, (time.time() - i, time.time() - i))
+            retired = root / "retired.json"
+            retired.write_text('{"scanner_lane":"retired"}')
+            os.utime(retired, (1, 1))
+            with patch.object(fleet, "INPUT_DIR", root), patch.object(fleet, "CHATGPT_MEDIUM_SCANNER_LANE_CAP", 70):
+                values = fleet.inputs()
+            self.assertEqual(len(values), 70)
+            self.assertEqual(values[0]["scanner_lane"], 0)
+            self.assertNotIn("retired", [v["scanner_lane"] for v in values])
+
+    def test_prompt_retains_quote_and_provenance_without_repeated_fleet(self):
+        lane = lane_fixture(candidate_records=[{"unused": "x" * 100000}], chatgpt_reinforcement={"old": True})
+        summary = fleet.prompt_lane(lane)
+        self.assertEqual(summary["market_input"], lane["market_input"])
+        self.assertEqual(summary["required_sources"], lane["required_sources"])
+        self.assertNotIn("candidate_records", summary)
+        self.assertNotIn("chatgpt_reinforcement", summary)
+
+    def test_oversized_prompt_never_reaches_api(self):
+        lane = lane_fixture(market_input={"oversized": "x" * fleet.MAX_PROMPT_CHARS})
+        with patch.object(fleet, "call_responses_api") as call:
+            result = fleet.run_role("gpt-5.5", "crypto_momentum", "instruction", [lane], "fp", True)
+        call.assert_not_called()
+        self.assertEqual(result["status"], "OK_DETERMINISTIC_FALLBACK")
+        self.assertIn("bounded prompt budget", result["openai_error"])
+
+    def test_duplicate_lane_evidence_is_compacted_but_conflicts_are_retained(self):
+        one = lane_fixture(scanner_lane="one", market_input={"symbol": "BTC", "bid": 100})
+        two = lane_fixture(scanner_lane="two", market_input={"symbol": "BTC", "bid": 100})
+        conflict = lane_fixture(scanner_lane="three", market_input={"symbol": "BTC", "bid": 90})
+        result = fleet.prompt_lanes([one, two, conflict])
+        self.assertEqual(len(result), 2)
+        self.assertEqual(result[0]["equivalent_lane_count"], 2)
+        self.assertEqual(result[1]["market_input"]["bid"], 90)
+
     def test_fallback_is_never_labeled_as_a_real_openai_result(self):
         result = fleet.deterministic_role_result("crypto_momentum", [lane_fixture()], "fp1")
         self.assertEqual(result["status"], "OK_DETERMINISTIC_FALLBACK")

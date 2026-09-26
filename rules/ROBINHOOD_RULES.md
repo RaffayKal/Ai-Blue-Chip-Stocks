@@ -45,6 +45,26 @@ use the selected account’s crypto buying power.
 
 Never use a hard-coded capital amount or total portfolio value as spendable capital.
 
+### Held-asset liquidation and redeployment
+
+- Zero cash buying power does **not** mean the account has no assets that can be
+  sold. Evaluate BUY and SELL funding separately.
+- A SELL candidate is sized only from fresh Robinhood-confirmed sellable
+  share/coin quantity for that exact verified account and symbol; cash buying
+  power is not a prerequisite for selling owned inventory.
+- Estimated market value of unsold holdings is not cash, settled proceeds, or
+  authority to buy. Do not add it to buying power or compoundable AUM.
+- After a sale, refresh Robinhood orders, positions, account buying power,
+  availability/settlement, and ledger reconciliation. A later BUY may use the
+  proceeds only when Robinhood's refreshed buying-power figure confirms they
+  are spendable; settlement is not an extra wait when the broker already
+  confirms availability. Net out pending orders and reserves, and never count
+  the same proceeds twice.
+- Sell and buy actions remain separate exact tickets. Apply the existing
+  account, session, quote, risk, idempotency, broker validation/preview, and
+  broker order/fill reconciliation requirements to each ticket; a SELL signal
+  does not authorize a follow-on BUY.
+
 If live buying-power data is missing, stale, contradictory, or unavailable:
 `NO ACTION`.
 
@@ -69,10 +89,12 @@ Before any Robinhood real-money action:
 2. Use only an account with `agentic_allowed=true`.
 3. Use the exact account number from the verified account.
 4. Check tradability for equities.
-5. Preview or review the order.
-6. Present the result to the user.
-7. Wait for explicit user confirmation for that exact order.
-8. Place only the reviewed order.
+5. Use broker-side validation/preview where exposed; do not route a
+   pre-authorized autonomous ticket through the interactive review workflow.
+6. Confirm the broker-side validation/preview matches the exact ticket.
+7. Use the direct placement tool for the authenticated Agentic account; the
+   user's blanket autonomous authorization satisfies manual per-order approval.
+8. Reconcile the broker-returned order and fill state.
 
 No default order amount. No default ticker. No default account.
 

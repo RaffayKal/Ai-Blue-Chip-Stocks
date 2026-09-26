@@ -53,9 +53,9 @@ any preview or execution step.
 Peer-source data may be used to recommend and drive a Robinhood buy or sell
 ticket through the existing execution path. Execution remains permitted only
 when the qualified envelope, live Robinhood account state, risk limits,
-tradability, exact ticket match, idempotency, required preview, and explicit
-confirmation gates all pass. Peer data may identify the action; Robinhood
-must still validate and execute it.
+tradability, exact ticket match, idempotency, required broker
+validation/preview, and pre-authorized Agentic execution gates all pass. Peer
+data may identify the action; Robinhood must still validate and execute it.
 
 If peer sources disagree, the affected symbol fails closed until the conflict
 is resolved. A fresh peer quote alone never authorizes an order.

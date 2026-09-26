@@ -5,6 +5,17 @@ TACTICAL APPRECIATION OPERATIONS COMPOUNDING
 
 APEX PRESTIGE RUNPOD-FIRST MINIMUM-HEAVY-USAGE TRADING ARCHITECTURE
 
+## CURRENT CONDITIONAL OPERATIONS MODE
+
+At 4:00 AM America/New_York, start or resume operations for the day. Enable
+24/7 scanning only after two consecutive fresh Robinhood reads confirm positive
+spendable crypto buying power. Without that confirmation, operate only during
+actual U.S. trading days from 4:00 AM through 8:00 PM ET, including early,
+regular and late sessions; outside that window RunPod, ChatGPT, Codex and Claude
+heavy/scanner layers are dormant or paused. This controls infrastructure
+availability; it does not bypass asset-session, broker, risk, preview,
+confirmation, idempotency or broker-fill gates.
+
 ## CANONICAL FOREVER OPERATIONS PIPELINE
 
 ```text
@@ -30,7 +41,8 @@ symbols, refresh the broker artifact, reinforce the gate, and recheck. If the
 refresh still fails, Codex/ChatGPT continues the recovery loop on every active
 and hourly cycle—with bounded backoff, fresh retries, and repeated
 reconciliation—until the Robinhood feed is cured. Execution remains blocked
-while unhealthy; 24/7 scanning continues.
+while unhealthy. Scanning is 24/7 only when positive spendable crypto buying
+power is freshly verified; otherwise it follows the market-window policy above.
 
 ## Autonomous Recovery Safety State Machine
 
@@ -76,9 +88,9 @@ RunPod MCP/live sources
     -> Codex Robinhood MCP market-data refresh only at final broker revalidation
     -> enriched envelope
     -> Codex viability gate
-    -> Robinhood inspection and preview
-    -> Robinhood explicit user confirmation
-    -> Robinhood execution
+    -> Robinhood inspection and broker validation/preview
+    -> exact-ticket placement through the authorized Robinhood Agentic account
+    -> Robinhood order/fill confirmation
     -> operations ledger and monitoring
     -> loop
 ```
@@ -89,8 +101,9 @@ spread, liquidity, risk, and calculation fields are present. Robinhood quote
 and account usage is deferred until final Codex broker revalidation. The final
 Robinhood refresh remains mandatory before preview or execution.
 Envelope production never authorizes execution. Missing, stale, contradictory,
-or unavailable facts produce `NO ACTION`. No forecast, projection, lane count,
-or RunPod status is user confirmation.
+or unavailable facts produce `NO ACTION`. Autonomous execution authorization is
+the user's pre-authorized Agentic-account setting; no interactive per-order
+confirmation is added after the live gates pass.
 
 This is the permanent operating mode: RunPod and ChatGPT produce lightweight
 envelopes, Codex performs heavy work only at the viability gate, and Robinhood
@@ -130,7 +143,7 @@ Use the configured 3%-20% tactical allocation band from the APEX AUM Compounding
 
 Execution rule:
 No live brokerage execution unless an actually authorized execution surface is available.
-If no authorized execution connector exists, output is WATCHLIST ONLY / NO ACTION / HUMAN APPROVAL REQUIRED.
+If no authorized execution connector exists, output is WATCHLIST ONLY / NO ACTION.
 
 ════════════════════════════════════
 STATE 0 — RUNPOD 24/7 LIGHTWEIGHT RUNTIME
@@ -411,7 +424,6 @@ BUY CANDIDATE
 SELL CANDIDATE
 PARTIAL SELL CANDIDATE
 RE-ENTER CANDIDATE
-HUMAN APPROVAL REQUIRED
 
 Required checks before any BUY/SELL candidate:
 
@@ -467,7 +479,7 @@ exact order details are shown
 configured autonomous execution authorization is true
 
 Without that:
-WATCHLIST ONLY or HUMAN APPROVAL REQUIRED.
+WATCHLIST ONLY or NO ACTION.
 
 ════════════════════════════════════
 STATE 7 — PROFIT COMPOUNDING LOOP

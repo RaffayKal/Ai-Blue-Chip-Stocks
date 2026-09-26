@@ -95,8 +95,17 @@ transfers are external capital, not broker borrowing.
 `GROSS_AUM` is verified cash plus eligible holdings at current verified market
 value plus broker-confirmed available unsettled assets.
 
-`DEPLOYABLE_AUM` is verified cash buying power plus verified crypto buying power
-and sellable proceeds, less reserved obligations, pending orders, and risk reserves.
+`DEPLOYABLE_AUM` is Robinhood-confirmed spendable buying power (equity and crypto
+kept separate), less reserved obligations, pending orders, and risk reserves.
+Sale proceeds are included only when Robinhood's refreshed buying-power/availability
+reports them spendable; never add the same proceeds a second time.
+
+Capital-source clarification: broker-confirmed sellable holdings are a
+liquidation path, not current cash buying power. A SELL gate may use exact fresh
+sellable quantity without requiring positive cash buying power. It must not use
+estimated holding value as buy capital. After a sale, refresh Robinhood
+buying-power/availability and reconcile the ledger; count the proceeds once,
+through the refreshed broker capital field, before sizing any next BUY.
 
 `COMPOUNDING_AUM` changes only by verified deposits, realized net profit, realized
 net loss, withdrawals, fees, execution costs, and applicable tax reserve.

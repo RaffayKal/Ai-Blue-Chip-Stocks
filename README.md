@@ -38,8 +38,8 @@ The executable user algorithm is `APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING` in `rul
 - Night report: send one concise operations report after the day session showing smooth/not-smooth status and blockers.
 - Codex/APEX heavy checks do not run on the heartbeat; they stay asleep unless a fresh viable event requires the gate workflow.
 - Trading execution remains OFF unless every scanner, broker, Robinhood, risk, preview, idempotency, and APEX gate passes.
-- Canonical procedure, verbatim and non-deferrable: `runpod 24/7 engine - >  codex/live source/robinhoon live market feeds + ChatGPT sources/prjections/math/calculations/forecatsing/etc.  → envelopes → Codex Robinhood MCP refresh → enriched envelope → viability gate → preview → execution only after confirmation`.
-- Major tactical operations follow the explicit loop: RunPod 24/7 engine -> Codex Robinhood live feed plus ChatGPT/RunPod fresh sources and calculations -> timestamped envelopes -> Codex Robinhood MCP refresh -> enriched envelope -> Codex viability gate -> Robinhood inspection/preview -> explicit user confirmation -> Robinhood execution -> operations loop. Missing or stale facts produce `NO ACTION`.
+- Canonical procedure, verbatim and non-deferrable: `runpod 24/7 engine - >  codex/live source/robinhoon live market feeds + ChatGPT sources/prjections/math/calculations/forecatsing/etc.  → envelopes → Codex Robinhood MCP refresh → enriched envelope → viability gate → broker validation/preview → exact-ticket placement through the authorized Robinhood Agentic account → broker order/fill confirmation`.
+- Major tactical operations follow the autonomous loop: RunPod 24/7 engine -> Codex Robinhood live feed plus ChatGPT/RunPod fresh sources and calculations -> timestamped envelopes -> Codex Robinhood MCP refresh -> enriched envelope -> Codex viability gate -> Robinhood broker validation/preview -> direct placement only for the exact validated ticket -> Robinhood order/fill confirmation -> operations loop. The user's pre-authorized Agentic-account setting replaces interactive per-order confirmation; missing or stale facts still produce `NO ACTION`.
 
 ## Absolute Operating Truth
 

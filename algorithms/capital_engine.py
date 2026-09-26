@@ -10,6 +10,7 @@ fast cycling or scalping speed on its own.
 import json
 import math
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from project_root import ROOT
@@ -46,6 +47,7 @@ ROBINHOOD_CRYPTO_MINIMUM_DEFAULT_USD = 0.03
 BROKER_MARGIN_MINIMUM_USD = {
     "robinhood": 2000.0,
 }
+MAX_POSITION_SNAPSHOT_AGE_SECONDS = 420
 
 
 def load_watchlist(path: Path) -> set[str]:
@@ -94,12 +96,29 @@ def number(value, name: str, failed: list[str]) -> float | None:
     return parsed
 
 
+def fresh_position_timestamp(value: object) -> bool:
+    if not isinstance(value, str) or not value.strip():
+        return False
+    normalized = value.strip()
+    if normalized.endswith("Z"):
+        normalized = normalized[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(normalized)
+    except ValueError:
+        return False
+    if parsed.tzinfo is None:
+        return False
+    age = (datetime.now(timezone.utc) - parsed.astimezone(timezone.utc)).total_seconds()
+    return 0 <= age <= MAX_POSITION_SNAPSHOT_AGE_SECONDS
+
+
 def evaluate(data: dict) -> dict:
     failed: list[str] = []
     watch_only: list[str] = []
 
     symbol = str(data.get("symbol") or "").strip().upper()
     asset_class = str(data.get("asset_class") or "UNKNOWN").strip().upper()
+    side = str(data.get("side") or "buy").strip().lower()
     session = str(data.get("session") or "UNKNOWN").strip().upper()
     data_status = str(data.get("data_status") or "missing").strip().lower()
     risk_status = str(data.get("risk_status") or "needs settings").strip().lower()
@@ -109,6 +128,8 @@ def evaluate(data: dict) -> dict:
 
     if not symbol:
         failed.append("missing symbol")
+    if side not in {"buy", "sell"}:
+        failed.append("side must be buy or sell")
     if asset_class not in VALID_ASSET_CLASSES:
         failed.append("unknown asset class")
     if session not in VALID_SESSIONS:
@@ -147,11 +168,38 @@ def evaluate(data: dict) -> dict:
     if liquidity is not None and liquidity <= 0:
         failed.append("liquidity_usd must be positive")
 
-    if asset_class == "CRYPTO":
-        buying_power = number(data.get("crypto_buying_power_usd"), "crypto_buying_power_usd", failed)
+    buying_power = None
+    requested_quantity = None
+    if side == "sell":
+        # A sell is backed by confirmed inventory, not cash buying power.
+        # Do not count marked-to-market holdings as buy capital: proceeds only
+        # become buy capital after the broker confirms the sale and a fresh
+        # account refresh reports the resulting buying power.
+        sellable_quantity = number(data.get("sellable_quantity"), "sellable_quantity", failed)
+        requested_quantity = number(data.get("requested_quantity"), "requested_quantity", failed)
+        if data.get("position_status") != "fresh" or not fresh_position_timestamp(data.get("position_timestamp")):
+            failed.append("sellable position data not fresh")
+        if not str(data.get("position_source") or "").startswith("Robinhood."):
+            failed.append("sellable position source not verified Robinhood")
+        if data.get("position_account_matches_verified_account") is not True:
+            failed.append("sellable position account does not match verified agentic account")
+        if sellable_quantity is not None and requested_quantity is not None:
+            if requested_quantity > sellable_quantity:
+                failed.append("requested sell quantity exceeds broker-confirmed sellable quantity")
     else:
-        buying_power = number(data.get("buying_power_usd"), "buying_power_usd", failed)
-    requested_notional = number(data.get("requested_notional_usd"), "requested_notional_usd", failed)
+        if asset_class == "CRYPTO":
+            buying_power = number(data.get("crypto_buying_power_usd"), "crypto_buying_power_usd", failed)
+        else:
+            buying_power = number(data.get("buying_power_usd"), "buying_power_usd", failed)
+    requested_notional = None
+    if data.get("requested_notional_usd") is not None:
+        requested_notional = number(data.get("requested_notional_usd"), "requested_notional_usd", failed)
+    elif side == "buy":
+        failed.append("missing requested_notional_usd")
+    elif side == "sell" and bid is not None and requested_quantity is not None:
+        # Conservative liquidation mark: use the live bid, never the last or
+        # mid, when a sell ticket's notional was not precomputed.
+        requested_notional = requested_quantity * bid
     broker_name = str(data.get("broker_name") or "Robinhood").strip().lower()
     margin_requested = data.get("margin_requested") is True
     margin_approved = data.get("margin_approved") is True
@@ -185,11 +233,11 @@ def evaluate(data: dict) -> dict:
         broker_margin_minimum = BROKER_MARGIN_MINIMUM_USD.get(broker_name, 2000.0)
         if account_net_worth is not None and account_net_worth < broker_margin_minimum:
             failed.append(f"{broker_name.title()} margin minimum not met")
-    if requested_notional is not None and buying_power is not None:
+    if side == "buy" and requested_notional is not None and buying_power is not None:
         if requested_notional > buying_power and not margin_requested:
             failed.append("requested notional exceeds live buying power without margin")
 
-    if asset_class == "US_EQUITY" and ask is not None and buying_power is not None:
+    if side == "buy" and asset_class == "US_EQUITY" and ask is not None and buying_power is not None:
         if ask > buying_power:
             if data.get("fractional_shares_supported") is True and data.get("fractional_asset_eligible") is True:
                 if requested_notional is None or requested_notional > buying_power:

@@ -2,21 +2,40 @@
 
 Autonomous execution is allowed only when every gate in this file passes.
 
+## CURRENT CONDITIONAL OPERATIONS POLICY
+
+The daily operations start is 4:00 AM America/New_York. Two consecutive fresh
+Robinhood MCP reads must confirm positive, spendable crypto buying power before
+the scanner/runtime is allowed to operate 24/7. Until that condition is
+confirmed, RunPod, ChatGPT, Codex and Claude heavy/scanner layers operate only
+on actual U.S. trading days from 4:00 AM through 8:00 PM ET, including early,
+regular and late sessions; they are dormant or paused outside that window.
+Equity buying power, total portfolio value, unsold holdings, projected profit,
+promised deposits and RunPod/OpenAI credits do not unlock 24/7 mode.
+
+When funding is absent outside the market window, pause the monitor and heavy
+agent layers. Do not stop a RunPod resource unless a safe reversible pause and
+autonomous resume are actually exposed and verified; a provider `stop` action
+is not equivalent to pause and may clear ephemeral state.
+
 ## CONTROLLING VERBATIM PROCEDURE
 
 ```text
 runpod 24/7 engine - >  codex/live source/robinhoon live market feeds +
   ChatGPT sources/prjections/math/calculations/forecatsing/etc.  → envelopes →
   Codex Robinhood MCP
-    refresh → enriched envelope → viability gate → preview → execution only
-  after
-    confirmation
+    refresh → enriched envelope → viability gate → broker validation/preview →
+  exact-ticket placement through the authorized Robinhood Agentic account →
+    broker order/fill confirmation
 ```
 
 No subsystem may defer, reorder, or bypass this procedure. The user's blanket
-autonomous buy/sell authorization satisfies the user-confirmation gate for
-orders that pass every live gate; Robinhood preview, idempotency, and broker
-reconciliation remain mandatory.
+autonomous buy/sell authorization and authenticated Robinhood Agentic account
+satisfy the manual per-order confirmation gate for orders that pass every live
+gate. Broker-side validation/preview where exposed, exact-ticket matching,
+idempotency, and broker reconciliation remain mandatory. The agent uses the
+direct placement path after those gates and does not wait for a second
+interactive confirmation.
 
 ## Codex Robinhood MCP Freshness Authority
 
@@ -28,7 +47,8 @@ the MCP is connected.
 ```text
 fresh Codex Robinhood MCP refresh = required for each candidate
 stale, missing, contradictory, or failed refresh = NO ACTION
-RunPod/ChatGPT scanning = continues 24/7 while execution is blocked
+positive fresh crypto buying power = 24/7 scanner mode
+zero, stale, missing, or contradictory crypto buying power = market-window mode
 ```
 
 RunPod does not need a direct Robinhood relay to scan. Codex performs the live
@@ -46,8 +66,9 @@ new preview or order.
    execution friction makes projected net profit non-positive.
 5. Run APEX loss-first sizing and accept the ledger result `SIZED CANDIDATE`
    when all failure checks are empty.
-6. Require positive net edge, fresh quorum, broker validation, preview, and
-   explicit confirmation before Robinhood placement.
+6. Require positive net edge, fresh quorum, broker validation/preview, exact
+   ticket matching, and pre-authorized autonomous execution before Robinhood
+   placement. Do not add an interactive per-order confirmation step.
 ```
 
 `SIZED CANDIDATE` is not a fill or execution authorization. It is the handoff
@@ -327,4 +348,4 @@ The old every-minute Codex heartbeat/watch loop is disabled by rule.
 
 After activation, autonomous buy/sell gates must use the runtime `market_input` extracted from `data/current_candidate_envelope.json` into `/private/tmp/apex_current_envelope_market_input.json`. They must not use `data/sample_robinhood_volatile_crypto_input.json`, `data/sample_robinhood_crypto_input.json`, or any other sample market file for live buy/sell activation.
 
-After activation, Codex must run only the side authorized by `candidate_decision`. `BUY CANDIDATE` may run the buy gate only when buys are not paused by current operations mode. `SELL CANDIDATE` may run the sell gate. `HOLD CANDIDATE`, `WATCHLIST ONLY`, `HUMAN APPROVAL REQUIRED`, and `NO ACTION` must run no buy/sell gate.
+After activation, Codex must run only the side authorized by `candidate_decision`. `BUY CANDIDATE` may run the buy gate only when buys are not paused by current operations mode. `SELL CANDIDATE` may run the sell gate. `HOLD CANDIDATE`, `WATCHLIST ONLY`, and `NO ACTION` must run no buy/sell gate.

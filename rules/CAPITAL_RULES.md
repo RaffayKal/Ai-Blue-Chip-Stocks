@@ -36,6 +36,17 @@ Never use a hard-coded capital amount or total portfolio value as spendable capi
 If live buying-power data is missing, stale, contradictory, or unavailable:
 `NO ACTION`.
 
+BUY and SELL capital checks are distinct. A SELL may be evaluated against fresh,
+broker-confirmed sellable quantity for the exact held position even when cash
+buying power is zero. The quote/position record must identify a fresh Robinhood
+position source and the requested quantity must not exceed its sellable quantity.
+That position record must also be tied to the currently verified agentic account.
+Unsold market value is not deployable cash. After broker-confirmed sale, fresh
+Robinhood availability/buying-power refresh, and ledger reconciliation, sale
+proceeds may fund a subsequent BUY. If Robinhood already reports the proceeds
+spendable, do not impose an extra settlement wait; use that refreshed buying-
+power field and never add the same proceeds a second time.
+
 The system must automatically adapt as deposits, withdrawals, holdings, profits, losses, and buying power change.
 
 ## Hard Stops

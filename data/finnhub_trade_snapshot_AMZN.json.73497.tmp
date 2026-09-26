@@ -1,0 +1,17 @@
+{
+  "ask": null,
+  "asset_class": "US_EQUITY",
+  "bid": null,
+  "data_status": "trade_fresh_bid_ask_unavailable",
+  "execution_authority": false,
+  "last": 249.5,
+  "provider": "Finnhub",
+  "session": "UNKNOWN_UNTIL_SESSION_CHECK",
+  "source": "Finnhub authenticated WebSocket trade stream",
+  "symbol": "AMZN",
+  "timestamp": "2026-09-24T19:55:31.932000Z",
+  "trade_timestamp": "2026-09-24T19:55:31.932000Z",
+  "usable": true,
+  "venue": "Finnhub consolidated feed",
+  "volume": 100.0
+}

@@ -2,16 +2,16 @@
   "candidate_decision": "NO ACTION",
   "execution_authority": false,
   "fallback_source": "RUNPOD_MEDIUM_WEIGHT_SCANNER_DETERMINISTIC",
-  "input_fingerprint": "2851ec793b6603f955869365d657c56f43b74b86ac6fa4cadd26e09040123984",
+  "input_fingerprint": "c00d77ffcc5fdbecbe0d87cff677f7524ecaabf37c57c48b30b61a9a3f1d7e1c",
   "missing_facts": [],
-  "openai_error": "RuntimeError: OpenAI transport error: <urlopen error [Errno 8] nodename nor servname provided, or not known>",
+  "openai_error": "RuntimeError: OpenAI HTTP 429: {\n  \"error\": {\n    \"message\": \"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"credit_balance_exhausted\"\n  }\n}",
   "projection": {
-    "continuation_probability": 31.8,
-    "net_opportunity_score": 2.097
+    "continuation_probability": 59.7,
+    "net_opportunity_score": 45.595
   },
   "reason": "RunPod deterministic fallback: blue-chip continuation/net-opportunity score from the scanner's own medium8 projection.",
   "role": "blue_chip_momentum",
-  "scanner_viable": false,
+  "scanner_viable": true,
   "status": "OK_DETERMINISTIC_FALLBACK",
-  "timestamp": "2026-09-24T19:36:05.927221Z"
+  "timestamp": "2026-09-26T02:57:26.988014Z"
 }

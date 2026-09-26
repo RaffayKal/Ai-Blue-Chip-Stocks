@@ -2,34 +2,36 @@
   "candidate_decision": "NO ACTION",
   "execution_authority": false,
   "fallback_source": "RUNPOD_MEDIUM_WEIGHT_SCANNER_DETERMINISTIC",
-  "input_fingerprint": "2851ec793b6603f955869365d657c56f43b74b86ac6fa4cadd26e09040123984",
+  "input_fingerprint": "c00d77ffcc5fdbecbe0d87cff677f7524ecaabf37c57c48b30b61a9a3f1d7e1c",
   "missing_facts": [],
-  "openai_error": "RuntimeError: OpenAI transport error: <urlopen error [Errno 8] nodename nor servname provided, or not known>",
+  "openai_error": "RuntimeError: OpenAI HTTP 429: {\n  \"error\": {\n    \"message\": \"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"credit_balance_exhausted\"\n  }\n}",
   "projection": {
     "blue_chips": {
       "capital_fit_score": 100.0,
-      "continuation_probability": 31.8,
-      "freshness_score": 33.333,
+      "continuation_probability": 59.7,
+      "freshness_score": 100.0,
       "market_temperature_score": 41.0,
-      "net_opportunity_score": 2.097,
-      "sentiment_score": 26.0,
+      "net_opportunity_score": 45.595,
+      "sentiment_score": 50.0,
       "session_confirmation_score": 0.0,
-      "source_depth_score": 20.0
+      "source_depth_score": 40.0,
+      "spread_priority": "BLOCKED"
     },
     "crypto": {
       "capital_fit_score": 100.0,
-      "continuation_probability": 46.8,
-      "freshness_score": 33.333,
+      "continuation_probability": 74.7,
+      "freshness_score": 100.0,
       "market_temperature_score": 41.0,
-      "net_opportunity_score": 22.347,
-      "sentiment_score": 26.0,
+      "net_opportunity_score": 65.845,
+      "sentiment_score": 50.0,
       "session_confirmation_score": 100.0,
-      "source_depth_score": 20.0
+      "source_depth_score": 40.0,
+      "spread_priority": "BLOCKED"
     }
   },
   "reason": "RunPod deterministic fallback: identical medium8 forward-projection math the scanner already computes every cycle.",
   "role": "forward_projection",
-  "scanner_viable": false,
+  "scanner_viable": true,
   "status": "OK_DETERMINISTIC_FALLBACK",
-  "timestamp": "2026-09-24T19:36:09.337739Z"
+  "timestamp": "2026-09-26T02:57:27.116244Z"
 }

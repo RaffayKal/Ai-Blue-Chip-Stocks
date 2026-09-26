@@ -8,6 +8,7 @@
 logs/
 data/*.json
 !data/sample_*.json
+!data/robinhood_watchlist_snapshot.json
 data/*.pid
 data/*.lock
 data/atomic_snapshots/

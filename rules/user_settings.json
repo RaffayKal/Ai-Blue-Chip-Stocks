@@ -15,6 +15,20 @@
     "max_daily_loss_decimal": 0.02,
     "max_open_positions": 1
   },
+  "operations_mode": {
+    "daily_start_timezone": "America/New_York",
+    "daily_start_local": "04:00",
+    "market_window_end_local": "20:00",
+    "twenty_four_seven_unlock_capital": "positive_fresh_spendable_robinhood_crypto_buying_power",
+    "required_consecutive_broker_passes": 2,
+    "zero_or_unknown_capital_mode": "MARKET_WINDOW_ONLY",
+    "zero_or_unknown_capital_off_hours": "DORMANT_PAUSED",
+    "twenty_four_seven_mode": "SCANNING_ONLY_UNTIL_ALL_EXECUTION_GATES_PASS",
+    "runpod_role": "CONDITIONAL_SCANNER_RUNTIME",
+    "codex_role": "CONDITIONAL_VALIDATION_AND_EXECUTION_GATES",
+    "chatgpt_role": "CONDITIONAL_SCANNER_AND_ENVELOPE_INPUT",
+    "claude_role": "CONDITIONAL_ORCHESTRATION_AND_VALIDATION"
+  },
   "asset_limits": {
     "minimum_allocation_decimal": 0.03,
     "maximum_allocation_decimal": 0.2,
@@ -53,6 +67,8 @@
     "agentic_mcp_server": "robinhood-trading",
     "agentic_mcp_url": "https://agent.robinhood.com/mcp/trading",
     "primary_execution_authority": "Robinhood MCP",
+    "autonomous_agentic_execution_mode": "PREAUTHORIZED_BROKER_REVIEW_AND_DIRECT_PLACEMENT",
+    "manual_per_order_confirmation_required": false,
     "backup_execution_authorities": [],
     "runpod_role": "SCANNER_AND_BACKUP_DATA_ONLY",
     "claude_role": "ORCHESTRATION_AND_VALIDATION_ONLY",
