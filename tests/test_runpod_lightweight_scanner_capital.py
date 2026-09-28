@@ -574,7 +574,7 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
              patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
             envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
         self.assertTrue(envelope["scanner_viable"])
-        self.assertEqual(envelope["candidate_decision"], "LOOKING")
+        self.assertEqual(envelope["candidate_decision"], "SCANNING FOR VIABILITY")
         self.assertEqual(envelope["execution_block_reason"], "capital_or_sizing_gate_pending")
         self.assertFalse(envelope["broker_order_submitted"])
 

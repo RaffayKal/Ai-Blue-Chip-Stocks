@@ -90,11 +90,11 @@ class ThreadedScannerLanePoolTests(unittest.TestCase):
                 return write_json.call_args.args[1]
 
         payload = asyncio.run(scenario())
-        self.assertEqual(payload["consensus_decision"], "LOOKING")
-        self.assertEqual(payload["execution_consensus_decision"], "LOOKING")
-        self.assertEqual(payload["execution_gate_decision"], "LOOKING")
+        self.assertEqual(payload["consensus_decision"], "SCANNING FOR VIABILITY")
+        self.assertEqual(payload["execution_consensus_decision"], "SCANNING FOR VIABILITY")
+        self.assertEqual(payload["execution_gate_decision"], "SCANNING FOR VIABILITY")
         self.assertEqual(payload["execution_search_state"], "SCANNING_FOR_VIABLE_BUY_SELL_CANDIDATES")
-        self.assertEqual(payload["discovery_state"], "LOOKING_FOR_VIABLE_CANDIDATES")
+        self.assertEqual(payload["discovery_state"], "SCANNING_FOR_VIABILITY")
 
 
 if __name__ == "__main__":

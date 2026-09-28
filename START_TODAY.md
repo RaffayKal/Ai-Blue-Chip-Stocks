@@ -81,7 +81,7 @@ eligibility.
 
 Allowed result types:
 
-- LOOKING — fresh, viable watch/scanner state; no executable ticket yet.
+- SCANNING FOR VIABILITY — active candidate search; no executable ticket yet.
 
 - `NO ACTION`
 - `WATCHLIST ONLY`
@@ -102,7 +102,7 @@ Crypto action is blocked unless:
 - side-specific live broker checks pass: crypto buying power for buys, or
   sellable quantity and sell eligibility for sells
 
-LOOKING does not authorize a buy or sell. It replaces the ambiguous watch-only
+SCANNING FOR VIABILITY does not authorize a buy or sell. It replaces the ambiguous watch-only
 NO ACTION label when scanner and quote gates are healthy but capital or sizing
 gates are still pending. NO ACTION remains the fail-closed execution result
 for missing, stale, contradictory, or failed required facts.

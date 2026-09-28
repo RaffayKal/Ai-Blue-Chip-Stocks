@@ -1429,7 +1429,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "candidate_decision": (
             f"{candidate_side} CANDIDATE"
             if execution_viable
-            else "LOOKING"
+            else "SCANNING FOR VIABILITY"
             if viable
             else "NO ACTION"
         ),

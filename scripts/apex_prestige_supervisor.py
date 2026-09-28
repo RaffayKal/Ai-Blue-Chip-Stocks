@@ -106,6 +106,19 @@ def supervisor_once(config_path):
         "--codex-heavy-state",
         "ASLEEP_HEALTH_CHECK_ONLY",
     ])
+    # The scanner alone never emits an execution packet. Recheck its latest
+    # envelope on every supervisor cycle; apex_packet_monitor retains the
+    # freshness, capital, risk, and idempotency gates before local handoff.
+    if scan_code == 0:
+        monitor_code, monitor_output = run_command([
+            sys.executable,
+            "algorithms/apex_packet_monitor.py",
+            "--config",
+            str(config_path),
+            "--once",
+        ])
+    else:
+        monitor_code, monitor_output = None, "APEX_PACKET_MONITOR: skipped; scanner failed\n"
     status = {
         "timestamp_utc": iso_now(),
         "architecture": ARCHITECTURE_NAME,
@@ -114,6 +127,7 @@ def supervisor_once(config_path):
         "runpod_lightweight_scanner_active": True,
         "codex_heavy_operations_active": False,
         "apex_heavy_monitor_active": False,
+        "packet_monitor_checked": monitor_code == 0,
         "health_check_only": True,
         "health_check_cadence": "EVERY_SUPERVISOR_LOOP_AND_AT_LEAST_HOURLY",
         "hourly_check_requirement": "SATISFIED_BY_4_SECOND_SUPERVISOR_LOOP",
@@ -130,12 +144,14 @@ def supervisor_once(config_path):
         "all_apex_gates_rerun_before_resume": True,
         "last_governor_exit": gov_code,
         "last_scanner_exit": scan_code,
-        "last_monitor_exit": None,
+        "last_monitor_exit": monitor_code,
     }
     write_json(STATUS, status)
-    log("light_health_check_only", governor_exit=gov_code, scanner_exit=scan_code, scanner_output=scan_output)
+    log("light_health_check_only", governor_exit=gov_code, scanner_exit=scan_code,
+        monitor_exit=monitor_code, scanner_output=scan_output, monitor_output=monitor_output)
     print(gov_output, end="")
     print(scan_output, end="")
+    print(monitor_output, end="")
     print("APEX_PRESTIGE_SUPERVISOR: LIGHT_HEALTH_CHECK_ONLY")
     print("HEAVY_ACTION: NO ACTION")
     return "LIGHT_HEALTH_CHECK_ONLY"

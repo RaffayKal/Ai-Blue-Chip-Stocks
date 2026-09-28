@@ -89,23 +89,26 @@ without resolving the user's $0.06/hour spending constraint.
 
 Current conditional policy: 4:00 AM America/New_York starts or resumes the
 daily operations window. Two consecutive fresh Robinhood reads confirming
-positive spendable crypto buying power unlock 24/7 scanning. Until that happens,
-operations run only on actual U.S. trading days from 4:00 AM through 8:00 PM ET,
+either positive spendable crypto buying power for buys or broker-confirmed
+sellable crypto quantity and sell eligibility for sells unlock 24/7 scanning.
+Until that happens, operations run only on actual U.S. trading days from 4:00 AM through 8:00 PM ET,
 including early, regular and late sessions. At the off-market close, the pod,
 ChatGPT scanner layers and Codex/Claude heavy-agent layers are dormant or
-paused. Equity buying power, total portfolio value, unsold holdings, projected
+paused. Equity buying power, total portfolio value, unverified holdings, projected
 profit and promised funding do not unlock 24/7 mode. Actual asset sessions and
 spendable broker funds still determine trade eligibility and sizing.
 
 - `robinhood-frontline-24-7-monitor`: state controller at 4:00 AM and 8:00 PM
-  America/New_York. It starts/resumes the daily window, checks funding, and
-  pauses/stops operations off-market when 24/7 funding is not verified.
+  America/New_York. It starts/resumes the daily window, checks buy/sell
+  eligibility, and pauses supported layers off-market when a 24/7 crypto path
+  is not verified.
 - `blue-chip-operations-heartbeat`: active every 10 minutes during the market
-  window by default; it switches to 24/7 only after positive crypto buying power
+  window by default; it switches to 24/7 only after a crypto buy or sell path
   is confirmed twice.
-- Off-market shutdown is conditional: confirmed positive crypto buying power
-  keeps 24/7 scanning active; zero/unknown/contradictory funding makes the pod
-  and heavy agent layers dormant until the next start. Existing execution
+- Off-market shutdown is conditional: a confirmed crypto buy or sell path
+  keeps 24/7 scanning active; zero/unknown/contradictory buy and sell paths
+  make supported scanner and heavy-agent layers dormant until the next start.
+  Existing execution
   permissions and safeguards are unchanged.
 
 ### Off-market pause limitation
@@ -138,6 +141,23 @@ timestamp manually to conceal a dead worker. Robinhood MCP remains host-side aut
 continuous Robinhood-to-RunPod quote delivery requires an explicitly
 configured authorized relay. Without that relay, stale or missing broker data
 is non-authoritative and must remain fail-closed.
+
+If `pod_scanner_supervisor_status.json` stops advancing, check the pod process
+list and cgroup `memory.events` before recovery. On the existing pod only,
+`python3 scripts/runpod_ops.py start-scanner` idempotently starts a missing
+supervisor; it does not restart vLLM or the pod. Recheck the supervisor,
+primary scanner status, manifest and fleet summary on more than one sample.
+If only scanner code needs updating, `deploy-scanner-code` transfers the named
+scanner source files without account records, then `repair-scanner` reloads
+the lane-pool worker. The broad `restore` path excludes brokerage intake and
+user settings; do not use it merely for a source-code label change.
+
+The local `apex_prestige_supervisor.py` runs `apex_packet_monitor.py --once`
+after each successful scanner pass. This is the qualified packet-emission
+check feeding the local Codex inbox. A live consumer with an empty inbox does
+not prove a trading handoff. `SCANNING FOR VIABILITY` is discovery state, not
+an executable order; the packet monitor and broker still revalidate any
+candidate before execution.
 
 `python3 scripts/runpod_ops.py sync-quotes` sends public routed quote
 snapshots only. Before upload it promotes the newest factual per-symbol

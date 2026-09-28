@@ -22,6 +22,23 @@ from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
 REMOTE = "/workspace/apex"
+SCANNER_CODE_FILES = (
+    "scripts/runpod_lightweight_scanner.py",
+    "scripts/threaded_scanner_lane_pool.py",
+    "scripts/chatgpt_scanner_runtime.py",
+    "scripts/chatgpt_medium_scanner_fleet.py",
+    "algorithms/candidate_envelope_gate.py",
+    "algorithms/apex_packet_monitor.py",
+)
+PUBLIC_QUOTE_FIELDS = frozenset({
+    'symbol', 'asset_class', 'session', 'venue', 'broker_name',
+    'timestamp', 'quote_timestamp', 'bid', 'ask', 'last',
+    'source', 'routing', 'execution_authority',
+})
+PRIVATE_RESTORE_EXCLUDES = frozenset({
+    'rules/brokerage_intake.json',
+    'rules/user_settings.json',
+})
 
 
 def remote(script, timeout=90):
@@ -118,7 +135,16 @@ def snapshot_payload():
     # RunPod receives market quotes only. Account, buying-power, portfolio,
     # position, and order data stay on the authenticated host MCP.
     paths = sorted((ROOT / 'data').glob('robinhood_crypto_quote_snapshot_*.json'))
-    snapshots = {p.name: json.loads(p.read_text()) for p in paths if p.is_file()}
+    snapshots = {}
+    for path in paths:
+        if not path.is_file():
+            continue
+        raw = json.loads(path.read_text())
+        if not isinstance(raw, dict) or raw.get('broker_name') != 'Robinhood':
+            continue
+        # A quote file can acquire additional local fields over time. Never
+        # send account, funding, position, or order fields to the pod.
+        snapshots[path.name] = {key: raw[key] for key in PUBLIC_QUOTE_FIELDS if key in raw}
     aggregate_name = 'robinhood_crypto_quote_snapshot.json'
     aggregate = snapshots.get(aggregate_name)
 
@@ -151,7 +177,7 @@ count=0
 for name,data in payload.items():
     if '/' in name or not name.startswith('robinhood_crypto_'): raise ValueError('Invalid snapshot filename')
     def stamp(d):
-        return datetime.fromisoformat((d.get('quote_timestamp') or d.get('crypto_capital_retrieved_at') or '').replace('Z','+00:00'))
+        return datetime.fromisoformat((d.get('quote_timestamp') or '').replace('Z','+00:00'))
     incoming=stamp(data)
     age=(datetime.now(timezone.utc)-incoming).total_seconds()
     if age<0 or age>180: continue
@@ -208,6 +234,31 @@ print(json.dumps({{'scanner_matches':len(matches),'terminated_pids':terminated,'
 """
 
 
+def start_scanner_script():
+    """Recover only a missing scanner supervisor on the existing pod."""
+    return f"""
+import json,pathlib,subprocess
+root=pathlib.Path({REMOTE!r})
+if not (root/'scripts/run_pod_scanner_supervisor.py').is_file():
+    raise FileNotFoundError('scanner supervisor code missing')
+running=[]
+for entry in pathlib.Path('/proc').iterdir():
+    if not entry.name.isdigit(): continue
+    try:
+        command=b' '.join((entry/'cmdline').read_bytes().split(b'\\0')).decode(errors='replace')
+    except OSError: continue
+    if 'scripts/run_pod_scanner_supervisor.py' in command:
+        running.append(int(entry.name))
+if running:
+    print(json.dumps({{'scanner_supervisor':'already_running','pids':running}}))
+else:
+    with (root/'logs/pod_scanner_supervisor.log').open('a') as log:
+        process=subprocess.Popen(['python3','scripts/run_pod_scanner_supervisor.py'],cwd=root,
+                                 stdin=subprocess.DEVNULL,stdout=log,stderr=subprocess.STDOUT,start_new_session=True)
+    print(json.dumps({{'scanner_supervisor':'started','pid':process.pid}}))
+"""
+
+
 def deployment_script():
     buffer = io.BytesIO()
     paths = [ROOT / name for name in ('AGENTS.md','START_TODAY.md','COMMANDS.md')]
@@ -220,6 +271,8 @@ def deployment_script():
     with tarfile.open(fileobj=buffer, mode='w:gz') as archive:
         for path in paths:
             if not path.is_file() or path.is_symlink() or '__pycache__' in path.parts:
+                continue
+            if str(path.relative_to(ROOT)) in PRIVATE_RESTORE_EXCLUDES:
                 continue
             if path.suffix not in ('.py','.sh','.md','.json','.txt','.plist'):
                 continue
@@ -245,13 +298,40 @@ print(json.dumps({{'deployment_sha256':{digest!r},'supervisor_requested':True}})
 """
 
 
+def scanner_code_script():
+    """Deploy only named source files; never bundle account records or secrets."""
+    buffer = io.BytesIO()
+    with tarfile.open(fileobj=buffer, mode='w:gz') as archive:
+        for name in SCANNER_CODE_FILES:
+            path = ROOT / name
+            if not path.is_file() or path.is_symlink():
+                raise FileNotFoundError(name)
+            archive.add(path, arcname=name, recursive=False)
+    blob = buffer.getvalue()
+    digest = hashlib.sha256(blob).hexdigest()
+    return f"""
+import base64,hashlib,io,json,pathlib,tarfile
+root=pathlib.Path({REMOTE!r})
+if not root.is_dir(): raise FileNotFoundError(root)
+blob=base64.b64decode({base64.b64encode(blob).decode()!r})
+assert hashlib.sha256(blob).hexdigest()=={digest!r}
+with tarfile.open(fileobj=io.BytesIO(blob),mode='r:gz') as archive:
+    names=set(archive.getnames())
+    if names!={set(SCANNER_CODE_FILES)!r}: raise ValueError('Unexpected scanner deployment member')
+    archive.extractall(root,filter='data')
+print(json.dumps({{'scanner_code_sha256':{digest!r},'files_updated':len(names),'private_account_data_transferred':False}}))
+"""
+
+
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=('status','sync-quotes','restore','repair-scanner'))
+    parser.add_argument('action',choices=('status','sync-quotes','restore','repair-scanner','deploy-scanner-code','start-scanner'))
     args=parser.parse_args()
     script = (status_script() if args.action=='status' else
               sync_script(snapshot_payload()) if args.action=='sync-quotes' else
-              repair_scanner_script() if args.action=='repair-scanner' else deployment_script())
+              repair_scanner_script() if args.action=='repair-scanner' else
+              scanner_code_script() if args.action=='deploy-scanner-code' else
+              start_scanner_script() if args.action=='start-scanner' else deployment_script())
     try:
         print(remote(script,timeout=120 if args.action=='restore' else 45))
     except (OSError, RuntimeError, TimeoutError) as exc:

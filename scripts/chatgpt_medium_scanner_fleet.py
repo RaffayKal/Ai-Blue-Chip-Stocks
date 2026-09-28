@@ -68,7 +68,7 @@ SCANNER_INSTRUCTIONS = (
     "Use only supplied data. Do not invent quotes, timestamps, liquidity, or forecasts. "
     "Evaluate factor-diverse evidence including value, momentum, quality, liquidity, "
     "spread, slippage, and fees where supplied. Treat source disagreement, missing data, "
-    "and uncertain execution economics as reasons for LOOKING, WATCHLIST ONLY, or NO ACTION. "
+    "and uncertain execution economics as reasons for SCANNING FOR VIABILITY, WATCHLIST ONLY, or NO ACTION. "
     "Do not claim guaranteed returns. Do not execute, preview, authorize, or request a trade. "
     "Never override deterministic gates. Return JSON only. scanner_viable must be false "
     "if required facts are missing, stale, or conflicting."
@@ -223,7 +223,7 @@ def scan_once(model: str, role: str, instruction: str, lanes: list[dict], fp: st
         "candidate_lanes": prompt_lanes(lanes),
         "required_result": {
             "scanner_viable": "boolean",
-            "candidate_decision": "BUY CANDIDATE|SELL CANDIDATE|LOOKING|WATCHLIST ONLY|NO ACTION",
+            "candidate_decision": "BUY CANDIDATE|SELL CANDIDATE|SCANNING FOR VIABILITY|WATCHLIST ONLY|NO ACTION",
             "projection": "object",
             "reason": "string",
             "missing_facts": "array",
@@ -250,7 +250,7 @@ def scan_once(model: str, role: str, instruction: str, lanes: list[dict], fp: st
         raise RuntimeError("no parseable scanner JSON")
     if not isinstance(result.get("scanner_viable"), bool):
         raise ValueError("scanner_viable must be boolean")
-    if result.get("candidate_decision") not in {"BUY CANDIDATE", "SELL CANDIDATE", "LOOKING", "WATCHLIST ONLY", "NO ACTION"}:
+    if result.get("candidate_decision") not in {"BUY CANDIDATE", "SELL CANDIDATE", "SCANNING FOR VIABILITY", "WATCHLIST ONLY", "NO ACTION"}:
         raise ValueError("invalid candidate_decision")
     return {
         "timestamp": now(),

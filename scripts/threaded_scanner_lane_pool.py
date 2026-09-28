@@ -216,16 +216,14 @@ async def synergy_aggregator(recent_results, lane_count, interval_seconds, once,
             execution_gate_decision, consensus_count = decisions.most_common(1)[0]
             viable_count = sum(1 for item in window if item["scanner_viable"])
             # A fleet with no currently viable lane is still actively
-            # searching. Keep the old majority execution result separately so
-            # reporting cannot turn a fail-closed execution outcome into a
-            # false claim that discovery stopped.
+            # scanning. Discovery status never implies order eligibility.
             consensus_decision = (
-                "LOOKING"
+                "SCANNING FOR VIABILITY"
                 if viable_count == 0
                 else execution_gate_decision
             )
             discovery_state = (
-                "LOOKING_FOR_VIABLE_CANDIDATES"
+                "SCANNING_FOR_VIABILITY"
                 if viable_count == 0
                 else "VIABLE_CANDIDATE_PRESENT"
             )
