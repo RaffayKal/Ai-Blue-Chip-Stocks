@@ -269,6 +269,16 @@ def build_packet(envelope: dict[str, Any], gate: GateResult, freshness: str) -> 
             "quote_timestamp": market_input.get("quote_timestamp") or market_input.get("timestamp"),
             "source_count": market_input.get("source_count"),
             "data_status": market_input.get("data_status"),
+            **{key: market_input.get(key) for key in (
+                "routing", "liquidity_usd", "risk_status", "source_conflict",
+                "crypto_account_confirmed", "maintenance_active", "account_restricted",
+                "requested_notional_usd", "requested_quantity", "sellable_quantity",
+                "position_status", "position_timestamp", "position_source",
+                "position_account_matches_verified_account", "crypto_buying_power_usd",
+                "buying_power_usd", "broker_extended_session_supported",
+                "fractional_shares_supported", "fractional_asset_eligible", "market_focus",
+                "account_net_worth_usd",
+            ) if key in market_input},
         },
         "technical_state": envelope.get("technical_state", {}),
         "trend_state": envelope.get("trend_state", envelope.get("technical_state", {})),
@@ -327,6 +337,8 @@ def build_packet(envelope: dict[str, Any], gate: GateResult, freshness: str) -> 
         "idempotency_key": envelope.get("idempotency_key"),
         "source_envelope_id": envelope.get("envelope_id"),
     }
+    if isinstance(envelope.get("execution_request"), dict):
+        packet["execution_request"] = envelope["execution_request"]
     packet["packet_hash"] = packet_hash(packet)
     return packet
 

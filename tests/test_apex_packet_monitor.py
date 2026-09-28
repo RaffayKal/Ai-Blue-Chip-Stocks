@@ -123,6 +123,10 @@ class ApexPacketMonitorTests(unittest.TestCase):
             self.assertFalse(packet["execution_allowed"])
             self.assertTrue(packet["execution_gate_required"])
             self.assertTrue(packet["codex_revalidation_required"])
+            self.assertEqual(packet["market_data"]["liquidity_usd"], 10000000)
+            self.assertEqual(packet["market_data"]["risk_status"], "pass")
+            self.assertEqual(packet["market_data"]["buying_power_usd"], 25.0)
+            self.assertEqual(packet["market_data"]["requested_notional_usd"], 1.0)
 
     def test_duplicate_idempotency_key_does_not_emit_again(self):
         with tempfile.TemporaryDirectory() as raw:
@@ -153,6 +157,10 @@ class ApexPacketMonitorTests(unittest.TestCase):
         log_path = temp / "execution_log.json"
         manifest_path = temp / "algorithm_sources.json"
 
+        market_input = dict(market_input)
+        market_input.setdefault("broker_capital_source", "Robinhood.get_portfolio")
+        market_input.setdefault("broker_account_number", "test-agentic-account")
+        market_input.setdefault("broker_capital_retrieved_at", now())
         write_json(market_path, market_input)
         write_json(ticket_path, order_ticket)
         write_json(settings_path, {
@@ -163,7 +171,7 @@ class ApexPacketMonitorTests(unittest.TestCase):
         })
         write_json(intake_path, {
             "explicit_execution_authorization": True,
-            "verified_agentic_account": {"crypto_buying_power_usd": 25.0, "buying_power_usd": 25.0},
+            "verified_agentic_account": {"account_number": "test-agentic-account", "crypto_buying_power_usd": None, "buying_power_usd": None},
             "minimum_order_value_usd": "1.00",
             "margin_approved": False,
         })
@@ -294,6 +302,23 @@ class ApexPacketMonitorTests(unittest.TestCase):
             self.assertIn("AUTONOMOUS_DECISION: APPROVED_FOR_PREVIEW_AND_PLACEMENT", output)
             self.assertIn("EXECUTION_ALLOWED: true", output)
             self.assertIn("NEXT_ALLOWED_STEP: preview Blue Chip Stocks crypto order, then place only that previewed order if the runtime permits it", output)
+
+    def test_buy_rejects_unverified_or_wrong_account_capital(self):
+        with tempfile.TemporaryDirectory() as raw:
+            temp = Path(raw)
+            market = self.crypto_market_input()
+            market["broker_capital_source"] = "unverified"
+            output = self.run_order_gate(temp, market, self.crypto_buy_ticket())
+            self.assertIn("AUTONOMOUS_DECISION: NO ACTION", output)
+            self.assertIn("fresh Robinhood portfolio buying power source missing", output)
+            market["broker_capital_source"] = "Robinhood.get_portfolio"
+            market["broker_account_number"] = "other-account"
+            output = self.run_order_gate(temp, market, self.crypto_buy_ticket())
+            self.assertIn("portfolio buying power account mismatch", output)
+            market["broker_account_number"] = "test-agentic-account"
+            market["broker_capital_retrieved_at"] = "2020-01-01T00:00:00Z"
+            output = self.run_order_gate(temp, market, self.crypto_buy_ticket())
+            self.assertIn("fresh Robinhood portfolio buying power timestamp missing", output)
 
     def test_fractional_equity_authorized_state_reaches_blue_chip_stocks_review_workflow(self):
         with tempfile.TemporaryDirectory() as raw:

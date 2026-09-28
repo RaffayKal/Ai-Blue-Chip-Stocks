@@ -5,6 +5,7 @@ import unittest
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 import sys
+from unittest.mock import patch
 
 ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -98,6 +99,48 @@ class ConsumerTests(unittest.TestCase):
             market = (root / "processing" / "runtime_market_input.json")
             self.assertFalse(market.exists())
             self.assertIn("robinhood_mcp_refresh_required", calls[0][0])
+
+    def test_live_handoff_preserves_verified_execution_permission_and_sell_sizing(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            (root / "rules").mkdir()
+            (root / "rules" / "user_settings.json").write_text(json.dumps({"broker": {"explicit_execution_authorization": True}}))
+            (root / "rules" / "brokerage_intake.json").write_text(json.dumps({"explicit_execution_authorization": True}))
+            value = packet()
+            value["opportunity_type"] = "SELL CANDIDATE"
+            value.pop("execution_request")
+            value["market_data"].update({"sellable_quantity": "0.01", "liquidity_usd": 100000})
+            with patch.object(consumer, "ROOT", root):
+                market_path, ticket_path = consumer.derive_workflow_inputs(value, root)
+            market = json.loads(market_path.read_text())
+            ticket = json.loads(ticket_path.read_text())
+            self.assertTrue(market["explicit_execution_authorization"])
+            self.assertEqual(market["sellable_quantity"], "0.01")
+            self.assertEqual(ticket["quantity_mode"], "AUTO_SELLABLE_POSITION")
+            self.assertNotIn("dollar_amount", ticket)
+            (root / "rules" / "brokerage_intake.json").write_text(json.dumps({"explicit_execution_authorization": False}))
+            with patch.object(consumer, "ROOT", root):
+                market_path, _ = consumer.derive_workflow_inputs(value, root)
+            self.assertFalse(json.loads(market_path.read_text())["explicit_execution_authorization"])
+
+    def test_live_workflow_uses_connected_codex_home_for_robinhood_oauth(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            market_path = root / "market.json"
+            ticket_path = root / "ticket.json"
+            market_path.write_text("{}")
+            ticket_path.write_text("{}")
+            response = type("Result", (), {
+                "returncode": 0,
+                "stdout": json.dumps({"item": {"type": "agent_message", "text": "EXECUTED"}}),
+                "stderr": "",
+            })()
+            with patch.object(consumer, "find_codex_cli", return_value="/usr/bin/codex"), \
+                 patch.object(consumer.subprocess, "run", return_value=response) as run:
+                self.assertTrue(consumer.default_workflow(market_path, ticket_path, False)[0])
+            argv = run.call_args.args[0]
+            self.assertNotIn("--ignore-user-config", argv)
+            self.assertNotIn("env", run.call_args.kwargs)
 
     def test_end_to_end_monitor_to_consumer_shadow(self):
         with tempfile.TemporaryDirectory() as raw:

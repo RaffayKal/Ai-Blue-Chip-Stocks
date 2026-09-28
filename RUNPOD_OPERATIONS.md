@@ -142,6 +142,12 @@ continuous Robinhood-to-RunPod quote delivery requires an explicitly
 configured authorized relay. Without that relay, stale or missing broker data
 is non-authoritative and must remain fail-closed.
 
+The relay poller and local relay now agree on `/v1/robinhood/crypto-quote` and
+the factual Robinhood snapshot format. The poller rejects stale timestamps and
+copies only public quote fields. This protocol repair does not create the
+missing persistent OAuth-backed producer, relay token, or network route; a
+one-shot quote sync is not a continuous feed.
+
 If `pod_scanner_supervisor_status.json` stops advancing, check the pod process
 list and cgroup `memory.events` before recovery. On the existing pod only,
 `python3 scripts/runpod_ops.py start-scanner` idempotently starts a missing
@@ -158,6 +164,17 @@ check feeding the local Codex inbox. A live consumer with an empty inbox does
 not prove a trading handoff. `SCANNING FOR VIABILITY` is discovery state, not
 an executable order; the packet monitor and broker still revalidate any
 candidate before execution.
+
+The live packet consumer now uses the host's existing Codex OAuth profile for
+Robinhood MCP, rather than an isolated home that omitted MCP credentials.
+Packet-derived market input carries the scanner's original market and risk
+facts; the consumer binds execution permission to both local authorization
+records instead of overwriting it to false. Buy-side sizing uses a fresh,
+account-matched Robinhood `get_portfolio` result supplied at runtime, not the
+old intake-file buying-power value. Sell-side sizing uses refreshed broker
+sellable quantity. A running consumer, successful OAuth probe, or scanner
+viability still does not establish an executable ticket, submitted order, or
+fill; inspect the exact packet, gate, preview, broker order, and reconciliation.
 
 `python3 scripts/runpod_ops.py sync-quotes` sends public routed quote
 snapshots only. Before upload it promotes the newest factual per-symbol

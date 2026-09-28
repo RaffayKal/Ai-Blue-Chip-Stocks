@@ -3,6 +3,7 @@ import json
 import sys
 from decimal import Decimal, InvalidOperation
 from decimal import ROUND_DOWN
+from datetime import datetime, timezone
 from pathlib import Path
 
 from capital_engine import evaluate, load_json
@@ -15,6 +16,7 @@ ALGORITHM_SOURCES = ROOT / "rules" / "algorithm_sources.json"
 USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 EXECUTABLE_ASSET_CLASSES = {"CRYPTO", "US_EQUITY", "ETF"}
 EQUITY_ASSET_CLASSES = {"US_EQUITY", "ETF"}
+MAX_BROKER_CAPITAL_AGE_SECONDS = 420
 
 
 def decimal_value(value, field_name, failed):
@@ -31,6 +33,24 @@ def decimal_value(value, field_name, failed):
 
 def money(value):
     return value.quantize(Decimal("0.01"), rounding=ROUND_DOWN)
+
+
+def runtime_buying_power(market_input, verified_account, asset_class, failed):
+    """Use only this ticket's fresh, account-matched Robinhood portfolio read."""
+    if market_input.get("broker_capital_source") != "Robinhood.get_portfolio":
+        failed.append("fresh Robinhood portfolio buying power source missing")
+    if not verified_account.get("account_number") or market_input.get("broker_account_number") != verified_account.get("account_number"):
+        failed.append("portfolio buying power account mismatch")
+    raw_timestamp = market_input.get("broker_capital_retrieved_at")
+    try:
+        stamp = datetime.fromisoformat(str(raw_timestamp).replace("Z", "+00:00"))
+        age = (datetime.now(timezone.utc) - stamp.astimezone(timezone.utc)).total_seconds()
+        if stamp.tzinfo is None or not 0 <= age <= MAX_BROKER_CAPITAL_AGE_SECONDS:
+            raise ValueError("stale portfolio read")
+    except (TypeError, ValueError):
+        failed.append("fresh Robinhood portfolio buying power timestamp missing")
+    field = "crypto_buying_power_usd" if asset_class == "CRYPTO" else "buying_power_usd"
+    return decimal_value(market_input.get(field), field, failed)
 
 
 
@@ -159,10 +179,8 @@ def main() -> None:
     if has_dollar_amount or has_dollar_amount_mode:
         broker_minimum = decimal_value(brokerage_intake.get("minimum_order_value_usd", "1.00"), "minimum_order_value_usd", failed)
         verified_account = brokerage_intake.get("verified_agentic_account") or {}
-        if asset_class == "CRYPTO":
-            buying_power = decimal_value(verified_account.get("crypto_buying_power_usd"), "crypto_buying_power_usd", failed)
-        elif asset_class in EQUITY_ASSET_CLASSES:
-            buying_power = decimal_value(verified_account.get("buying_power_usd"), "buying_power_usd", failed)
+        if asset_class in EXECUTABLE_ASSET_CLASSES:
+            buying_power = runtime_buying_power(market_input, verified_account, asset_class, failed)
         allocation_key = "crypto_max_allocation_decimal" if asset_class == "CRYPTO" else "us_equity_max_allocation_decimal"
         allocation = decimal_value(user_settings.get("asset_limits", {}).get(allocation_key), allocation_key, failed)
     if has_dollar_amount:

@@ -5,14 +5,16 @@ import json
 import os
 import time
 import urllib.request
+from datetime import datetime, timezone
 from pathlib import Path
 
 from project_root import ROOT
 
-URL = os.getenv("ROBINHOOD_MCP_RELAY_URL", "").rstrip("/") + "/v1/robinhood/snapshot"
+URL = os.getenv("ROBINHOOD_MCP_RELAY_URL", "").rstrip("/") + "/v1/robinhood/crypto-quote"
 TOKEN = os.getenv("ROBINHOOD_MCP_RELAY_TOKEN", "")
 INTERVAL = max(4.0, min(420.0, float(os.getenv("ROBINHOOD_MCP_RELAY_INTERVAL_SECONDS", "7"))))
 SNAPSHOT = ROOT / "data" / "robinhood_crypto_quote_snapshot.json"
+MAX_QUOTE_AGE_SECONDS = 420
 
 
 def normalized_symbol(value):
@@ -31,27 +33,50 @@ def write_snapshot(path, payload):
     temporary.replace(path)
 
 
-def poll_once():
-    request = urllib.request.Request(URL, headers={"Authorization": f"Bearer {TOKEN}"})
-    with urllib.request.urlopen(request, timeout=10) as response:
-        response_payload = json.load(response)
-    payload = response_payload.get("snapshot", response_payload)
-    if payload.get("source") != "robinhood" or payload.get("asset_class") != "crypto":
-        raise ValueError("relay payload is not a Robinhood crypto snapshot")
+def validated_public_snapshot(payload):
+    if not isinstance(payload, dict) or payload.get("source") not in {"Robinhood.get_crypto_quotes", "robinhood"} or str(payload.get("asset_class", "")).upper() != "CRYPTO":
+        raise ValueError("relay payload is not a Robinhood crypto quote snapshot")
     for field in ("bid", "ask", "last", "quote_timestamp", "symbol", "routing"):
         if not payload.get(field):
             raise ValueError(f"relay payload missing {field}")
-    payload = {
-        **payload,
+    try:
+        stamp = datetime.fromisoformat(str(payload["quote_timestamp"]).replace("Z", "+00:00"))
+        if stamp.tzinfo is None:
+            raise ValueError("quote timestamp has no timezone")
+        age = (datetime.now(timezone.utc) - stamp.astimezone(timezone.utc)).total_seconds()
+        if not 0 <= age <= MAX_QUOTE_AGE_SECONDS:
+            raise ValueError("relay quote is stale")
+    except (TypeError, ValueError) as exc:
+        raise ValueError(f"relay quote timestamp invalid or stale: {exc}") from exc
+    for field in ("bid", "ask", "last"):
+        try:
+            if float(payload[field]) <= 0:
+                raise ValueError(f"relay {field} is not positive")
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"relay {field} invalid: {exc}") from exc
+    return {
         "symbol": normalized_symbol(payload["symbol"]),
         "asset_class": "CRYPTO",
         "session": "CRYPTO_24_7",
         "venue": "Robinhood Crypto",
         "broker_name": "Robinhood",
+        "bid": payload["bid"],
+        "ask": payload["ask"],
+        "last": payload["last"],
+        "routing": payload["routing"],
+        "quote_timestamp": payload["quote_timestamp"],
         "timestamp": payload["quote_timestamp"],
         "data_status": "fresh",
         "source": "Robinhood.get_crypto_quotes",
     }
+
+
+def poll_once():
+    request = urllib.request.Request(URL, headers={"Authorization": f"Bearer {TOKEN}"})
+    with urllib.request.urlopen(request, timeout=10) as response:
+        response_payload = json.load(response)
+    payload = response_payload.get("snapshot", response_payload)
+    payload = validated_public_snapshot(payload)
     # The scanner selects quotes by symbol. Keep the latest snapshot for each
     # symbol as well as the legacy "latest quote" file; otherwise a dynamic
     # candidate can silently fall back to a stale or wrong-symbol snapshot.

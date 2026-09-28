@@ -29,6 +29,7 @@ SCANNER_CODE_FILES = (
     "scripts/chatgpt_medium_scanner_fleet.py",
     "algorithms/candidate_envelope_gate.py",
     "algorithms/apex_packet_monitor.py",
+    "scripts/poll_robinhood_mcp_relay.py",
 )
 PUBLIC_QUOTE_FIELDS = frozenset({
     'symbol', 'asset_class', 'session', 'venue', 'broker_name',
