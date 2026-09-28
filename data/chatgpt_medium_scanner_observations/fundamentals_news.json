@@ -2,7 +2,7 @@
   "candidate_decision": "NO ACTION",
   "execution_authority": false,
   "fallback_source": "RUNPOD_MEDIUM_WEIGHT_SCANNER_DETERMINISTIC",
-  "input_fingerprint": "c00d77ffcc5fdbecbe0d87cff677f7524ecaabf37c57c48b30b61a9a3f1d7e1c",
+  "input_fingerprint": "cff67b0eca7a19bd3049894d3a2e40ee6735bd43058626616d996da071fe35f8",
   "missing_facts": [
     "fundamentals_and_news_narrative_unavailable_without_chatgpt"
   ],
@@ -12,5 +12,5 @@
   "role": "fundamentals_news",
   "scanner_viable": false,
   "status": "OK_DETERMINISTIC_FALLBACK",
-  "timestamp": "2026-09-26T02:57:27.025201Z"
+  "timestamp": "2026-09-28T18:46:02.761927Z"
 }

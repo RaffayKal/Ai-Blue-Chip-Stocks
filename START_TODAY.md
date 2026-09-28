@@ -13,8 +13,9 @@ Capital is dynamic and must be read from the connected broker at runtime.
 For equities/options:
 use the selected account’s authoritative buying power.
 
-For crypto:
-use the selected account’s crypto buying power.
+For crypto buys, use the selected account’s crypto buying power. For crypto
+sells, use the selected account’s broker-confirmed sellable quantity and sell
+eligibility.
 
 Never use a hard-coded capital amount or total portfolio value as spendable capital.
 
@@ -35,13 +36,16 @@ Read `rules/BROKERAGE_RULES.md` and `rules/ROBINHOOD_RULES.md` before treating a
 
 Current conditional operations policy: use 4:00 AM America/New_York as the
 daily operations start/resume and retain a 10-minute monitor. Two consecutive
-fresh Robinhood reads must confirm positive spendable crypto buying power before
-24/7 scanning is enabled. Until then, run watch/scanner operations only during
+fresh Robinhood reads must confirm at least one verified crypto operation path
+before 24/7 scanning is enabled: positive spendable crypto buying power for
+buys, or a positive sellable crypto quantity with sell eligibility for sells.
+Both are not required. Until then, run watch/scanner operations only during
 actual U.S. trading days from 4:00 AM through 8:00 PM ET, including early,
 regular and late sessions; outside that window RunPod, Codex, ChatGPT and Claude
 heavy/scanner layers are dormant or paused. Equity buying power, total portfolio
 value, unsold holdings, projected profit and promised funding do not unlock
-24/7 mode. Asset-specific sessions, actual broker buying power, execution
+24/7 mode. A held asset qualifies only for its verified sell path; it is not
+cash and does not qualify a buy. Asset-specific sessions, actual broker buying power, execution
 permissions and all existing trade gates remain unchanged. Read
 `RUNPOD_OPERATIONS.md` for the state-transition procedure and proof limits.
 
@@ -70,7 +74,10 @@ This checks the directory, confirms `python3`, confirms required files, then run
 
 ## Crypto 24/7 Lane
 
-Crypto may run 24/7 only as checked watch mode.
+Crypto may run 24/7 only as checked watch mode when a buy or sell path is
+verified twice. Buy execution still requires fresh spendable crypto buying
+power; sell execution still requires fresh sellable quantity and sell
+eligibility.
 
 Allowed result types:
 
@@ -92,7 +99,8 @@ Crypto action is blocked unless:
 - liquidity is sufficient
 - at least two source confirmations exist
 - no source conflict exists
-- live broker buying-power checks pass
+- side-specific live broker checks pass: crypto buying power for buys, or
+  sellable quantity and sell eligibility for sells
 
 LOOKING does not authorize a buy or sell. It replaces the ambiguous watch-only
 NO ACTION label when scanner and quote gates are healthy but capital or sizing

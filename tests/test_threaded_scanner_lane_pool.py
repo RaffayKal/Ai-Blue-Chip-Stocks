@@ -50,6 +50,15 @@ class ThreadedScannerLanePoolTests(unittest.TestCase):
         self.assertIsNone(pool.extract_net_opportunity({}))
         self.assertIsNone(pool.extract_net_opportunity({"projection": None}))
 
+    def test_lane_manifest_contains_fresh_contract_for_configured_fleet(self):
+        with patch.object(pool.scanner, "write_json") as write_json:
+            payload = pool.write_lane_manifest(7)
+
+        self.assertEqual(payload["fleet_size_configured"], 7)
+        self.assertEqual(payload["lanes"], ["primary", "lane_2", "lane_3", "lane_4", "lane_5", "lane_6", "lane_7"])
+        self.assertTrue(payload["timestamp_utc"])
+        write_json.assert_called_once_with(pool.LANE_MANIFEST_PATH, payload)
+
     def test_synergy_aggregator_publishes_consensus_across_lane_samples(self):
         async def scenario():
             recent_results = [

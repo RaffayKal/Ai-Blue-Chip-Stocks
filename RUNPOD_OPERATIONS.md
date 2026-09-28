@@ -118,6 +118,33 @@ not call `stop` merely to save usage. Stopping this pod can clear its ephemeral
 container state. The pod is left untouched until a provider-supported pause or
 an explicit future stop authorization exists.
 
+### Continuous freshness and 10-minute watchdog
+
+The 10-minute automation is an audit and repair watchdog, not the market-data
+refresh loop. During an active window, the scanner/feed workers must advance
+their own timestamps continuously within the configured freshness bounds. The
+watchdog checks timestamp continuity, restart/error state, supervisor and lane
+count agreement, and source freshness; it does not accept a single fresh file
+as proof that the chain stayed live between wakes.
+
+`threaded_scanner_lane_pool.py` refreshes `fleet_lane_manifest.json` from its
+running aggregation loop (at least once per minute). A stale or lane-count
+mismatched manifest is therefore a scanner defect: deploy the current code,
+restart only the affected scanner process through the supervisor with
+`python3 scripts/runpod_ops.py repair-scanner`, and verify that the timestamp
+advances on subsequent checks. That action targets only the existing lane-pool
+worker; it does not stop the pod, touch vLLM, or submit orders. Never rewrite a
+timestamp manually to conceal a dead worker. Robinhood MCP remains host-side authority;
+continuous Robinhood-to-RunPod quote delivery requires an explicitly
+configured authorized relay. Without that relay, stale or missing broker data
+is non-authoritative and must remain fail-closed.
+
+`python3 scripts/runpod_ops.py sync-quotes` sends public routed quote
+snapshots only. Before upload it promotes the newest factual per-symbol
+Robinhood snapshot into the aggregate snapshot consumed by the required-source
+gate, so an older aggregate file cannot mask a fresh Robinhood feed. It never
+promotes account, portfolio, position, buying-power or order data.
+
 These automations monitor, refresh local broker evidence, and perform authorized
 same-pod recovery; they do not submit orders. Routine unchanged results stay
 quiet. Host availability still affects Codex heartbeat execution; do not

@@ -2,7 +2,7 @@
   "candidate_decision": "NO ACTION",
   "execution_authority": false,
   "fallback_source": "RUNPOD_MEDIUM_WEIGHT_SCANNER_DETERMINISTIC",
-  "input_fingerprint": "c00d77ffcc5fdbecbe0d87cff677f7524ecaabf37c57c48b30b61a9a3f1d7e1c",
+  "input_fingerprint": "cff67b0eca7a19bd3049894d3a2e40ee6735bd43058626616d996da071fe35f8",
   "missing_facts": [],
   "openai_error": "RuntimeError: OpenAI HTTP 429: {\n  \"error\": {\n    \"message\": \"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"credit_balance_exhausted\"\n  }\n}",
   "projection": {
@@ -14,5 +14,5 @@
   "role": "multi_source_quality",
   "scanner_viable": true,
   "status": "OK_DETERMINISTIC_FALLBACK",
-  "timestamp": "2026-09-26T02:57:27.162316Z"
+  "timestamp": "2026-09-28T18:46:03.136516Z"
 }

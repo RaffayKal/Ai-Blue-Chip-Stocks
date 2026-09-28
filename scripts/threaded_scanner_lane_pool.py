@@ -26,6 +26,7 @@ import asyncio
 import os
 import signal
 import statistics
+import time
 from collections import Counter, deque
 from concurrent.futures import ThreadPoolExecutor
 from pathlib import Path
@@ -36,6 +37,7 @@ import runpod_lightweight_scanner as scanner
 
 SYNERGY_STATUS_PATH = ROOT / "data" / "fleet_synergy_status.json"
 LANE_MANIFEST_PATH = ROOT / "data" / "fleet_lane_manifest.json"
+LANE_MANIFEST_REFRESH_SECONDS = 60.0
 SHARED_INPUT_CHANNELS = (
     "Robinhood_MCP_quote",
     "Alpaca_quote",
@@ -66,6 +68,24 @@ def extract_net_opportunity(status):
         return status["projection"]["crypto"]["projection_scores"]["net_opportunity_score"]
     except (KeyError, TypeError):
         return None
+
+
+def write_lane_manifest(lane_count):
+    """Publish the current lane contract and its freshness heartbeat."""
+    payload = {
+        "timestamp_utc": scanner.iso_now(),
+        "fleet_size_configured": lane_count,
+        "lanes": [lane_name_for(index) for index in range(1, lane_count + 1)],
+        "shared_input_channels": list(SHARED_INPUT_CHANNELS),
+        "envelope_output": "data/current_candidate_envelope.json",
+        "consensus_output": str(SYNERGY_STATUS_PATH.relative_to(ROOT)),
+        "codex_viability_gate": "algorithms/candidate_envelope_gate.py",
+        "robinhood_inspection": "Robinhood MCP only",
+        "execution_authority": False,
+        "note": "Every lane reads shared source artifacts and emits analysis only; Codex is the single viability gate.",
+    }
+    scanner.write_json(LANE_MANIFEST_PATH, payload)
+    return payload
 
 
 async def run_lane(lane, codex_heavy_state, interval_seconds, once, executor, loop, stop_event, recent_results):
@@ -182,7 +202,14 @@ async def synergy_aggregator(recent_results, lane_count, interval_seconds, once,
     changes no gate, sizing input, or AUM value.
     """
     aggregate_interval = min(max(interval_seconds, 2.0), 30.0)
+    last_manifest_refresh = 0.0
     while True:
+        if not once and time.monotonic() - last_manifest_refresh >= LANE_MANIFEST_REFRESH_SECONDS:
+            try:
+                write_lane_manifest(lane_count)
+                last_manifest_refresh = time.monotonic()
+            except Exception as exc:  # noqa: BLE001 - keep consensus alive if disk is unavailable
+                print(f"LANE_MANIFEST_REFRESH_ERROR: {exc!r}")
         window = list(recent_results)
         if window:
             decisions = Counter(item["candidate_decision"] for item in window)
@@ -275,19 +302,7 @@ async def async_main(args, executor):
         max(0, lane_count - 1),
         synergy_engine.dedicated_role_lane_count(lane_count, synergy_symbols),
     )
-    lane_manifest = {
-        "timestamp_utc": scanner.iso_now(),
-        "fleet_size_configured": lane_count,
-        "lanes": [lane_name_for(index) for index in range(1, lane_count + 1)],
-        "shared_input_channels": list(SHARED_INPUT_CHANNELS),
-        "envelope_output": "data/current_candidate_envelope.json",
-        "consensus_output": str(SYNERGY_STATUS_PATH.relative_to(ROOT)),
-        "codex_viability_gate": "algorithms/candidate_envelope_gate.py",
-        "robinhood_inspection": "Robinhood MCP only",
-        "execution_authority": False,
-        "note": "Every lane reads shared source artifacts and emits analysis only; Codex is the single viability gate.",
-    }
-    scanner.write_json(LANE_MANIFEST_PATH, lane_manifest)
+    lane_manifest = write_lane_manifest(lane_count)
     print(
         "FLEET_LANE_MANIFEST: "
         f"lanes={lane_count} channels={len(SHARED_INPUT_CHANNELS)} "

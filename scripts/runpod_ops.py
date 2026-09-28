@@ -18,6 +18,7 @@ import tarfile
 import textwrap
 import time
 import uuid
+from datetime import datetime, timezone
 
 ROOT = Path(__file__).resolve().parents[1]
 REMOTE = "/workspace/apex"
@@ -116,9 +117,27 @@ print(json.dumps(result,indent=2))
 def snapshot_payload():
     # RunPod receives market quotes only. Account, buying-power, portfolio,
     # position, and order data stay on the authenticated host MCP.
-    paths = [ROOT / 'data/robinhood_crypto_quote_snapshot.json']
-    paths += sorted((ROOT / 'data').glob('robinhood_crypto_quote_snapshot_*.json'))
-    return {p.name: json.loads(p.read_text()) for p in paths if p.is_file()}
+    paths = sorted((ROOT / 'data').glob('robinhood_crypto_quote_snapshot_*.json'))
+    snapshots = {p.name: json.loads(p.read_text()) for p in paths if p.is_file()}
+    aggregate_name = 'robinhood_crypto_quote_snapshot.json'
+    aggregate = snapshots.get(aggregate_name)
+
+    def quote_time(data):
+        value = data.get('quote_timestamp') or data.get('timestamp') or ''
+        try:
+            return datetime.fromisoformat(value.replace('Z', '+00:00')).astimezone(timezone.utc)
+        except (TypeError, ValueError):
+            return datetime.min.replace(tzinfo=timezone.utc)
+
+    # The scanner's required-source gate reads the aggregate artifact. Keep it
+    # factual by promoting the newest already-authenticated per-symbol quote,
+    # rather than letting an older aggregate hide a fresh Robinhood feed.
+    per_symbol = [data for name, data in snapshots.items()
+                  if name != aggregate_name and data.get('broker_name') == 'Robinhood']
+    newest = max(per_symbol, key=quote_time, default=None)
+    if newest is not None and (aggregate is None or quote_time(newest) > quote_time(aggregate)):
+        snapshots[aggregate_name] = newest
+    return snapshots
 
 
 def sync_script(payload):
@@ -143,6 +162,49 @@ for name,data in payload.items():
     temporary.replace(path)
     count+=1
 print(json.dumps({{'snapshots_written':count,'timestamps_preserved':True}}))
+"""
+
+
+def repair_scanner_script():
+    """Ask the existing supervisor to recreate only the lane-pool worker."""
+    return f"""
+import json,os,pathlib,signal,time
+root=pathlib.Path({REMOTE!r})
+matches=[]
+proc_root=pathlib.Path('/proc')
+for entry in proc_root.iterdir():
+    if not entry.name.isdigit():
+        continue
+    try:
+        command=b' '.join((entry/'cmdline').read_bytes().split(b'\\0')).decode(errors='replace')
+    except (OSError,UnicodeError):
+        continue
+    lane_pool = 'scripts/threaded_scanner_lane_pool.py' in command and '--lanes' in command
+    fleet_wrapper = command.strip().endswith('scripts/start_lightweight_scanner_fleet.sh')
+    if lane_pool or fleet_wrapper:
+        matches.append({{'pid':int(entry.name),'command':command,
+                        'target':('lane_pool' if lane_pool else 'fleet_wrapper')}})
+terminated=[]
+forced=[]
+for match in matches:
+    try:
+        os.kill(match['pid'], signal.SIGTERM)
+        terminated.append(match['pid'])
+    except ProcessLookupError:
+        pass
+deadline=time.monotonic()+15
+while time.monotonic()<deadline and any((proc_root/str(pid)).exists() for pid in terminated):
+    time.sleep(0.25)
+for pid in terminated:
+    if (proc_root/str(pid)).exists():
+        try:
+            os.kill(pid, signal.SIGKILL)
+            forced.append(pid)
+        except ProcessLookupError:
+            pass
+print(json.dumps({{'scanner_matches':len(matches),'terminated_pids':terminated,'forced_pids':forced,
+                  'supervisor_expected_to_restart':bool(terminated),
+                  'execution_authority':False}}))
 """
 
 
@@ -185,10 +247,11 @@ print(json.dumps({{'deployment_sha256':{digest!r},'supervisor_requested':True}})
 
 def main():
     parser=argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action',choices=('status','sync-quotes','restore'))
+    parser.add_argument('action',choices=('status','sync-quotes','restore','repair-scanner'))
     args=parser.parse_args()
     script = (status_script() if args.action=='status' else
-              sync_script(snapshot_payload()) if args.action=='sync-quotes' else deployment_script())
+              sync_script(snapshot_payload()) if args.action=='sync-quotes' else
+              repair_scanner_script() if args.action=='repair-scanner' else deployment_script())
     try:
         print(remote(script,timeout=120 if args.action=='restore' else 45))
     except (OSError, RuntimeError, TimeoutError) as exc:

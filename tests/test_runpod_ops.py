@@ -51,6 +51,35 @@ class RunPodOpsTests(unittest.TestCase):
             with self.assertRaises(ValueError):
                 exec(ops.sync_script({'../outside.json':{}}),{})
 
+    def test_snapshot_payload_promotes_newest_robinhood_quote_to_aggregate(self):
+        with tempfile.TemporaryDirectory() as root, patch.object(ops,'ROOT',Path(root)):
+            data=Path(root)/'data'
+            data.mkdir()
+            (data/'robinhood_crypto_quote_snapshot.json').write_text(json.dumps({
+                'broker_name':'Robinhood',
+                'quote_timestamp':'2026-09-26T10:00:00-04:00',
+                'symbol':'OLD',
+            }))
+            (data/'robinhood_crypto_quote_snapshot_BTC.json').write_text(json.dumps({
+                'broker_name':'Robinhood',
+                'quote_timestamp':'2026-09-26T10:01:00-04:00',
+                'symbol':'BTC',
+            }))
+            payload=ops.snapshot_payload()
+            self.assertEqual(payload['robinhood_crypto_quote_snapshot.json']['symbol'],'BTC')
+            self.assertEqual(
+                payload['robinhood_crypto_quote_snapshot.json']['quote_timestamp'],
+                '2026-09-26T10:01:00-04:00',
+            )
+
+    def test_repair_scanner_targets_only_lane_pool_and_never_orders(self):
+        script = ops.repair_scanner_script()
+        self.assertIn("scripts/threaded_scanner_lane_pool.py", script)
+        self.assertIn("signal.SIGTERM", script)
+        self.assertNotIn("subprocess", script)
+        self.assertNotIn("killpg", script)
+        self.assertNotIn("order", script.lower())
+
 
 if __name__=='__main__':
     unittest.main()

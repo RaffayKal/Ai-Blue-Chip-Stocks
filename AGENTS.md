@@ -51,8 +51,9 @@ Capital is dynamic and must be read from the connected broker at runtime.
 For equities/options:
 use the selected account’s authoritative buying power.
 
-For crypto:
-use the selected account’s crypto buying power.
+For crypto buys, use the selected account’s crypto buying power. For crypto
+sells, use the selected account’s broker-confirmed sellable quantity and sell
+eligibility.
 
 Never use a hard-coded capital amount or total portfolio value as spendable capital.
 
