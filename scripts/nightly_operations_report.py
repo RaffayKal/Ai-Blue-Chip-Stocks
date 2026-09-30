@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
 import json
+import subprocess
+import sys
 
 from project_root import ROOT
 
@@ -22,6 +24,19 @@ def yes_no(value):
     return "true" if value is True else "false"
 
 
+def apex_gate_passed():
+    if not CANDIDATE.exists():
+        return False
+    result = subprocess.run(
+        [sys.executable, str(ROOT / "algorithms" / "candidate_envelope_gate.py"), str(CANDIDATE)],
+        cwd=ROOT,
+        capture_output=True,
+        text=True,
+        check=False,
+    )
+    return result.returncode == 0 and "VIABLE: true" in result.stdout.splitlines()
+
+
 def main():
     scanner = load_json(SCANNER_STATUS)
     supervisor = load_json(SUPERVISOR_STATUS)
@@ -38,6 +53,13 @@ def main():
     execution_allowed = scanner.get("trade_execution_allowed") is True
     viable = candidate.get("scanner_viable") is True and candidate.get("requested_codex_activation") is True
     smooth = scanner_active and not execution_allowed
+    execution_search_state = (
+        scanner.get("apex_execution_search_state")
+        or scanner.get("execution_search_state")
+        or candidate.get("apex_execution_search_state")
+        or "LOOKING FOR EXECUTION"
+    )
+    order_eligibility = "EXECUTION ELIGIBLE" if apex_gate_passed() else "NO ACTION"
 
     print("NIGHT_OPERATIONS_REPORT")
     print(f"OPERATIONS_SMOOTH: {yes_no(smooth)}")
@@ -61,8 +83,11 @@ def main():
     print(f"BLUE_CHIP_REVERSAL_RISK_SCORE: {blue_projection.get('reversal_risk_score', 'missing')}")
     print(f"SUPERVISOR_STATE: {supervisor.get('supervisor_state', 'missing')}")
     print(f"HEALTH_CHECK_ONLY: {yes_no(supervisor.get('health_check_only') is True)}")
+    print("DISCOVERY_STATE: SCANNING FOR VIABLE CANDIDATE/ENVELOPE")
+    print(f"EXECUTION_SEARCH_STATE: {execution_search_state}")
     print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
-    print("HEAVY_ACTION: NO ACTION")
+    print(f"ORDER_ELIGIBILITY: {order_eligibility}")
+    print("APEX_FAIL_SAFE_RESULT: " + ("PASSED" if order_eligibility == "EXECUTION ELIGIBLE" else "NO ACTION"))
     print(f"TRADE_EXECUTION_ALLOWED: {yes_no(execution_allowed)}")
     print(f"CANDIDATE_DECISION: {candidate.get('candidate_decision', 'missing')}")
     print(f"SCANNER_VIABLE: {yes_no(viable)}")
