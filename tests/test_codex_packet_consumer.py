@@ -89,7 +89,7 @@ class ConsumerTests(unittest.TestCase):
 
     def test_g_restart_cannot_reexecute_processed_packet(self):
         with tempfile.TemporaryDirectory() as raw:
-            root = Path(raw); calls = []; c = self.make(root, calls); self.write(root / "inbox" / "g.json", packet("restart-key")); self.assertEqual(c.once(), "would_execute"); restarted = self.make(root, calls); self.assertEqual(restarted.once(), "dormant"); self.assertEqual(len(calls), 1)
+            root = Path(raw); calls = []; c = self.make(root, calls); self.write(root / "inbox" / "g.json", packet("restart-key")); self.assertEqual(c.once(), "would_execute"); restarted = self.make(root, calls); self.assertEqual(restarted.once(), "dormant"); status = json.loads(restarted.status_path.read_text()); self.assertEqual(status["operational_state"], "LOOKING FOR VIABLE EXECUTION"); self.assertEqual(status["last_decision"], "LOOKING FOR VIABLE EXECUTION"); self.assertEqual(len(calls), 1)
 
     def test_new_candidate_requires_robinhood_refresh_marker(self):
         with tempfile.TemporaryDirectory() as raw:

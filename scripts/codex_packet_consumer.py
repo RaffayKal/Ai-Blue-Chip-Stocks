@@ -313,7 +313,13 @@ class Consumer:
         self.state = load_state(state_path)
 
     def status(self, **fields: Any) -> None:
-        payload = {"timestamp": iso_now(), "shadow_mode": self.shadow, "robinhood_execution_path_available": bool(os.environ.get("CODEX_EXECUTION_WORKFLOW_COMMAND") or find_codex_cli()), **fields}
+        payload = {
+            "timestamp": iso_now(),
+            "shadow_mode": self.shadow,
+            "robinhood_execution_path_available": bool(os.environ.get("CODEX_EXECUTION_WORKFLOW_COMMAND") or find_codex_cli()),
+            "operational_state": "LOOKING FOR VIABLE EXECUTION",
+            **fields,
+        }
         atomic_write(self.status_path, payload)
 
     def reject(self, source: Path, reason: str) -> str:
@@ -389,7 +395,12 @@ class Consumer:
                 self.recover_orphans()
                 files = sorted(self.inbox.glob("*.json"))
                 if not files:
-                    self.status(last_packet=self.state.get("last_packet"), last_decision=self.state.get("last_decision", "DORMANT"), last_error=self.state.get("last_error"))
+                    self.status(
+                        last_packet=self.state.get("last_packet"),
+                        last_decision="LOOKING FOR VIABLE EXECUTION",
+                        apex_fail_safe_result=self.state.get("last_error"),
+                        last_error=self.state.get("last_error"),
+                    )
                     return "dormant"
                 return self.process_one(files[0])
             finally:
