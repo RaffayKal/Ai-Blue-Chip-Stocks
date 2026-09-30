@@ -59,7 +59,11 @@ def main():
         or candidate.get("apex_execution_search_state")
         or "LOOKING FOR EXECUTION"
     )
-    order_eligibility = "EXECUTION ELIGIBLE" if apex_gate_passed() else "NO ACTION"
+    # Keep the operational search state separate from the candidate-level
+    # fail-safe.  ORDER_ELIGIBILITY describes what the worker is doing now;
+    # APEX_FAIL_SAFE_RESULT below describes whether this specific envelope
+    # may proceed to ticket/preview/placement.
+    apex_fail_safe_result = "PASSED" if apex_gate_passed() else "NO ACTION"
 
     print("NIGHT_OPERATIONS_REPORT")
     print(f"OPERATIONS_SMOOTH: {yes_no(smooth)}")
@@ -86,8 +90,9 @@ def main():
     print("DISCOVERY_STATE: SCANNING FOR VIABLE CANDIDATE/ENVELOPE")
     print(f"EXECUTION_SEARCH_STATE: {execution_search_state}")
     print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
-    print(f"ORDER_ELIGIBILITY: {order_eligibility}")
-    print("APEX_FAIL_SAFE_RESULT: " + ("PASSED" if order_eligibility == "EXECUTION ELIGIBLE" else "NO ACTION"))
+    print("ORDER_ELIGIBILITY: LOOKING FOR EXECUTION")
+    print(f"APEX_FAIL_SAFE_RESULT: {apex_fail_safe_result}")
+    print(f"EXECUTION_TICKET_ELIGIBILITY: {apex_fail_safe_result}")
     print(f"TRADE_EXECUTION_ALLOWED: {yes_no(execution_allowed)}")
     print(f"CANDIDATE_DECISION: {candidate.get('candidate_decision', 'missing')}")
     print(f"SCANNER_VIABLE: {yes_no(viable)}")

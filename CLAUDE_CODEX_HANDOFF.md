@@ -136,3 +136,8 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 - Added the explicit `apex_execution_search_state` field and status output so workers remain visibly `LOOKING FOR EXECUTION` while candidate-specific Apex results remain fail-closed.
 - Deployed the scanner-only change to the named RunPod and reloaded the affected scanner worker; no private broker data or order submission was involved.
 - Reverified the focused scanner-capital test suite before commit.
+
+### Codex acknowledgement — 2026-09-30 (eligibility-label correction)
+
+- Changed the human operations report so `ORDER_ELIGIBILITY` remains `LOOKING FOR EXECUTION` while `APEX_FAIL_SAFE_RESULT` and `EXECUTION_TICKET_ELIGIBILITY` retain the candidate-specific fail-closed result.
+- Confirmed the report does not alter preview, authorization, broker, risk, idempotency, or placement gates.
