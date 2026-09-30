@@ -15,6 +15,7 @@ LOCK = ROOT / "data" / "apex_prestige_supervisor.lock"
 STATUS = ROOT / "data" / "apex_prestige_supervisor_status.json"
 LOG = ROOT / "logs" / "apex_prestige_supervisor.jsonl"
 ARCHITECTURE_NAME = "ABSOLUTE INFINITE +775% TACTICAL APPRECIATION OPERATIONS COMPOUNDING — APEX PRESTIGE ARCHITECTURE"
+HEALTH_LANE = "supervisor_health"
 
 
 def iso_now():
@@ -75,6 +76,8 @@ def supervisor_once(config_path):
             sys.executable,
             "scripts/runpod_lightweight_scanner.py",
             "--once",
+            "--lane",
+            HEALTH_LANE,
             "--codex-heavy-state",
             "FROZEN",
         ])
@@ -96,6 +99,7 @@ def supervisor_once(config_path):
         print(gov_output, end="")
         print(scan_output, end="")
         print("APEX_PRESTIGE_SUPERVISOR: RUNPOD_SCANNER_ACTIVE_CODEX_HEAVY_FROZEN")
+        print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
         print("HEAVY_ACTION: NO ACTION")
         return "RUNPOD_SCANNER_ACTIVE_CODEX_HEAVY_FROZEN"
 
@@ -103,11 +107,14 @@ def supervisor_once(config_path):
         sys.executable,
         "scripts/runpod_lightweight_scanner.py",
         "--once",
+        "--lane",
+        HEALTH_LANE,
         "--codex-heavy-state",
         "ASLEEP_HEALTH_CHECK_ONLY",
     ])
-    # The scanner alone never emits an execution packet. Recheck its latest
-    # envelope on every supervisor cycle; apex_packet_monitor retains the
+    # The fleet owns the primary envelope and status. This health lane writes
+    # separate artifacts so it cannot overwrite the fleet between cycles.
+    # Recheck the fleet envelope every cycle; apex_packet_monitor retains the
     # freshness, capital, risk, and idempotency gates before local handoff.
     if scan_code == 0:
         monitor_code, monitor_output = run_command([
@@ -153,6 +160,7 @@ def supervisor_once(config_path):
     print(scan_output, end="")
     print(monitor_output, end="")
     print("APEX_PRESTIGE_SUPERVISOR: LIGHT_HEALTH_CHECK_ONLY")
+    print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
     print("HEAVY_ACTION: NO ACTION")
     return "LIGHT_HEALTH_CHECK_ONLY"
 

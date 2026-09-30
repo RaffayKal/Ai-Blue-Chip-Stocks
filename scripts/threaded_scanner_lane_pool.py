@@ -92,9 +92,18 @@ async def run_lane(lane, codex_heavy_state, interval_seconds, once, executor, lo
     lock = None
     if not once:
         lock_path = scanner.lane_paths(lane)[2]
-        lock = await loop.run_in_executor(executor, scanner.acquire_lock, lock_path)
+        # A retiring worker can still own the lock during a supervised reload.
+        # Wait at the normal bounded cadence so the primary lane recovers when
+        # that owner exits, while preserving exclusive ownership throughout.
+        while lock is None and not stop_event.is_set():
+            lock = await loop.run_in_executor(executor, scanner.acquire_lock, lock_path)
+            if lock is None:
+                print(f"LANE_DUPLICATE_BLOCKED: {lane}; retrying at scanner cadence")
+                try:
+                    await asyncio.wait_for(stop_event.wait(), timeout=scanner.bounded_loop_interval(interval_seconds))
+                except asyncio.TimeoutError:
+                    pass
         if lock is None:
-            print(f"LANE_DUPLICATE_BLOCKED: {lane}")
             return
     print(f"STARTED_MEDIUM_WEIGHT_SCANNER_LANE: {lane}")
     try:

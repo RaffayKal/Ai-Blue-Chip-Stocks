@@ -107,6 +107,89 @@ class ApexPacketMonitorTests(unittest.TestCase):
                 self.assertEqual(monitor.monitor_once(cfg), "viable_false")
             self.assertFalse((temp / "inbox").exists())
 
+    def test_capital_failure_is_not_misreported_as_stale_market_data(self):
+        with tempfile.TemporaryDirectory() as raw:
+            envelope = viable_envelope()
+            envelope["market_input"]["buying_power_usd"] = None
+            gate = monitor.deterministic_gate(envelope, self.config(Path(raw)))
+        self.assertFalse(gate.viable)
+        self.assertTrue(any("capital engine" in failure for failure in gate.failed))
+        self.assertNotIn("freshness failed", gate.risk_flags)
+
+    def test_broker_position_sell_review_does_not_require_buy_capital_or_model_score(self):
+        with tempfile.TemporaryDirectory() as raw:
+            envelope = viable_envelope()
+            envelope["candidate_decision"] = "SELL CANDIDATE"
+            envelope["apex_score"] = 0
+            envelope["confidence"] = 0
+            envelope["harvest_review"] = {
+                "basis": "BROKER_POSITION_POSITIVE_NET_REVIEW",
+                "gross_net_profit_usd": 0.20,
+                "broker_preview_required": True,
+                "cost_basis_complete": True,
+                "apex_harvest_gate_passed": True,
+            }
+            envelope["market_input"].update({
+                "symbol": "BTC",
+                "asset_class": "CRYPTO",
+                "side": "sell",
+                "session": "CRYPTO_24_7",
+                "venue": "Robinhood Crypto",
+                "liquidity_usd": None,
+                "buying_power_usd": None,
+                "crypto_buying_power_usd": 0.0,
+                "requested_notional_usd": None,
+                "requested_quantity": 0.00006084,
+                "sellable_quantity": 0.00006084,
+                "direct_cost_basis_usd": 4.80,
+                "broker_preview_required": True,
+                "expected_net_profit": 0.20,
+                "position_status": "fresh",
+                "position_timestamp": now(),
+                "position_source": "Robinhood.get_crypto_positions",
+                "position_account_matches_verified_account": True,
+                "crypto_account_confirmed": True,
+                "maintenance_active": False,
+                "account_restricted": False,
+            })
+            gate = monitor.deterministic_gate(envelope, self.config(Path(raw)))
+        self.assertTrue(gate.viable, gate.failed)
+        packet = monitor.build_packet(envelope, gate, "fresh")
+        self.assertEqual(packet["market_data"]["direct_cost_basis_usd"], 4.80)
+        self.assertTrue(packet["market_data"]["broker_preview_required"])
+        self.assertEqual(packet["market_data"]["expected_net_profit"], 0.20)
+
+    def test_broker_position_sell_review_without_apex_harvest_gate_is_blocked(self):
+        with tempfile.TemporaryDirectory() as raw:
+            envelope = viable_envelope()
+            envelope["candidate_decision"] = "SELL CANDIDATE"
+            envelope["apex_score"] = 0
+            envelope["confidence"] = 0
+            envelope["harvest_review"] = {
+                "basis": "BROKER_POSITION_POSITIVE_NET_REVIEW",
+                "gross_net_profit_usd": 0.20,
+                "broker_preview_required": True,
+                "cost_basis_complete": True,
+            }
+            envelope["market_input"].update({
+                "side": "sell",
+                "requested_quantity": 0.00006084,
+                "sellable_quantity": 0.00006084,
+                "direct_cost_basis_usd": 4.80,
+                "broker_preview_required": True,
+                "position_status": "fresh",
+                "position_timestamp": now(),
+                "position_source": "Robinhood.get_crypto_positions",
+                "position_account_matches_verified_account": True,
+                "crypto_account_confirmed": True,
+                "maintenance_active": False,
+                "account_restricted": False,
+            })
+            gate = monitor.deterministic_gate(envelope, self.config(Path(raw)))
+        self.assertFalse(gate.viable)
+        self.assertIn("APEX harvest gate is not confirmed", gate.failed)
+
+
     def test_viable_packet_activates_but_still_requires_execution_gate(self):
         with tempfile.TemporaryDirectory() as raw:
             temp = Path(raw)
@@ -302,6 +385,45 @@ class ApexPacketMonitorTests(unittest.TestCase):
             self.assertIn("AUTONOMOUS_DECISION: APPROVED_FOR_PREVIEW_AND_PLACEMENT", output)
             self.assertIn("EXECUTION_ALLOWED: true", output)
             self.assertIn("NEXT_ALLOWED_STEP: preview Blue Chip Stocks crypto order, then place only that previewed order if the runtime permits it", output)
+
+    def test_sell_requires_exact_positive_net_robinhood_preview_not_buying_power(self):
+        with tempfile.TemporaryDirectory() as raw:
+            temp = Path(raw)
+            market = self.crypto_market_input()
+            market.update({
+                "side": "sell",
+                "liquidity_usd": None,
+                "crypto_buying_power_usd": 0.0,
+                "requested_notional_usd": None,
+                "requested_quantity": 0.00006084,
+                "sellable_quantity": 0.00006084,
+                "position_status": "fresh",
+                "position_timestamp": now(),
+                "position_source": "Robinhood.get_crypto_positions",
+                "position_account_matches_verified_account": True,
+                "direct_cost_basis_usd": 4.8,
+                "broker_preview_confirmed": True,
+                "broker_preview_source": "Robinhood.preview_crypto_order",
+                "broker_preview_timestamp": now(),
+                "broker_preview_side": "sell",
+                "broker_preview_symbol": "BTC",
+                "broker_preview_quantity": 0.00006084,
+                "broker_preview_net_estimated_notional_usd": 5.0,
+            })
+            ticket = {
+                **self.crypto_buy_ticket(),
+                "side": "sell",
+                "quantity_mode": "AUTO_SELLABLE_POSITION",
+            }
+            ticket.pop("dollar_amount")
+            output = self.run_order_gate(temp, market, ticket)
+            self.assertIn("AUTONOMOUS_DECISION: APPROVED_FOR_PREVIEW_AND_PLACEMENT", output)
+            self.assertNotIn("buying power", output.lower())
+
+            market["broker_preview_confirmed"] = False
+            output = self.run_order_gate(temp, market, ticket)
+            self.assertIn("AUTONOMOUS_DECISION: NO ACTION", output)
+            self.assertIn("fresh exact Robinhood sell preview missing", output)
 
     def test_buy_rejects_unverified_or_wrong_account_capital(self):
         with tempfile.TemporaryDirectory() as raw:

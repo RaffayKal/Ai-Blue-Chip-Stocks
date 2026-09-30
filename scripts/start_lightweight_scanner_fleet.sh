@@ -9,6 +9,17 @@ MAX_MEDIUM_WEIGHT_LANES="${RUNPOD_MAX_MEDIUM_WEIGHT_LANES:-${RUNPOD_MAX_LIGHTWEI
 SAFE_MEDIUM_WEIGHT_LANES="${RUNPOD_SAFE_MEDIUM_WEIGHT_LANES:-${RUNPOD_SAFE_LIGHTWEIGHT_LANES:-70}}"
 ALLOW_HIGH_MEDIUM_WEIGHT_FANOUT="${RUNPOD_ALLOW_HIGH_MEDIUM_WEIGHT_FANOUT:-${RUNPOD_ALLOW_HIGH_LIGHTWEIGHT_FANOUT:-true}}"
 PRESSURE_STATUS="${RUNPOD_SCANNER_PRESSURE_STATUS:-data/runpod_lightweight_scanner_status.json}"
+PYTHON3_BIN="${PYTHON3_BIN:-}"
+if [ -z "$PYTHON3_BIN" ] && [ -x "/Library/Frameworks/Python.framework/Versions/3.13/bin/python3" ]; then
+  PYTHON3_BIN="/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
+fi
+if [ -z "$PYTHON3_BIN" ]; then
+  PYTHON3_BIN="$(command -v python3 || true)"
+fi
+if [ -z "$PYTHON3_BIN" ] || [ ! -x "$PYTHON3_BIN" ]; then
+  echo "BLOCKED: python3 is not available."
+  exit 1
+fi
 
 if [ "$(pwd)" != "$ROOT" ]; then
   echo "BLOCKED: command is not running inside AI BLUE CHIP STOCKS."
@@ -61,7 +72,7 @@ mkdir -p logs
 if [ "$SCANNER_LANES" = "auto" ]; then
   SCANNER_LANES="$MIN_MEDIUM_WEIGHT_LANES"
   if [ -f "$PRESSURE_STATUS" ]; then
-    pressure="$(python3 - "$PRESSURE_STATUS" "$MIN_MEDIUM_WEIGHT_LANES" "$MAX_MEDIUM_WEIGHT_LANES" <<'PY'
+    pressure="$("$PYTHON3_BIN" - "$PRESSURE_STATUS" "$MIN_MEDIUM_WEIGHT_LANES" "$MAX_MEDIUM_WEIGHT_LANES" <<'PY'
 import json
 import sys
 
@@ -122,7 +133,7 @@ echo "HEAVY_ACTION: NO ACTION"
 POOL_LOG="logs/threaded_scanner_lane_pool.out.log"
 
 start_pool() {
-  python3 scripts/threaded_scanner_lane_pool.py \
+  "$PYTHON3_BIN" scripts/threaded_scanner_lane_pool.py \
     --lanes "$SCANNER_LANES" \
     --interval-seconds "$INTERVAL_SECONDS" \
     --codex-heavy-state "FROZEN_UNTIL_VERIFIED_USAGE_AND_VIABILITY_GATES_TRUE" \
@@ -143,7 +154,7 @@ echo "STARTED_THREADED_SCANNER_LANE_POOL: lanes=$SCANNER_LANES pid=$pool_pid log
 # visible container log, reading the same JSON status files Codex/external
 # checks already read.
 print_scanning_proof() {
-  python3 - "$PRESSURE_STATUS" "data/fleet_synergy_status.json" "data/volatile_crypto_candidates.json" <<'PY'
+  "$PYTHON3_BIN" - "$PRESSURE_STATUS" "data/fleet_synergy_status.json" "data/volatile_crypto_candidates.json" <<'PY'
 import json
 import sys
 

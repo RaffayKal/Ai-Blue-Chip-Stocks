@@ -66,6 +66,7 @@ CHATGPT_FLEET_AGGREGATE = ROOT / "data" / "chatgpt_medium_scanner_fleet.json"
 MAX_CHATGPT_REINFORCEMENT_AGE_SECONDS = 180.0
 ACCEPTABLE_CHATGPT_FLEET_STATUSES = ("OK", "OK_DETERMINISTIC_FALLBACK")
 ROBINHOOD_CRYPTO_CAPITAL = ROOT / "data" / "robinhood_crypto_capital_snapshot.json"
+ROBINHOOD_CRYPTO_EXECUTION = ROOT / "data" / "robinhood_crypto_execution_snapshot.json"
 LANE_STATUS_DIR = ROOT / "data" / "scanner_lanes"
 LANE_ENVELOPE_DIR = ROOT / "data" / "candidate_lanes"
 PLUGIN_STACK = ROOT / "rules" / "plugin_runtime_stack.json"
@@ -185,10 +186,11 @@ def append_log(path, event, **fields):
 
 def acquire_lock(path):
     path.parent.mkdir(parents=True, exist_ok=True)
-    handle = path.open("w", encoding="utf-8")
+    handle = path.open("a+", encoding="utf-8")
     try:
         fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
     except BlockingIOError:
+        handle.close()
         return None
     handle.seek(0)
     handle.truncate()
@@ -469,6 +471,102 @@ def load_crypto_capital_snapshot():
         "crypto_capital_retrieved_at": retrieved_at,
         "crypto_capital_age_seconds": round(age_seconds, 3),
     }
+
+
+def load_crypto_execution_snapshot():
+    snapshot = load_json(ROBINHOOD_CRYPTO_EXECUTION, {})
+    if not isinstance(snapshot, dict):
+        return {}
+    age_seconds = timestamp_age_seconds(snapshot.get("retrieved_at"))
+    if (
+        snapshot.get("source") != "Robinhood.get_portfolio+get_crypto_positions"
+        or snapshot.get("account_match_confirmed") is not True
+        or snapshot.get("crypto_account_confirmed") is not True
+        or age_seconds is None
+        or age_seconds < 0
+        or age_seconds > DEFAULT_MAX_CRYPTO_QUOTE_AGE_SECONDS
+        or not isinstance(snapshot.get("positions"), list)
+    ):
+        return {}
+    return snapshot
+
+
+def select_local_sell_candidate(snapshot=None, quote_loader=None):
+    """Return a host-only positive-gross-net position for broker preview.
+
+    This is a review trigger, not execution authority.  The live Robinhood
+    preview must still prove exact-ticket positive net economics before the
+    autonomous order gate may approve placement.
+    """
+    snapshot = snapshot if snapshot is not None else load_crypto_execution_snapshot()
+    if not snapshot:
+        return None
+    quote_loader = quote_loader or load_crypto_quote
+    candidates = []
+    for position in snapshot.get("positions", []):
+        if (
+            not isinstance(position, dict)
+            or position.get("cost_basis_complete") is not True
+            or position.get("apex_harvest_gate_passed") is not True
+        ):
+            continue
+        symbol = str(position.get("symbol") or "").strip().upper()
+        quantity = valid_positive_number(position.get("quantity_transferable"))
+        try:
+            cost_basis = float(position.get("direct_cost_basis_usd"))
+        except (TypeError, ValueError):
+            continue
+        if not symbol or quantity is None or cost_basis < 0:
+            continue
+        quote = quote_loader(symbol)
+        if (
+            not isinstance(quote, dict)
+            or quote.get("fresh") is not True
+            or quote.get("required_quote_quorum_ok") is not True
+            or quote.get("has_bid_ask_last") is not True
+            or quote.get("source_conflict") is True
+        ):
+            continue
+        bid = valid_positive_number((quote.get("payload") or {}).get("bid"))
+        if bid is None:
+            continue
+        gross_proceeds = quantity * bid
+        gross_net_profit = gross_proceeds - cost_basis
+        if gross_net_profit <= 0:
+            continue
+        candidates.append({
+            "symbol": symbol,
+            "quote": quote,
+            "market_fields": {
+                "candidate_side": "SELL",
+                "side": "sell",
+                "requested_quantity": quantity,
+                "sellable_quantity": quantity,
+                "position_status": position.get("position_status", "fresh"),
+                "position_source": position.get("position_source", "Robinhood.get_crypto_positions"),
+                "position_timestamp": position.get("position_timestamp") or snapshot.get("retrieved_at"),
+                "position_account_matches_verified_account": position.get(
+                    "position_account_matches_verified_account", True
+                ),
+                "crypto_account_confirmed": snapshot.get("crypto_account_confirmed") is True,
+                "crypto_buying_power_usd": snapshot.get("crypto_buying_power_usd"),
+                "direct_cost_basis_usd": round(cost_basis, 8),
+                "broker_preview_required": True,
+                "expected_net_profit": round(gross_net_profit, 8),
+            },
+            "harvest_review": {
+                "basis": "BROKER_POSITION_POSITIVE_NET_REVIEW",
+                "gross_sale_proceeds_usd": round(gross_proceeds, 8),
+                "direct_cost_basis_usd": round(cost_basis, 8),
+                "gross_net_profit_usd": round(gross_net_profit, 8),
+                "cost_basis_complete": True,
+                "apex_harvest_gate_passed": True,
+                "apex_harvest_reason": position.get("apex_harvest_reason"),
+                "broker_preview_required": True,
+                "execution_authority": False,
+            },
+        })
+    return max(candidates, key=lambda item: item["harvest_review"]["gross_net_profit_usd"], default=None)
 
 
 def clamp(value, lower=0.0, upper=100.0):
@@ -1072,6 +1170,13 @@ def plugin_symbol_matches(payload, target_symbol):
 def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     crypto_symbol, crypto_candidates = load_active_crypto_symbol()
     crypto_quote = load_crypto_quote(crypto_symbol)
+    local_sell_candidate = select_local_sell_candidate()
+    harvest_review = None
+    if local_sell_candidate is not None:
+        crypto_symbol = local_sell_candidate["symbol"]
+        crypto_quote = local_sell_candidate["quote"]
+        crypto_quote["payload"].update(local_sell_candidate["market_fields"])
+        harvest_review = local_sell_candidate["harvest_review"]
     crypto_capital = load_crypto_capital_snapshot()
     if crypto_capital:
         crypto_quote["payload"].update(crypto_capital)
@@ -1267,6 +1372,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
                 "bid",
                 "ask",
                 "last",
+                "routing",
                 "liquidity_usd",
                 "crypto_account_confirmed",
                 "maintenance_active",
@@ -1374,8 +1480,16 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     # suppress a valid liquidation candidate. Proceeds become buy capital only
     # after a later broker refresh confirms they are spendable.
     if candidate_side == "SELL":
-        sell_decision = evaluate_capital_candidate(market_input)
-        apex_sizing_viable = sell_decision.get("RESULT") == "VALIDATED SETUP"
+        if harvest_review is not None:
+            sell_decision = {
+                "RESULT": "BROKER PREVIEW REQUIRED",
+                "FAILED_CHECKS": "none",
+                "GROSS_NET_PROFIT_USD": harvest_review["gross_net_profit_usd"],
+            }
+            apex_sizing_viable = True
+        else:
+            sell_decision = evaluate_capital_candidate(market_input)
+            apex_sizing_viable = sell_decision.get("RESULT") == "VALIDATED SETUP"
     else:
         # Fresh quotes alone are not an executable buy candidate. Missing APEX
         # sizing inputs keep the envelope non-viable, not merely watchlistable.
@@ -1419,18 +1533,21 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "order_ticket_produced": False,
             "broker_order_submitted": False,
         },
-        # A fully qualified envelope must enter the Robinhood execution
-        # consumer. Any candidate that fails deterministic viability or
-        # sizing is fail-closed as NO ACTION. Broker preview, exact-ticket,
-        # authorization, idempotency, broker validation, and broker order/fill
-        # confirmation remain required; interactive per-order confirmation is
-        # supplied by the user's pre-authorized Agentic-account setting.
-        # before any order placement.
+        # Discovery stays active continuously.  Execution remains separately
+        # fail-closed: only a fully qualified candidate may enter the
+        # Robinhood consumer, and preview, exact-ticket, authorization,
+        # idempotency, broker validation, and fill confirmation remain
+        # mandatory before placement.
+        "discovery_state": "LOOKING FOR VIABLE TRADE/ENVELOPE",
+        "execution_gate_decision": "LOOKING FOR EXECUTION",
+        "apex_fail_safe_result": (
+            None if execution_viable else "NO ACTION"
+        ),
         "candidate_decision": (
             f"{candidate_side} CANDIDATE"
             if execution_viable
             else "SCANNING FOR VIABILITY"
-            if viable
+            if viable or not execution_viable
             else "NO ACTION"
         ),
         "apex_score": 0,
@@ -1441,6 +1558,7 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "micro_trade_value": micro_trade_value,
         "apex_micro_math": micro_math,
         "apex_sell_validation": sell_decision,
+        "harvest_review": harvest_review,
         "chatgpt_reinforcement": chatgpt_reinforcement,
         "data_provenance": required_sources,
         "required_sources": required_sources,
@@ -1532,6 +1650,9 @@ def scan_once(codex_heavy_state, lane):
         "source_refresh_policy": source_refresh_policy(),
         "candidate_envelope_path": str(envelope_path),
         "candidate_decision": envelope["candidate_decision"],
+        "discovery_state": envelope["discovery_state"],
+        "execution_gate_decision": envelope["execution_gate_decision"],
+        "apex_fail_safe_result": envelope["apex_fail_safe_result"],
         "scanner_viable": envelope["scanner_viable"],
         "source_quality": envelope["source_quality"],
         "projection": envelope["projection"],
@@ -1588,6 +1709,9 @@ def scan_once(codex_heavy_state, lane):
     print("RUNPOD_MEDIUM_WEIGHT_SCANNER: ACTIVE")
     print(f"SCANNER_LANE: {lane}")
     print(f"CODEX_HEAVY_STATE: {codex_heavy_state}")
+    print(f"DISCOVERY_STATE: {envelope['discovery_state']}")
+    print(f"EXECUTION_GATE_DECISION: {envelope['execution_gate_decision']}")
+    print(f"APEX_FAIL_SAFE_RESULT: {envelope['apex_fail_safe_result'] or 'PASSED'}")
     print(f"CANDIDATE_DECISION: {envelope['candidate_decision']}")
     print(f"SCANNER_VIABLE: {str(envelope['scanner_viable']).lower()}")
     print(f"TRADE_EXECUTION_ALLOWED: {str(envelope['trade_execution_allowed']).lower()}")

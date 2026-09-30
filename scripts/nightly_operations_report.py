@@ -61,6 +61,7 @@ def main():
     print(f"BLUE_CHIP_REVERSAL_RISK_SCORE: {blue_projection.get('reversal_risk_score', 'missing')}")
     print(f"SUPERVISOR_STATE: {supervisor.get('supervisor_state', 'missing')}")
     print(f"HEALTH_CHECK_ONLY: {yes_no(supervisor.get('health_check_only') is True)}")
+    print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
     print("HEAVY_ACTION: NO ACTION")
     print(f"TRADE_EXECUTION_ALLOWED: {yes_no(execution_allowed)}")
     print(f"CANDIDATE_DECISION: {candidate.get('candidate_decision', 'missing')}")

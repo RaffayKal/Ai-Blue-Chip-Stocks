@@ -535,21 +535,17 @@ Resume after usage reset does not bypass capital rules. It must still enforce no
 
 ## Recovery Lockdown / BTC Sell-Only Exception
 
-User command active: pause all operations except selling BTC to recover capital or realize net profit.
+The historical BTC sell-only lockdown is not the current operating mode. The
+current user instruction permits APEX buy and sell candidates across eligible
+assets, but it does not make any candidate executable by itself. Consult the
+current operations settings and the exact broker-backed ticket at runtime.
 
-While this mode is active:
-
-- all buy orders are disabled, including BTC, other crypto, and equities
-- autonomous resume/rebuy logic is disabled
-- the only permitted live brokerage action is `BTC` `CRYPTO` `sell` on `Robinhood Crypto` from rhs account `411926553` / crypto account ending `5533`
-- sell sizing must come from live sellable BTC quantity only
-- a Robinhood preview is mandatory before placement
-- placement is allowed only if the preview proves the sale recovers capital or produces positive net profit after spread, fees, slippage, and execution friction
-- if the preview is below recovery threshold, stale, rejected, or mismatched, the result is `NO ACTION`
-- after any sell placement, check the order by id and append the result to `data/autonomous_execution_log.json`
-- after any action or blocked action, return `FULL_AGENT = OFF` and keep only lightweight monitoring active
-
-This recovery exception does not authorize any buy, equity trade, margin use, invented symbol, changed amount, or stale-data action.
+If a future explicit recovery lockdown is activated, disable buys and rebuy
+logic, allow only the specified broker-confirmed sellable asset, require an
+exact Robinhood preview proving capital recovery or positive net profit after
+costs, and reconcile any placement by broker order ID. In all modes, stale,
+missing, contradictory, or mismatched evidence means `NO ACTION` for that
+ticket; return the full agent to OFF after the decision.
 
 ## Current Envelope Required Before Buy/Sell Activation
 

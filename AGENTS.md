@@ -57,10 +57,12 @@ eligibility.
 
 Never use a hard-coded capital amount or total portfolio value as spendable capital.
 
-If live buying-power data is missing, stale, contradictory, or unavailable:
-`NO ACTION`.
+Missing, stale, contradictory, or unavailable buying power blocks a buy, not
+scanning or a sell. A sell requires fresh broker-confirmed sellable quantity,
+sell eligibility, and the other applicable gates. Never treat holdings or
+unconfirmed sale proceeds as spendable buying power.
 
-Agents must automatically adapt as deposits, withdrawals, holdings, profits, losses, and buying power change. Full-share and fractional-share action requires broker, buying-power, and asset eligibility confirmation.
+Agents must automatically adapt as deposits, withdrawals, holdings, profits, losses, and buying power change. Full-share and fractional-share buys require broker-confirmed buying power and asset eligibility; sells require broker-confirmed sellable inventory and asset eligibility.
 
 The user's primary agentic stock-market account is Robinhood. Robinhood-specific rules live in `rules/ROBINHOOD_RULES.md`. Broker capabilities that remain account-specific are not confirmed until `rules/brokerage_intake.json` is filled or verified by the Robinhood MCP/API connection.
 
@@ -103,4 +105,8 @@ For agentic startup from `2026-09-10`, agents must read `START_TODAY.md` and run
 ./scripts/start_agentic_cycle.sh
 ```
 
-Crypto runs as `CRYPTO_24_7` checked Robinhood Crypto mode. Blue chips run as `BLUE_CHIPS_WHEN_POSSIBLE` only when session, symbol tradability, and Robinhood account permission are confirmed.
+Crypto scanning runs as `CRYPTO_24_7` checked Robinhood Crypto mode. Blue-chip scanning may also run continuously; `BLUE_CHIPS_WHEN_POSSIBLE` execution still requires a confirmed broker-supported session, symbol tradability, and Robinhood account permission.
+
+## Claude Handoff
+
+Codex must read `CLAUDE_CODEX_HANDOFF.md` at the start of each session, act on its action items, and append an acknowledgement at the bottom. Claude Code is the ops backup when Codex usage is exhausted; keep `codex_usage_remaining_percent` in `logs/codex_resource_governor.jsonl` live so the handoff can be detected.

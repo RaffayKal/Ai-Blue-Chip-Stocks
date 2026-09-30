@@ -62,6 +62,7 @@ def load_watchlist(path: Path) -> set[str]:
 
 
 def fail(message: str, code: int = 1) -> None:
+    print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
     print("RESULT: NO ACTION")
     print(f"FAILED_CHECKS: {message}")
     raise SystemExit(code)
@@ -154,7 +155,10 @@ def evaluate(data: dict) -> dict:
     bid = number(data.get("bid"), "bid", failed)
     ask = number(data.get("ask"), "ask", failed)
     last = number(data.get("last"), "last", failed)
-    liquidity = number(data.get("liquidity_usd"), "liquidity_usd", failed)
+    exact_sell_preview = side == "sell" and data.get("broker_preview_confirmed") is True
+    liquidity = None if exact_sell_preview and data.get("liquidity_usd") is None else number(
+        data.get("liquidity_usd"), "liquidity_usd", failed
+    )
 
     if bid is not None and ask is not None:
         if bid <= 0:
@@ -288,6 +292,7 @@ def main() -> None:
         fail("usage: python3 algorithms/capital_engine.py <input.json>")
 
     result = evaluate(load_json(Path(sys.argv[1])))
+    print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
     for key in [
         "RESULT",
         "SYMBOL",

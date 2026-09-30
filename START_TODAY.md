@@ -34,31 +34,27 @@ Read `rules/BROKERAGE_RULES.md` and `rules/ROBINHOOD_RULES.md` before treating a
 
 ## Operating Mode
 
-Current conditional operations policy: use 4:00 AM America/New_York as the
-daily operations start/resume and retain a 10-minute monitor. Two consecutive
-fresh Robinhood reads must confirm at least one verified crypto operation path
-before 24/7 scanning is enabled: positive spendable crypto buying power for
-buys, or a positive sellable crypto quantity with sell eligibility for sells.
-Both are not required. Until then, run watch/scanner operations only during
-actual U.S. trading days from 4:00 AM through 8:00 PM ET, including early,
-regular and late sessions; outside that window RunPod, Codex, ChatGPT and Claude
-heavy/scanner layers are dormant or paused. Equity buying power, total portfolio
-value, unsold holdings, projected profit and promised funding do not unlock
-24/7 mode. A held asset qualifies only for its verified sell path; it is not
-cash and does not qualify a buy. Asset-specific sessions, actual broker buying power, execution
-permissions and all existing trade gates remain unchanged. Read
-`RUNPOD_OPERATIONS.md` for the state-transition procedure and proof limits.
+Current operations policy: keep the 3-minute watchdog and authorized scanning
+active 24/7 regardless of buying power. The watchdog verifies continuous feed
+and scanner freshness between wakes; a scheduled wake is not a live feed.
+Crypto opportunities may be evaluated at any hour, including weekends.
+Blue-chip/stock opportunities may be scanned at any hour, but execution remains
+limited to the actual broker-supported session and instrument. No buying power
+is needed to scan or to evaluate a broker-confirmed sellable holding for a sell.
+A buy still requires fresh spendable buying power in the selected account;
+holdings and unconfirmed sale proceeds are not cash. Asset-specific sessions,
+execution permissions and all existing trade gates remain unchanged. Read
+`RUNPOD_OPERATIONS.md` for the watchdog/recovery procedure and proof limits.
 
-Off-market pausing is provider-capability dependent. RunPod currently exposes
-`stop`, `restart` and `terminate` for the named pod, not a safe reversible
-`pause` with guaranteed autonomous resume. Do not use `stop` merely to save
-usage because this pod has ephemeral container storage; leave it untouched when
-no safe pause exists and keep the monitor/heavy-agent layers paused.
+RunPod currently exposes `stop`, `restart` and `terminate` for the named pod,
+not a safe reversible `pause` with guaranteed autonomous resume. The current
+24/7 scanning policy does not call for off-market pausing. Do not use `stop`
+merely to save usage because this pod has ephemeral container storage.
 
 Run two lanes:
 
 1. `CRYPTO_24_7`: continuous watch mode.
-2. `BLUE_CHIPS_WHEN_POSSIBLE`: U.S. blue-chip stock watch mode only when the market/session/broker route allows it.
+2. `BLUE_CHIPS_WHEN_POSSIBLE`: continuous U.S. blue-chip stock scanning; execution only when the market/session/broker route allows it.
 
 No lane is allowed to trade or recommend execution from assumptions.
 
@@ -74,9 +70,9 @@ This checks the directory, confirms `python3`, confirms required files, then run
 
 ## Crypto 24/7 Lane
 
-Crypto may run 24/7 only as checked watch mode when a buy or sell path is
-verified twice. Buy execution still requires fresh spendable crypto buying
-power; sell execution still requires fresh sellable quantity and sell
+Crypto scanning may run 24/7 without a capital prerequisite. Buy execution
+still requires fresh spendable crypto buying power; sell execution still
+requires fresh sellable quantity and sell
 eligibility.
 
 Allowed result types:

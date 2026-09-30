@@ -17,6 +17,86 @@ def iso_before(seconds):
 
 
 class RunpodLightweightScannerCapitalTests(unittest.TestCase):
+    def test_positive_net_held_position_is_selected_for_local_sell_review(self):
+        snapshot = {
+            "retrieved_at": iso_before(1),
+            "source": "Robinhood.get_portfolio+get_crypto_positions",
+            "account_match_confirmed": True,
+            "crypto_account_confirmed": True,
+            "positions": [{
+                "symbol": "BTC",
+                "quantity_transferable": 0.00006084,
+                "quantity_held_for_sell": 0.0,
+                "direct_cost_basis_usd": 4.8,
+                "cost_basis_complete": True,
+                "apex_harvest_gate_passed": True,
+            }],
+        }
+        btc_quote = self.quote(payload={
+            "bid": 82240.98,
+            "ask": 83787.01,
+            "last": 83008.31,
+            "routing": "Market Maker Routing",
+            "liquidity_usd": None,
+        })
+        candidate = scanner.select_local_sell_candidate(snapshot, lambda symbol: btc_quote)
+        self.assertEqual(candidate["symbol"], "BTC")
+        self.assertEqual(candidate["market_fields"]["side"], "sell")
+        self.assertEqual(candidate["market_fields"]["requested_quantity"], 0.00006084)
+        self.assertEqual(candidate["market_fields"]["sellable_quantity"], 0.00006084)
+        self.assertGreater(candidate["harvest_review"]["gross_net_profit_usd"], 0)
+        self.assertTrue(candidate["harvest_review"]["broker_preview_required"])
+
+    def test_positive_net_position_without_apex_harvest_gate_is_review_only(self):
+        snapshot = {
+            "retrieved_at": iso_before(1),
+            "source": "Robinhood.get_portfolio+get_crypto_positions",
+            "account_match_confirmed": True,
+            "crypto_account_confirmed": True,
+            "positions": [{
+                "symbol": "BTC",
+                "quantity_transferable": 0.00006084,
+                "direct_cost_basis_usd": 4.8,
+                "cost_basis_complete": True,
+            }],
+        }
+        self.assertIsNone(
+            scanner.select_local_sell_candidate(snapshot, lambda symbol: self.quote(
+                payload={"bid": 82240.98, "ask": 83787.01, "last": 83008.31,
+                         "routing": "Market Maker Routing"}
+            ))
+        )
+
+    def test_incomplete_cost_basis_cannot_be_selected_for_profit_harvest(self):
+        snapshot = {
+            "retrieved_at": iso_before(1),
+            "source": "Robinhood.get_portfolio+get_crypto_positions",
+            "account_match_confirmed": True,
+            "crypto_account_confirmed": True,
+            "positions": [{
+                "symbol": "BTC",
+                "quantity_transferable": 0.00006084,
+                "direct_cost_basis_usd": 4.8,
+                "cost_basis_complete": False,
+            }],
+        }
+        self.assertIsNone(scanner.select_local_sell_candidate(snapshot, lambda symbol: self.quote()))
+
+    def test_duplicate_lock_attempt_preserves_owner_and_can_retry(self):
+        with tempfile.TemporaryDirectory() as raw:
+            path = Path(raw) / "primary.lock"
+            owner = scanner.acquire_lock(path)
+            self.assertIsNotNone(owner)
+            try:
+                owner_pid = path.read_text()
+                self.assertIsNone(scanner.acquire_lock(path))
+                self.assertEqual(path.read_text(), owner_pid)
+            finally:
+                owner.close()
+            replacement = scanner.acquire_lock(path)
+            self.assertIsNotNone(replacement)
+            replacement.close()
+
     def write_snapshot(self, directory, payload):
         path = Path(directory) / "robinhood_crypto_capital_snapshot.json"
         scanner.write_json(path, payload)
@@ -186,6 +266,17 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
         self.assertEqual(market_input["sellable_quantity"], 0.00006084)
         self.assertEqual(market_input["position_source"], "Robinhood.get_crypto_positions")
         self.assertTrue(market_input["position_account_matches_verified_account"])
+
+    def test_candidate_preserves_broker_routing_without_inventing_it(self):
+        for routing in ("Market Maker Routing", "Smart Exchange Routing", None):
+            payload = {} if routing is None else {"routing": routing}
+            with self.subTest(routing=routing), patch.object(
+                scanner, "load_active_crypto_symbol", return_value=("BTC", {})
+            ), patch.object(scanner, "load_crypto_quote", return_value=self.quote(payload=payload)), patch.object(
+                scanner, "load_crypto_capital_snapshot", return_value={}
+            ):
+                envelope = scanner.build_non_executable_envelope([], {}, "UNKNOWN", "primary")
+            self.assertEqual(envelope["market_input"].get("routing"), routing)
 
     def test_optional_alpaca_is_not_written_as_required_provenance(self):
         quote = self.quote()
@@ -549,6 +640,9 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
         self.assertFalse(envelope["scanner_viable"])
         self.assertIn("required crypto quote sources not satisfied: missing Robinhood", envelope["failed_checks"])
+        self.assertEqual(envelope["discovery_state"], "LOOKING FOR VIABLE TRADE/ENVELOPE")
+        self.assertEqual(envelope["execution_gate_decision"], "LOOKING FOR EXECUTION")
+        self.assertEqual(envelope["apex_fail_safe_result"], "NO ACTION")
 
     def test_missing_apex_stop_does_not_block_scanner_candidate(self):
         quote = self.quote(payload={"invalidation_price_usd": None, "stop_distance_usd": None})

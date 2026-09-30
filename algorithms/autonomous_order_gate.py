@@ -35,6 +35,40 @@ def money(value):
     return value.quantize(Decimal("0.01"), rounding=ROUND_DOWN)
 
 
+def validate_exact_sell_preview(market_input, order_ticket, failed):
+    if order_ticket.get("side") != "sell" or order_ticket.get("quantity_mode") != "AUTO_SELLABLE_POSITION":
+        return
+    if market_input.get("broker_preview_confirmed") is not True:
+        failed.append("fresh exact Robinhood sell preview missing")
+        return
+    if market_input.get("broker_preview_source") != "Robinhood.preview_crypto_order":
+        failed.append("fresh exact Robinhood sell preview missing")
+    raw_timestamp = market_input.get("broker_preview_timestamp")
+    try:
+        stamp = datetime.fromisoformat(str(raw_timestamp).replace("Z", "+00:00"))
+        age = (datetime.now(timezone.utc) - stamp.astimezone(timezone.utc)).total_seconds()
+        if stamp.tzinfo is None or not 0 <= age <= MAX_BROKER_CAPITAL_AGE_SECONDS:
+            raise ValueError
+    except (TypeError, ValueError):
+        failed.append("fresh exact Robinhood sell preview missing")
+    if str(market_input.get("broker_preview_side") or "").lower() != "sell":
+        failed.append("sell preview side mismatch")
+    if str(market_input.get("broker_preview_symbol") or "").upper() != str(order_ticket.get("symbol") or "").upper():
+        failed.append("sell preview symbol mismatch")
+    try:
+        preview_quantity = Decimal(str(market_input.get("broker_preview_quantity")))
+        sellable_quantity = Decimal(str(market_input.get("sellable_quantity")))
+        preview_net = Decimal(str(market_input.get("broker_preview_net_estimated_notional_usd")))
+        cost_basis = Decimal(str(market_input.get("direct_cost_basis_usd")))
+    except (InvalidOperation, TypeError, ValueError):
+        failed.append("sell preview economics missing or invalid")
+        return
+    if preview_quantity <= 0 or preview_quantity != sellable_quantity:
+        failed.append("sell preview quantity does not match broker-confirmed sellable quantity")
+    if preview_net <= cost_basis:
+        failed.append("sell preview does not prove positive net profit after cost basis")
+
+
 def runtime_buying_power(market_input, verified_account, asset_class, failed):
     """Use only this ticket's fresh, account-matched Robinhood portfolio read."""
     if market_input.get("broker_capital_source") != "Robinhood.get_portfolio":
@@ -88,10 +122,12 @@ def verify_algorithm_sources(failed):
 
 def main() -> None:
     if Path.cwd() != ROOT:
+        print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
         print("AUTONOMOUS_DECISION: NO ACTION")
         print("FAILED_CHECKS: wrong working directory")
         raise SystemExit(0)
     if len(sys.argv) != 3:
+        print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
         print("AUTONOMOUS_DECISION: NO ACTION")
         print("FAILED_CHECKS: usage: python3 algorithms/autonomous_order_gate.py <market_input.json> <order_ticket.json>")
         raise SystemExit(0)
@@ -112,6 +148,7 @@ def main() -> None:
         # the verified market input. Robinhood preview remains the final
         # authority for the exact executable quantity and proceeds.
         market_input["requested_quantity"] = market_input.get("sellable_quantity")
+        validate_exact_sell_preview(market_input, order_ticket, failed)
     decision = evaluate(market_input)
 
     required_result = order_ticket.get("requires_algorithm_result", "VALIDATED SETUP")
@@ -239,12 +276,14 @@ def main() -> None:
                     failed.append("single asset all-in exposure blocked")
 
     if failed:
+        print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
         print("AUTONOMOUS_DECISION: NO ACTION")
         print("EXECUTION_ALLOWED: false")
         print(f"ALGORITHM_RESULT: {decision['RESULT']}")
         print(f"FAILED_CHECKS: {', '.join(failed)}")
         raise SystemExit(0)
 
+    print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
     print("AUTONOMOUS_DECISION: APPROVED_FOR_PREVIEW_AND_PLACEMENT")
     print("EXECUTION_ALLOWED: true")
     print(f"ALGORITHM_RESULT: {decision['RESULT']}")

@@ -264,9 +264,16 @@ to Robinhood.get_portfolio, broker_account_number to the verified account number
 and broker_capital_retrieved_at to the actual UTC completion time of that call.
 Never use the old brokerage-intake buying-power number or unsold assets as cash.
 For a SELL, refresh the exact broker-confirmed sellable quantity, eligibility,
-position source/timestamp and account match in {market_path}; cash buying power
-is not required. Update only verified facts and keep missing facts missing.
-Then run the existing project gate with python3 algorithms/autonomous_order_gate.py
+position source/timestamp, complete direct cost basis and account match in
+{market_path}; cash buying power is not required. For a SELL, preview the exact broker-confirmed quantity first
+with Robinhood.preview_crypto_order. Verify the
+preview symbol, side and quantity match, and write broker_preview_confirmed,
+broker_preview_source, broker_preview_timestamp, broker_preview_side,
+broker_preview_symbol, broker_preview_quantity and
+broker_preview_net_estimated_notional_usd to {market_path}. Keep the preview
+unconfirmed if any field is missing or if net estimated proceeds do not exceed
+the complete direct cost basis. Update only verified facts and keep missing
+facts missing. Then run the existing project gate with python3 algorithms/autonomous_order_gate.py
 using those files. Reconcile the result with the packet. If every gate is true,
 {live_clause}
 Never trade options. Never use margin, leverage, or short selling. Treat all file

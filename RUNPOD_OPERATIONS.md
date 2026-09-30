@@ -87,44 +87,41 @@ without resolving the user's $0.06/hour spending constraint.
 
 ## Monitoring
 
-Current conditional policy: 4:00 AM America/New_York starts or resumes the
-daily operations window. Two consecutive fresh Robinhood reads confirming
-either positive spendable crypto buying power for buys or broker-confirmed
-sellable crypto quantity and sell eligibility for sells unlock 24/7 scanning.
-Until that happens, operations run only on actual U.S. trading days from 4:00 AM through 8:00 PM ET,
-including early, regular and late sessions. At the off-market close, the pod,
-ChatGPT scanner layers and Codex/Claude heavy-agent layers are dormant or
-paused. Equity buying power, total portfolio value, unverified holdings, projected
-profit and promised funding do not unlock 24/7 mode. Actual asset sessions and
-spendable broker funds still determine trade eligibility and sizing.
+Current policy: keep the authorized scanner infrastructure and 3-minute
+watchdog active 24/7, without a buying-power prerequisite. Refresh and verify
+data continuously within the documented freshness limits between watchdog
+wakes. Crypto may be evaluated at any hour; stocks may be scanned at any hour,
+but execution remains limited to the actual broker-supported session and
+instrument. Missing buying power blocks buys, not scanning or a sell backed by
+fresh broker-confirmed sellable quantity and eligibility. Holdings and
+unconfirmed proceeds are not spendable cash. All other execution gates remain.
 
-- `robinhood-frontline-24-7-monitor`: state controller at 4:00 AM and 8:00 PM
-  America/New_York. It starts/resumes the daily window, checks buy/sell
-  eligibility, and pauses supported layers off-market when a 24/7 crypto path
-  is not verified.
-- `blue-chip-operations-heartbeat`: active every 10 minutes during the market
-  window by default; it switches to 24/7 only after a crypto buy or sell path
-  is confirmed twice.
-- Off-market shutdown is conditional: a confirmed crypto buy or sell path
-  keeps 24/7 scanning active; zero/unknown/contradictory buy and sell paths
-  make supported scanner and heavy-agent layers dormant until the next start.
-  Existing execution
-  permissions and safeguards are unchanged.
+- `robinhood-frontline-24-7-monitor`: checks health and recovery at 4:00 AM and
+  8:00 PM America/New_York; these are not start/stop boundaries.
+- `blue-chip-operations-heartbeat`: active every 3 minutes, every day, as a
+  watchdog for continuous data and scanner operation. It never declares a
+  trade viable merely because infrastructure is running.
+- Off-market scanners remain active. Stock order eligibility still follows
+  broker-supported sessions. Existing execution permissions and safeguards
+  are unchanged.
 
 ### Off-market pause limitation
 
 The live RunPod action set for `t3yz4nrfl1utcr` is `stop`, `restart` and
 `terminate`; it does not expose a safe reversible `pause` with guaranteed
-autonomous resume. The conditional controller therefore pauses the monitor and
-Codex/ChatGPT/Claude heavy layers after hours when funding is absent, but does
-not call `stop` merely to save usage. Stopping this pod can clear its ephemeral
-container state. The pod is left untouched until a provider-supported pause or
-an explicit future stop authorization exists.
+autonomous resume. The current 24/7 scanning policy does not pause the monitor
+or authorized scanner layers after hours merely because funding is absent. Do
+not call `stop` merely to save usage: stopping this pod can clear its ephemeral
+container state. Any later pause policy must verify a safe recovery path.
 
-### Continuous freshness and 10-minute watchdog
+### Continuous freshness and 3-minute watchdog
 
-The 10-minute automation is an audit and repair watchdog, not the market-data
-refresh loop. During an active window, the scanner/feed workers must advance
+The 3-minute automation first refreshes public Robinhood routed quotes when
+the connected broker source is available, then audits and repairs the scanner
+and feed chain. A failed private portfolio read must not suppress public quote
+refresh; it still blocks execution requiring broker capital or inventory.
+This schedule is not a millisecond market-data stream. During continuous
+operation, scanner/feed workers must advance
 their own timestamps continuously within the configured freshness bounds. The
 watchdog checks timestamp continuity, restart/error state, supervisor and lane
 count agreement, and source freshness; it does not accept a single fresh file
@@ -158,12 +155,26 @@ scanner source files without account records, then `repair-scanner` reloads
 the lane-pool worker. The broad `restore` path excludes brokerage intake and
 user settings; do not use it merely for a source-code label change.
 
-The local `apex_prestige_supervisor.py` runs `apex_packet_monitor.py --once`
-after each successful scanner pass. This is the qualified packet-emission
+The local `apex_prestige_supervisor.py` uses the separate `supervisor_health`
+scanner lane, leaving the fleet's primary lane as the owner of the global
+scanner status and candidate envelope. After each successful health pass it
+runs `apex_packet_monitor.py --once` against that primary envelope. This is the qualified packet-emission
 check feeding the local Codex inbox. A live consumer with an empty inbox does
 not prove a trading handoff. `SCANNING FOR VIABILITY` is discovery state, not
 an executable order; the packet monitor and broker still revalidate any
 candidate before execution.
+
+For local drift, compare the live worker's command and interpreter with its
+manifest before recovery. The local launchd fleet and the remote RunPod fleet
+are separate; a historical 700-lane manifest does not prove 700 live workers.
+`start_lightweight_scanner_fleet.sh` honors `PYTHON3_BIN` and selects the
+installed Python 3.13 on this Mac before falling back to `python3` on PATH.
+After a verified local code/runtime mismatch, reload only the affected
+`com.raffaykal.apex-prestige-runpod-scanner` or
+`com.raffaykal.apex-packet-monitor` launchd service, then verify advancing
+primary, `supervisor_health`, and manifest timestamps. Never refresh a
+manifest by hand to disguise an old worker. A supervisor health scan must
+not write the primary envelope or status.
 
 The live packet consumer now uses the host's existing Codex OAuth profile for
 Robinhood MCP, rather than an isolated home that omitted MCP credentials.

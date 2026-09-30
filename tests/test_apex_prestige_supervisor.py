@@ -29,6 +29,7 @@ class ApexPrestigeSupervisorTests(unittest.TestCase):
             supervisor.supervisor_once(Path("rules/apex_packet_monitor.template.json"))
 
         self.assertEqual(len(calls), 3)
+        self.assertEqual(calls[1][calls[1].index("--lane") + 1], "supervisor_health")
         self.assertEqual(calls[2][1:], ["algorithms/apex_packet_monitor.py", "--config", "rules/apex_packet_monitor.template.json", "--once"])
         self.assertTrue(statuses[0]["packet_monitor_checked"])
         self.assertEqual(statuses[0]["last_monitor_exit"], 0)
@@ -49,6 +50,22 @@ class ApexPrestigeSupervisorTests(unittest.TestCase):
         self.assertEqual(len(calls), 2)
         self.assertFalse(statuses[0]["packet_monitor_checked"])
         self.assertIsNone(statuses[0]["last_monitor_exit"])
+
+    def test_frozen_health_scan_cannot_overwrite_primary_envelope(self):
+        calls = []
+
+        def run(command):
+            calls.append(command)
+            return (0, "SYSTEM_STATE: FROZEN\n") if len(calls) == 1 else (0, "SCANNER: updated\n")
+
+        with patch.object(supervisor, "run_command", side_effect=run), patch.object(
+            supervisor, "write_json"
+        ), patch.object(supervisor, "log"):
+            supervisor.supervisor_once(Path("rules/apex_packet_monitor.template.json"))
+
+        self.assertEqual(len(calls), 2)
+        self.assertEqual(calls[1][calls[1].index("--lane") + 1], "supervisor_health")
+        self.assertEqual(calls[1][calls[1].index("--codex-heavy-state") + 1], "FROZEN")
 
 
 if __name__ == "__main__":

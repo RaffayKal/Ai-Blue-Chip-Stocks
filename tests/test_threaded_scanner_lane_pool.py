@@ -5,7 +5,7 @@ import subprocess
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import patch
+from unittest.mock import patch, Mock
 
 ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 sys.path.insert(0, str(ROOT / "scripts"))
@@ -15,6 +15,42 @@ import threaded_scanner_lane_pool as pool
 
 
 class ThreadedScannerLanePoolTests(unittest.TestCase):
+    def test_primary_recovers_after_previous_worker_releases_lock(self):
+        async def scenario():
+            stop = asyncio.Event()
+            lock = Mock()
+            results = []
+
+            def scan(*_args):
+                stop.set()
+                return {"scanner_viable": False, "candidate_decision": "NO ACTION"}
+
+            with patch.object(pool.scanner, "acquire_lock", side_effect=[None, lock]) as acquire, patch.object(
+                pool.scanner, "bounded_loop_interval", return_value=0.001
+            ), patch.object(pool.scanner, "scan_once", side_effect=scan):
+                await pool.run_lane("primary", "UNKNOWN", 7, False, None, asyncio.get_running_loop(), stop, results)
+            self.assertEqual(acquire.call_count, 2)
+            self.assertEqual(len(results), 1)
+            lock.close.assert_called_once()
+
+        asyncio.run(scenario())
+
+    def test_waiting_primary_shuts_down_without_starting_a_duplicate(self):
+        async def scenario():
+            stop = asyncio.Event()
+
+            def unavailable(_path):
+                stop.set()
+                return None
+
+            with patch.object(pool.scanner, "acquire_lock", side_effect=unavailable), patch.object(
+                pool.scanner, "scan_once"
+            ) as scan:
+                await pool.run_lane("primary", "UNKNOWN", 7, False, None, asyncio.get_running_loop(), stop, [])
+            scan.assert_not_called()
+
+        asyncio.run(scenario())
+
     def test_lane_naming_matches_process_based_fleet(self):
         self.assertEqual(pool.lane_name_for(1), "primary")
         self.assertEqual(pool.lane_name_for(2), "lane_2")

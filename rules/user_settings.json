@@ -124,7 +124,7 @@
     "no_order_placement_until_viable_true": true
   },
   "sell_recovery": {
-    "enabled": true,
+    "enabled": false,
     "symbol": "BTC",
     "allowed_side": "sell",
     "allowed_asset_class": "CRYPTO",

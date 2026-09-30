@@ -19,6 +19,7 @@ DEFAULT_STATE = ROOT / "data" / "apex_packet_monitor_state.json"
 DEFAULT_SCANNER_OUTPUT = ROOT / "data" / "current_candidate_envelope.json"
 DEFAULT_LOCAL_INBOX = ROOT / "data" / "codex_inbox"
 DEFAULT_LOG = ROOT / "logs" / "apex_packet_monitor.jsonl"
+MAX_BROKER_POSITION_AGE_SECONDS = 420.0
 LEGACY_MAC_ROOT = Path("/Users/raffaykal/AI BLUE CHIP STOCKS")
 
 USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
@@ -162,6 +163,7 @@ class GateResult:
 
 
 def validate_freshness(envelope: dict[str, Any], config: dict[str, Any], failed: list[str]) -> str:
+    previous_failure_count = len(failed)
     freshness = config["freshness"]
     market_input = envelope.get("market_input") if isinstance(envelope.get("market_input"), dict) else {}
     quote_age = age_seconds(market_input.get("quote_timestamp") or market_input.get("timestamp"))
@@ -187,7 +189,7 @@ def validate_freshness(envelope: dict[str, Any], config: dict[str, Any], failed:
             failed.append(f"data_provenance[{index}] timestamp missing or unparsable")
         elif source_age > float(freshness["max_provenance_age_seconds"]):
             failed.append(f"data_provenance[{index}] stale: {source_age:.0f}s old")
-    return "fresh" if not failed else "failed"
+    return "fresh" if len(failed) == previous_failure_count else "failed"
 
 
 def deterministic_gate(envelope: dict[str, Any], config: dict[str, Any]) -> GateResult:
@@ -214,15 +216,31 @@ def deterministic_gate(envelope: dict[str, Any], config: dict[str, Any]) -> Gate
         contradictions.extend([str(item) for item in envelope.get("contradictions")])
 
     market_input = envelope.get("market_input")
+    harvest_review = envelope.get("harvest_review")
+    broker_position_sell_review = (
+        envelope.get("candidate_decision") == "SELL CANDIDATE"
+        and isinstance(market_input, dict)
+        and market_input.get("side") == "sell"
+        and isinstance(harvest_review, dict)
+        and harvest_review.get("basis") == "BROKER_POSITION_POSITIVE_NET_REVIEW"
+    )
     if not isinstance(market_input, dict) or not market_input:
         failed.append("market_input missing")
         market_decision = {"RESULT": "NO ACTION", "FAILED_CHECKS": "market_input missing"}
     else:
-        market_decision = evaluate(market_input)
-        if market_decision["RESULT"] in BLOCKED_MARKET_RESULTS:
-            failed.append(f"capital engine result is {market_decision['RESULT']}")
-        if market_decision.get("FAILED_CHECKS") not in {"none", None, ""}:
-            failed.append(f"capital engine failed checks: {market_decision['FAILED_CHECKS']}")
+        if broker_position_sell_review:
+            sell_failures = validate_broker_position_sell_review(market_input, harvest_review)
+            failed.extend(sell_failures)
+            market_decision = {
+                "RESULT": "BROKER PREVIEW REQUIRED" if not sell_failures else "NO ACTION",
+                "FAILED_CHECKS": "none" if not sell_failures else ", ".join(sell_failures),
+            }
+        else:
+            market_decision = evaluate(market_input)
+            if market_decision["RESULT"] in BLOCKED_MARKET_RESULTS:
+                failed.append(f"capital engine result is {market_decision['RESULT']}")
+            if market_decision.get("FAILED_CHECKS") not in {"none", None, ""}:
+                failed.append(f"capital engine failed checks: {market_decision['FAILED_CHECKS']}")
         if market_input.get("source_conflict") is True:
             contradictions.append("market_input source_conflict is true")
         for key, label in BLOCKED_REQUEST_FLAGS.items():
@@ -235,10 +253,11 @@ def deterministic_gate(envelope: dict[str, Any], config: dict[str, Any]) -> Gate
 
     score = float(envelope.get("apex_score") or 0)
     confidence = float(envelope.get("confidence") or 0)
-    if score < float(config["viability"]["min_apex_score"]):
-        failed.append("apex_score below configured threshold")
-    if confidence < float(config["viability"]["min_confidence"]):
-        failed.append("confidence below configured threshold")
+    if not broker_position_sell_review:
+        if score < float(config["viability"]["min_apex_score"]):
+            failed.append("apex_score below configured threshold")
+        if confidence < float(config["viability"]["min_confidence"]):
+            failed.append("confidence below configured threshold")
 
     if risk_flags:
         failed.extend([f"blocked risk flag: {flag}" for flag in risk_flags])
@@ -246,6 +265,51 @@ def deterministic_gate(envelope: dict[str, Any], config: dict[str, Any]) -> Gate
         failed.extend([f"contradiction: {item}" for item in contradictions])
 
     return GateResult(not failed, failed, risk_flags, contradictions, market_decision)
+
+
+def validate_broker_position_sell_review(market_input: dict[str, Any], harvest_review: dict[str, Any]) -> list[str]:
+    failed = []
+    required_positive = ("bid", "ask", "last", "requested_quantity", "sellable_quantity")
+    values = {}
+    for key in required_positive:
+        try:
+            values[key] = float(market_input.get(key))
+            if values[key] <= 0:
+                raise ValueError
+        except (TypeError, ValueError):
+            failed.append(f"sell review missing positive {key}")
+    if values.get("requested_quantity", 0) > values.get("sellable_quantity", 0):
+        failed.append("sell review quantity exceeds broker-confirmed sellable quantity")
+    if market_input.get("data_status") != "fresh" or market_input.get("risk_status") != "pass":
+        failed.append("sell review market or risk state is not fresh/pass")
+    if market_input.get("source_conflict") is True:
+        failed.append("sell review source conflict")
+    if market_input.get("position_status") != "fresh":
+        failed.append("sell review position is not fresh")
+    position_age = age_seconds(market_input.get("position_timestamp"))
+    if position_age is None or position_age > MAX_BROKER_POSITION_AGE_SECONDS:
+        failed.append("sell review position timestamp is stale or invalid")
+    if not str(market_input.get("position_source") or "").startswith("Robinhood."):
+        failed.append("sell review position source is not Robinhood")
+    if market_input.get("position_account_matches_verified_account") is not True:
+        failed.append("sell review position account mismatch")
+    if market_input.get("crypto_account_confirmed") is not True:
+        failed.append("sell review crypto account not confirmed")
+    if market_input.get("maintenance_active") is True or market_input.get("account_restricted") is True:
+        failed.append("sell review account unavailable or restricted")
+    try:
+        gross_net = float(harvest_review.get("gross_net_profit_usd"))
+    except (TypeError, ValueError):
+        gross_net = 0.0
+    if gross_net <= 0:
+        failed.append("sell review gross net profit is not positive")
+    if harvest_review.get("cost_basis_complete") is not True:
+        failed.append("sell review cost basis is incomplete")
+    if harvest_review.get("apex_harvest_gate_passed") is not True:
+        failed.append("APEX harvest gate is not confirmed")
+    if harvest_review.get("broker_preview_required") is not True:
+        failed.append("sell review must require broker preview")
+    return failed
 
 
 def build_packet(envelope: dict[str, Any], gate: GateResult, freshness: str) -> dict[str, Any]:
@@ -273,6 +337,7 @@ def build_packet(envelope: dict[str, Any], gate: GateResult, freshness: str) -> 
                 "routing", "liquidity_usd", "risk_status", "source_conflict",
                 "crypto_account_confirmed", "maintenance_active", "account_restricted",
                 "requested_notional_usd", "requested_quantity", "sellable_quantity",
+                "direct_cost_basis_usd", "broker_preview_required", "expected_net_profit",
                 "position_status", "position_timestamp", "position_source",
                 "position_account_matches_verified_account", "crypto_buying_power_usd",
                 "buying_power_usd", "broker_extended_session_supported",
@@ -328,6 +393,7 @@ def build_packet(envelope: dict[str, Any], gate: GateResult, freshness: str) -> 
             "Deterministic gate passed on fresh scanner output; Codex must independently revalidate before entering broker-gated execution workflow.",
         ),
         "supporting_evidence": envelope.get("supporting_evidence", envelope.get("data_provenance", [])),
+        "harvest_review": envelope.get("harvest_review"),
         "codex_directive": "ACTIVATE_AGENTIC_WORKFLOW",
         "execution_authority": "GATED_BY_EXISTING_APEX_BROKER_RISK_RUNTIME_CHECKS",
         "execution_allowed": False,

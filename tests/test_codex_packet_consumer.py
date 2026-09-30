@@ -141,6 +141,11 @@ class ConsumerTests(unittest.TestCase):
             argv = run.call_args.args[0]
             self.assertNotIn("--ignore-user-config", argv)
             self.assertNotIn("env", run.call_args.kwargs)
+            prompt = argv[-1]
+            self.assertLess(
+                prompt.index("For a SELL, preview the exact broker-confirmed quantity first"),
+                prompt.index("Then run the existing project gate"),
+            )
 
     def test_end_to_end_monitor_to_consumer_shadow(self):
         with tempfile.TemporaryDirectory() as raw:
