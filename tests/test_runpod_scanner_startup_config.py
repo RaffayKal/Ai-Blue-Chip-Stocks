@@ -20,6 +20,13 @@ class RunpodScannerStartupConfigTests(unittest.TestCase):
         report = (ROOT / "scripts" / "report_runpod_runtime.sh").read_text(encoding="utf-8")
         self.assertIn('ROOT=/workspace/apex', report)
 
+    def test_vllm_secret_source_is_keychain_not_project_env(self):
+        config = (ROOT / "runpod_vllm_cpu_006.json").read_text(encoding="utf-8")
+        self.assertIn("macOS Keychain service AI BLUE CHIP STOCKS RunPod VLLM API Key", config)
+        self.assertNotIn('"VLLM_API_KEY": "read from ignored .env.local"', config)
+        checker = (ROOT / "scripts" / "check_vllm_service.py").read_text(encoding="utf-8")
+        self.assertIn('KEYCHAIN_SERVICE = "AI BLUE CHIP STOCKS RunPod VLLM API Key"', checker)
+
     def test_runpod_defaults_to_high_cpu_utilization_fanout(self):
         startup = (ROOT / "scripts" / "start_runpod_scanner_24_7.sh").read_text(encoding="utf-8")
         self.assertIn('export RUNPOD_SCANNER_LANES="${RUNPOD_SCANNER_LANES:-auto}"', startup)

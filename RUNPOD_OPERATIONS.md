@@ -6,8 +6,8 @@ Verified September 25, 2026. This document is a runbook, not a live health claim
 
 - Pod: `t3yz4nrfl1utcr` / `apex-vllm-cpu-006`.
 - Allocation: 2 vCPUs, 4 GB RAM, 20 GB container disk; reported compute rate $0.06/hour.
-- SSH: configuration in `runpod_vllm_cpu_006.json`, using the existing registered
-  `/Users/raffaykal/.runpod/ssh/runpodctl-ssh-key`. The proxy requires a PTY.
+- SSH: configuration in `runpod_vllm_cpu_006.json`, using the registered
+  `/Users/raffaykal/runpod_codex_bridge` identity. The proxy requires a PTY.
 - Remote scanner directory: `/workspace/apex`.
 - Model endpoint: `https://t3yz4nrfl1utcr-8000.proxy.runpod.net`.
 - Model: `facebook/opt-125m`; this small test model is not proof of trading intelligence.
@@ -21,7 +21,9 @@ Its entrypoint already supplies `vllm serve`; do not add another `serve`.
 facebook/opt-125m --host 0.0.0.0 --port 8000 --dtype bfloat16 --max-model-len 512 --max-num-seqs 7 --enforce-eager --kv-cache-memory-bytes 134217728
 ```
 
-Expose `8000/http`. Keep the existing `VLLM_API_KEY` secret and
+Expose `8000/http`. Keep the existing `VLLM_API_KEY` secret; local verification
+loads it from the macOS Keychain service `AI BLUE CHIP STOCKS RunPod VLLM API Key`,
+not from a committed or plaintext project file, and
 `VLLM_CPU_NUM_OF_RESERVED_CPU=1`. Do not print keys or the complete pod environment.
 Do not set `VLLM_CPU_KVCACHE_SPACE`: that integer-only legacy variable overrides
 the byte-based cache configuration. The successful inference health check also

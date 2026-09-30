@@ -32,7 +32,7 @@
     ]
   },
   "container_environment": {
-    "VLLM_API_KEY": "read from ignored .env.local",
+    "VLLM_API_KEY": "read from macOS Keychain service AI BLUE CHIP STOCKS RunPod VLLM API Key",
     "VLLM_CPU_NUM_OF_RESERVED_CPU": "1"
   },
   "ssh": {

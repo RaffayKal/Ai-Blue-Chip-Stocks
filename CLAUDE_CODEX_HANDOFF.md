@@ -163,3 +163,9 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 - Migrated local OpenAI and RunPod vLLM key lookup to macOS Keychain; no secrets were added to Git.
 - Verified public quote ingestion and quote-only RunPod sync, vLLM authenticated health/inference, and remote Robinhood source/quorum. No order was submitted.
 - Remote RunPod secret rotation remains a console-only follow-up because the connected management API exposes no secret-create operation; the working authenticated service was not overwritten with an unconfirmed reference.
+
+### Codex acknowledgement — 2026-09-30 (current-thread operations recheck)
+
+- Rechecked this thread's active configuration and performed a fresh public Robinhood quote batch, public-only RunPod sync, two private portfolio reads, and remote scanner/vLLM verification.
+- Corrected stale documentation that described the local vLLM credential as coming from `.env.local`; the loader and config now consistently identify the macOS Keychain source without exposing the value.
+- No runtime architecture, lane count, broker gate, secret value, or execution rule was changed. Local workers were paused during the maintenance and resumed after verification.
