@@ -141,3 +141,8 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 
 - Changed the human operations report so `ORDER_ELIGIBILITY` remains `LOOKING FOR EXECUTION` while `APEX_FAIL_SAFE_RESULT` and `EXECUTION_TICKET_ELIGIBILITY` retain the candidate-specific fail-closed result.
 - Confirmed the report does not alter preview, authorization, broker, risk, idempotency, or placement gates.
+
+### Codex acknowledgement — 2026-09-30 (duplicate-label cleanup)
+
+- Removed the extra `EXECUTION_TICKET_ELIGIBILITY` report line at the user's direction.
+- Kept only the operational `ORDER_ELIGIBILITY: LOOKING FOR EXECUTION` label and the user-owned `APEX_FAIL_SAFE_RESULT` candidate result.

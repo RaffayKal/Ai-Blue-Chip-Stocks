@@ -60,9 +60,8 @@ def main():
         or "LOOKING FOR EXECUTION"
     )
     # Keep the operational search state separate from the candidate-level
-    # fail-safe.  ORDER_ELIGIBILITY describes what the worker is doing now;
-    # APEX_FAIL_SAFE_RESULT below describes whether this specific envelope
-    # may proceed to ticket/preview/placement.
+    # fail-safe. ORDER_ELIGIBILITY describes what the worker is doing now;
+    # APEX_FAIL_SAFE_RESULT is the only candidate-level result shown here.
     apex_fail_safe_result = "PASSED" if apex_gate_passed() else "NO ACTION"
 
     print("NIGHT_OPERATIONS_REPORT")
@@ -92,7 +91,6 @@ def main():
     print("OPERATIONAL_STATE: LOOKING FOR EXECUTION")
     print("ORDER_ELIGIBILITY: LOOKING FOR EXECUTION")
     print(f"APEX_FAIL_SAFE_RESULT: {apex_fail_safe_result}")
-    print(f"EXECUTION_TICKET_ELIGIBILITY: {apex_fail_safe_result}")
     print(f"TRADE_EXECUTION_ALLOWED: {yes_no(execution_allowed)}")
     print(f"CANDIDATE_DECISION: {candidate.get('candidate_decision', 'missing')}")
     print(f"SCANNER_VIABLE: {yes_no(viable)}")
