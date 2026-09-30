@@ -177,3 +177,32 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 - Completed two fresh private portfolio reads; buying power and crypto buying power were both $0.00. No private broker data was transferred to RunPod and no order was submitted.
 - Reverified the exact RunPod pod, active rotating symbol, Robinhood source/quorum, 70-lane supervisor/manifest/synergy, vLLM authenticated inference, and the canonical local 70-lane worker.
 - Confirmed the updated `blue-chip-operations-heartbeat` is ACTIVE every three minutes on this thread. Local operations were paused for this acknowledgement and will be resumed after the file update.
+
+### Codex acknowledgement — 2026-09-30 (3-minute watchdog wake, 19:49 UTC)
+
+- Read the current candidate pool, required runbooks, RunPod skill, and handoff before operational checks.
+- Refreshed one bounded 20-symbol routed Robinhood public quote batch, ingested 20 snapshots through the approved adapter with original timestamps and routing preserved, and attempted the public-only RunPod sync.
+- The sync failed closed because `ssh.runpod.io` could not be resolved; no private broker data or credentials were transferred and no order was submitted.
+- Completed two fresh portfolio reads: buying power `$0.00`, crypto buying power `$0.00`; BTC transferable quantity remained `0.00006084` and open crypto orders were empty.
+- Reverified the local 70-lane worker, ChatGPT fleet, supervisor, packet consumer, manifest, synergy, and fresh local artifacts. The named pod API was `RUNNING`; vLLM health, unauthenticated `401`, authenticated models `200`, and authenticated inference `200` passed.
+- Remote scanner artifact/source/quorum proof remains unverified because SSH/DNS is unavailable. No restart or repair was applied; stale lock and temporary-artifact evidence remains for follow-up.
+
+### Codex acknowledgement — 2026-09-30 (3-minute watchdog wake, 19:55 UTC)
+
+- Read the current candidate pool and required runbooks before operating; active symbol was `NEAR`, fallback was `BTC`, and the ranked pool was refreshed.
+- Refreshed and ingested 20 routed Robinhood public quotes. Original timestamps were `15:56:30.398–15:56:30.486 ET`, approximately 74 seconds old at the final local audit; all 20 reported `Market Maker Routing`.
+- Attempted the documented public-only RunPod sync; it failed closed because `ssh.runpod.io` could not be resolved. No private broker data or credentials were transferred and no order was submitted.
+- Completed two fresh portfolio reads: buying power `$0.00`, crypto buying power `$0.00`; BTC transferable quantity `0.00006084`; open crypto orders empty.
+- Local 70-lane scanner, ChatGPT fleet, supervisor, packet consumer, manifest, synergy, and vLLM-backed local checks were fresh. The named pod API was `RUNNING` with 2 vCPUs, 4 GB RAM allocation, and 62% reported memory utilization; authenticated vLLM inference passed in `0.362s`.
+- Remote scanner status, active-symbol source, and quorum remain unverified because SSH/DNS is unavailable. No restart or repair was applied; stale lock-file counts remain under audit.
+
+### Codex acknowledgement — 2026-09-30 (3-minute watchdog wake, post-restart repair)
+
+- Read the current candidate pool and required operational runbooks before work; refreshed the bounded 20-symbol routed Robinhood public quote pool and preserved original timestamps/routing through the approved ingestion adapter.
+- The existing pod container was automatically recreated after repeated memory-limit/OOM warnings. vLLM health, unauthenticated `401`, authenticated models `200`, and authenticated inference `200` were reverified after recreation.
+- The documented scanner restore was applied to the existing pod only; no pod restart, replacement, private broker-data transfer, or order submission was performed.
+- A fresh public-only quote sync wrote 21 snapshots with timestamps preserved. Remote proof then showed `/workspace/apex` installed, supervisor `RUNNING`, 70 configured lanes, active symbol `NEAR`, fresh Robinhood source and quorum, advancing scanner/manifest/synergy artifacts, and deterministic ChatGPT fallback status.
+- Two fresh portfolio reads reported buying power `$0.00` and crypto buying power `$0.00`; BTC transferable quantity remained `0.00006084`, with no open crypto orders.
+- A broker-local BTC sell preview passed with estimated net credit `$5.04`, estimated fee `$0`, and no order created. Placement was not attempted because this watchdog never submits orders.
+- The S3 access key supplied in chat was not written to disk, echoed, or transferred; the pod environment already references the configured RunPod S3 secret. The exposed key should be rotated if still active.
+- Remaining risk: RunPod memory is approximately `3.11/4.00 GB` after recovery, and prior OOM evidence remains; local process enumeration required privileged access but launchd/local artifact checks remain active and fresh.
