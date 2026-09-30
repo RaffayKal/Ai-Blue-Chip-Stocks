@@ -8,6 +8,16 @@ Verified September 25, 2026. This document is a runbook, not a live health claim
 - Allocation: 2 vCPUs, 4 GB RAM, 20 GB container disk; reported compute rate $0.06/hour.
 - SSH: configuration in `runpod_vllm_cpu_006.json`, using the registered
   `/Users/raffaykal/runpod_codex_bridge` identity. The proxy requires a PTY.
+- Alternate SSH entry supplied by the user (documented only; not replacing the
+  configured bridge identity):
+
+  ```bash
+  ssh t3yz4nrfl1utcr-644117fc@ssh.runpod.io -i ~/.ssh/id_ed25519
+  ```
+
+  Supplied host-key fingerprints: `SHA256:kB4aNBPZ8du9MjaNjk3ohjR1aqdJZpaKnnHrj9sc5dA` and
+  `SHA256:8Y/A8lnJ8REcpqJcTsTnZKnSrYyOl8VrEo0yQbFVa4c`. Verify the expected
+  fingerprint before trusting a new host; no private key material is stored here.
 - Remote scanner directory: `/workspace/apex`.
 - Model endpoint: `https://t3yz4nrfl1utcr-8000.proxy.runpod.net`.
 - Model: `facebook/opt-125m`; this small test model is not proof of trading intelligence.
@@ -15,7 +25,27 @@ Verified September 25, 2026. This document is a runbook, not a live health claim
 ## Verified container start arguments
 
 Image: `vllm/vllm-openai-cpu:latest-x86_64` (observed vLLM 0.30.0).
-Its entrypoint already supplies `vllm serve`; do not add another `serve`.
+The entrypoint supplies `vllm serve`; do not add another `serve` to model arguments.
+
+### Native web terminal repair — September 30, 2026
+
+The live console displayed this same pod as `apex-vllm-cpu-002` during repair.
+Previously vLLM was PID 1 and did not reap exited `gotty` terminal children.
+Disabling the native terminal left a zombie and the console incorrectly reported
+Running. The user authorized an entrypoint-only repair and restart.
+
+The current entrypoint runs `/opt/venv/bin/python -c` with the source from
+`scripts/runpod_container_init.py`, followed by `/opt/venv/bin/vllm serve`.
+The wrapper blocks in `waitpid`, reaps adopted children, and forwards shutdown
+signals to the model process group. Preserve this entrypoint on future updates.
+The model arguments, image, resource allocation, ports and secrets were not changed.
+
+Verified in external Chrome: native On → shell command → Off → On → shell
+command → Off. Both shell commands returned their test markers; both Off actions
+reached Stopped, and remote process checks showed no zombie or `gotty` processes.
+Authenticated model inference returned HTTP 200 after the repair.
+Terminal was left OFF. Scanner/execution operations and watchdogs remain paused
+under the user's stop instruction; this test did not resume them.
 
 ```text
 facebook/opt-125m --host 0.0.0.0 --port 8000 --dtype bfloat16 --max-model-len 512 --max-num-seqs 7 --enforce-eager --kv-cache-memory-bytes 134217728
