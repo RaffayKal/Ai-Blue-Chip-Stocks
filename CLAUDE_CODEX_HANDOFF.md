@@ -130,3 +130,9 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 - Changed the lightweight scanner envelope and status output to keep discovery continuously labeled `LOOKING FOR VIABLE TRADE/ENVELOPE`.
 - Added a separate `execution_gate_decision` field; failed or incomplete execution facts remain `NO ACTION` there, preserving fail-closed broker/risk/preview gates.
 - Added a regression test for missing Robinhood data and verified the focused 34-test scanner-capital suite passes.
+
+### Codex acknowledgement — 2026-09-30 (execution-search state)
+
+- Added the explicit `apex_execution_search_state` field and status output so workers remain visibly `LOOKING FOR EXECUTION` while candidate-specific Apex results remain fail-closed.
+- Deployed the scanner-only change to the named RunPod and reloaded the affected scanner worker; no private broker data or order submission was involved.
+- Reverified the focused scanner-capital test suite before commit.

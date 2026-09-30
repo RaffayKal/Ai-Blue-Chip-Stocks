@@ -642,6 +642,7 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
         self.assertIn("required crypto quote sources not satisfied: missing Robinhood", envelope["failed_checks"])
         self.assertEqual(envelope["discovery_state"], "LOOKING FOR VIABLE TRADE/ENVELOPE")
         self.assertEqual(envelope["execution_gate_decision"], "LOOKING FOR EXECUTION")
+        self.assertEqual(envelope["apex_execution_search_state"], "LOOKING FOR EXECUTION")
         self.assertEqual(envelope["apex_fail_safe_result"], "NO ACTION")
 
     def test_missing_apex_stop_does_not_block_scanner_candidate(self):

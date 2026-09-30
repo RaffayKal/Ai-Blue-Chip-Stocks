@@ -11,7 +11,7 @@ if [ -f "$STATUS_FILE" ]; then
   python3 - "$STATUS_FILE" <<'PY'
 import json, sys
 data=json.load(open(sys.argv[1], encoding="utf-8"))
-for key, label in (("operational_state","OPERATIONAL_STATE"),("last_packet","LAST_PACKET"),("last_decision","LAST_DECISION"),("apex_fail_safe_result","APEX_FAIL_SAFE_RESULT"),("last_error","LAST_ERROR"),("shadow_mode","SHADOW_MODE"),("robinhood_execution_path_available","ROBINHOOD_EXECUTION_PATH_AVAILABLE")):
+for key, label in (("operational_state","OPERATIONAL_STATE"),("last_packet","LAST_PACKET"),("last_decision","LAST_DECISION"),("apex_execution_search_state","APEX_EXECUTION_SEARCH_STATE"),("apex_fail_safe_result","APEX_FAIL_SAFE_RESULT"),("last_error","LAST_ERROR"),("shadow_mode","SHADOW_MODE"),("robinhood_execution_path_available","ROBINHOOD_EXECUTION_PATH_AVAILABLE")):
     print(f"{label}: {data.get(key)}")
 PY
 else

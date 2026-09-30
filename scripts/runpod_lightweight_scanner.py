@@ -1540,6 +1540,10 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         # mandatory before placement.
         "discovery_state": "LOOKING FOR VIABLE TRADE/ENVELOPE",
         "execution_gate_decision": "LOOKING FOR EXECUTION",
+        # Apex keeps searching continuously even when the current candidate
+        # fails a sizing or execution gate.  The fail-safe result below is a
+        # candidate outcome, not the worker's operational search state.
+        "apex_execution_search_state": "LOOKING FOR EXECUTION",
         "apex_fail_safe_result": (
             None if execution_viable else "NO ACTION"
         ),
@@ -1652,6 +1656,7 @@ def scan_once(codex_heavy_state, lane):
         "candidate_decision": envelope["candidate_decision"],
         "discovery_state": envelope["discovery_state"],
         "execution_gate_decision": envelope["execution_gate_decision"],
+        "apex_execution_search_state": envelope["apex_execution_search_state"],
         "apex_fail_safe_result": envelope["apex_fail_safe_result"],
         "scanner_viable": envelope["scanner_viable"],
         "source_quality": envelope["source_quality"],
@@ -1711,6 +1716,7 @@ def scan_once(codex_heavy_state, lane):
     print(f"CODEX_HEAVY_STATE: {codex_heavy_state}")
     print(f"DISCOVERY_STATE: {envelope['discovery_state']}")
     print(f"EXECUTION_GATE_DECISION: {envelope['execution_gate_decision']}")
+    print(f"APEX_EXECUTION_SEARCH_STATE: {envelope['apex_execution_search_state']}")
     print(f"APEX_FAIL_SAFE_RESULT: {envelope['apex_fail_safe_result'] or 'PASSED'}")
     print(f"CANDIDATE_DECISION: {envelope['candidate_decision']}")
     print(f"SCANNER_VIABLE: {str(envelope['scanner_viable']).lower()}")
