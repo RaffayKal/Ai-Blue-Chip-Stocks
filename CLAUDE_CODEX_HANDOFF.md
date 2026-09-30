@@ -25,7 +25,7 @@ Claude has not edited any execution-path code (`scripts/codex_packet_consumer.py
   - keeps every service running;
   - checks viable packets against the APEX Minor→Major Net Profit rules;
   - produces a Robinhood `preview_crypto_order` / `review_equity_order` for each one.
-- **Claude does not place orders unattended.** Claude Code's permission layer blocked it. The user has to permit unattended orders in Claude Code settings before Claude can execute. Codex remains the only unattended executor.
+- **Update 2026-09-30 ~17:30 UTC:** the user allowed `place_crypto_order` and `place_equity_order` in Claude Code ("Yes, don't ask again"). When Codex is exhausted, Claude places orders under the APEX rules without a prompt and adds no blockers of its own. Claude Code's auto-mode safety check can still reject a live order; if it does, Claude reports it and does not work around it.
 - Claude never trades while Codex still has usage, to avoid duplicate orders.
 - **Keep the usage signal accurate.** The governor currently reports `codex_usage_remaining_percent: 10.0` from `codex_usage_source: rules/user_settings.json_stale_fallback`. Claude's exhaustion detection depends on this value, so please keep it live.
 
@@ -69,6 +69,14 @@ Claude has not edited any execution-path code (`scripts/codex_packet_consumer.py
    - A liveness/age watchdog in that loop would fix this without adding a blocker.
 5. **Possible duplicate scanner trees.** `start_runpod_scanner_24_7.sh` trees from about 10 days ago (PIDs 19521–19527) and 5 days ago (51143+) are both running, each with its own Coinbase and independent-crypto streams.
 6. **Secret hygiene.** `VLLM_API_KEY` is stored in plain text in pod `t3yz4nrfl1utcr`'s env. The other keys use `{{ RUNPOD_SECRET_* }}`. Move it to a RunPod secret.
+7. **(Added 2026-09-30 ~17:30 UTC, user directive) Codex must follow the same no-blocker execution rules as Claude, at all times.** The user said: "make sure codex runs these rules for it self as well" and "not only when codex is out of usage but make sure codex does this as well when it has usage."
+   - This is Codex's normal operating mode whenever it runs, not only a backup-mode rule. It is also written into `AGENTS.md` as the **Execution Follow-Through Rule**.
+   - **No self-added blockers.** Don't add gates, holds, freezes, NO-ACTION conditions or confirmation steps beyond the APEX rules in `rules/APEX_INVESTING_ALGORITHM.md` and the fail-closed data checks in `AGENTS.md`.
+   - **Stale or missing data: refresh and retry, don't freeze.** Pull a fresh Robinhood quote, position and preview, then rerun the gates in the same cycle.
+   - **Actually execute.** A MICRO→MAJOR net-positive result after spread, fees and slippage should become a real order: preview → place → poll to fill → log. Don't let it stay "viable".
+   - **Review the harvest-confirmation gate.** It blocks the current BTC case. At 17:14 UTC, 0.00006084 BTC (cost basis $4.80) was worth about $5.08 at the live bid of $83,458.60, which is +$0.28 (+5.8%) net at the bid, but the result was `NO ACTION` with "APEX harvest fact absent". Codex added this gate. If it goes beyond the APEX rules, make the harvest decision come straight from those rules (MICRO net positive → realize; major spike → sell 75% of net profit and keep 25%) instead of waiting on a separate confirmation fact.
+   - **What still applies.** Keep the checks that stop Codex from acting on wrong or unverified numbers: fresh broker-confirmed sellable quantity for sells, live buying power for buys, and no guessed or hard-coded balances.
+   - Record in your acknowledgement what you changed or why a gate must stay.
 
 ## EXECUTE COMMAND RUNBOOK
 

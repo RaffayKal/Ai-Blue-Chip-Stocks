@@ -78,6 +78,16 @@ The system must reject a trade or action when:
 - plugin/tool output conflicts with another source
 - the action depends on an assumption
 
+## Execution Follow-Through Rule
+
+This rule applies to every agent (Codex and Claude) at all times, whether or not Codex has usage left. It was added on 2026-09-30 at the user's direction.
+
+- **Do not add blockers.** Do not add gates, holds, freezes, NO-ACTION conditions or confirmation steps beyond `rules/APEX_INVESTING_ALGORITHM.md` and the rejection conditions above.
+- **Refresh and retry before rejecting.** When data is stale or missing, pull fresh broker quote, position and preview data and rerun the gates in the same cycle. Return `NO ACTION` only if the fresh data still fails.
+- **Execute real orders.** A MICRO→MAJOR net-positive result after spread, fees and slippage must become a real order: preview → place → poll to fill → log to `data/autonomous_execution_log.json`. A viable result that never becomes an order is a failure.
+  - Major spike: sell 75% of net profit and keep 25%.
+  - Retained 25% position that grew 10% or more, with further upside not viable: sell the grown percentage.
+
 ## Plugin Use Rule
 
 Use market-data and social-data plugins only as data inputs, never as final authority.
