@@ -3,7 +3,7 @@ import json
 import sys
 import tempfile
 import unittest
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from unittest.mock import patch
 
@@ -50,6 +50,22 @@ class RobinhoodSnapshotRoutingTests(unittest.TestCase):
         payload = self.broker_payload()
         del payload["data"]["results"][0]["routing"]
         with self.assertRaisesRegex(SystemExit, "missing Robinhood crypto routing"):
+            ingest.normalize(payload)
+
+    def test_small_broker_clock_skew_is_accepted_without_retimestamping(self):
+        payload = self.broker_payload()
+        original = (datetime.now(timezone.utc) + timedelta(seconds=20)).isoformat()
+        payload["data"]["results"][0]["updated_at"] = original
+        result = ingest.normalize(payload)
+        self.assertEqual(result["quote_timestamp"], original)
+        self.assertIn("quote_received_at", result)
+
+    def test_large_broker_clock_skew_is_rejected(self):
+        payload = self.broker_payload()
+        payload["data"]["results"][0]["updated_at"] = (
+            datetime.now(timezone.utc) + timedelta(seconds=31)
+        ).isoformat()
+        with self.assertRaisesRegex(SystemExit, "beyond the allowed broker-clock skew"):
             ingest.normalize(payload)
 
     def test_relay_writes_route_preserving_per_symbol_and_latest_snapshots(self):

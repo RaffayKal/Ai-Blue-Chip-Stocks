@@ -1,9 +1,11 @@
 #!/usr/bin/env python3
 import json
 import sys
+from datetime import datetime, timezone
 from pathlib import Path
 
 from project_root import ROOT
+from quote_time_policy import MAX_FUTURE_QUOTE_SKEW_SECONDS
 
 SNAPSHOT = ROOT / "data" / "robinhood_crypto_quote_snapshot.json"
 
@@ -33,6 +35,15 @@ def normalize_result(result):
     routing = result.get("routing")
     if not isinstance(routing, str) or not routing.strip():
         raise SystemExit("BLOCKED: missing Robinhood crypto routing")
+    try:
+        parsed_timestamp = datetime.fromisoformat(str(timestamp).replace("Z", "+00:00"))
+        if parsed_timestamp.tzinfo is None:
+            raise ValueError("quote timestamp has no timezone")
+        age_seconds = (datetime.now(timezone.utc) - parsed_timestamp.astimezone(timezone.utc)).total_seconds()
+        if age_seconds < -MAX_FUTURE_QUOTE_SKEW_SECONDS:
+            raise ValueError("quote timestamp is beyond the allowed broker-clock skew")
+    except (TypeError, ValueError) as exc:
+        raise SystemExit(f"BLOCKED: invalid quote timestamp: {exc}") from exc
     # Keep this adapter strictly factual. Liquidity, source quorum, risk,
     # account restrictions, and buying power come from their own live sources;
     # a quote response cannot establish them.
@@ -44,6 +55,7 @@ def normalize_result(result):
         "broker_name": "Robinhood",
         "timestamp": timestamp,
         "quote_timestamp": timestamp,
+        "quote_received_at": datetime.now(timezone.utc).isoformat().replace("+00:00", "Z"),
         "bid": bid,
         "ask": ask,
         "last": last,

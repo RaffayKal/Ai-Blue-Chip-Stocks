@@ -12,7 +12,9 @@ import hashlib
 import fcntl
 import json
 import os
+import subprocess
 import ssl
+import sys
 import urllib.error
 import urllib.request
 import time
@@ -30,11 +32,30 @@ INPUT_DIR = ROOT / "data" / "candidate_lanes"
 FALLBACK_INPUT = ROOT / "data" / "current_candidate_envelope.json"
 OUTPUT_DIR = ROOT / "data" / "chatgpt_medium_scanner_observations"
 AGGREGATE = ROOT / "data" / "chatgpt_medium_scanner_fleet.json"
+OPENAI_KEYCHAIN_SERVICE = "AI BLUE CHIP STOCKS OpenAI API Key"
+
+
+def keychain_secret(service: str) -> str:
+    if sys.platform != "darwin":
+        return ""
+    try:
+        result = subprocess.run(
+            ["security", "find-generic-password", "-a", os.environ.get("USER", ""),
+             "-s", service, "-w"],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return result.stdout.strip() if result.returncode == 0 else ""
 
 
 def load_local_environment() -> None:
     """Load non-printed local configuration when the launcher did not export it."""
     if os.environ.get("OPENAI_API_KEY"):
+        return
+    key = keychain_secret(OPENAI_KEYCHAIN_SERVICE)
+    if key:
+        os.environ["OPENAI_API_KEY"] = key
         return
     path = ROOT / ".env.local"
     try:

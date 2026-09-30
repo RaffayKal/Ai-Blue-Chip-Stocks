@@ -9,6 +9,7 @@ from datetime import datetime, timezone
 from pathlib import Path
 
 from project_root import ROOT
+from quote_time_policy import quote_age_is_fresh
 
 URL = os.getenv("ROBINHOOD_MCP_RELAY_URL", "").rstrip("/") + "/v1/robinhood/crypto-quote"
 TOKEN = os.getenv("ROBINHOOD_MCP_RELAY_TOKEN", "")
@@ -44,7 +45,7 @@ def validated_public_snapshot(payload):
         if stamp.tzinfo is None:
             raise ValueError("quote timestamp has no timezone")
         age = (datetime.now(timezone.utc) - stamp.astimezone(timezone.utc)).total_seconds()
-        if not 0 <= age <= MAX_QUOTE_AGE_SECONDS:
+        if not quote_age_is_fresh(age, MAX_QUOTE_AGE_SECONDS):
             raise ValueError("relay quote is stale")
     except (TypeError, ValueError) as exc:
         raise ValueError(f"relay quote timestamp invalid or stale: {exc}") from exc

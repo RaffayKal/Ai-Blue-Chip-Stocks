@@ -6,7 +6,7 @@ REPORT="$ROOT/data/runpod_runtime_report.json"
 LOG="$ROOT/logs/runpod_runtime_report.log"
 REPORT_INTERVAL_SECONDS=300
 KEY="${RUNPOD_SSH_KEY:-$HOME/runpod_codex_bridge}"
-USER_HOST="${RUNPOD_SSH_USER_HOST:-e7iwfvficlyk6w-644117fc@ssh.runpod.io}"
+USER_HOST="${RUNPOD_SSH_USER_HOST:-t3yz4nrfl1utcr-644117fc@ssh.runpod.io}"
 
 mkdir -p "$ROOT/data" "$ROOT/logs"
 timestamp="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
@@ -15,11 +15,11 @@ if [ ! -r "$KEY" ]; then
   exit 0
 fi
 
-remote='ROOT=/root/aibluechipstocks; printf "GIT_REV="; git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || true; printf "SCANNER="; pgrep -af "runpod_lightweight_scanner.py" >/dev/null && echo ACTIVE || echo INACTIVE; printf "CHATGPT_SCANNER="; pgrep -af "chatgpt_medium_scanner_fleet.py|chatgpt_scanner_runtime.py" >/dev/null && echo ACTIVE || echo INACTIVE; printf "CHATGPT_FLEET_PROCESS="; pgrep -af "chatgpt_medium_scanner_fleet.py" >/dev/null && echo ACTIVE || echo INACTIVE; printf "CHATGPT_FLEET="; python3 - <<"PY"
+remote='ROOT=/workspace/apex; printf "GIT_REV="; git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || true; printf "SCANNER="; pgrep -af "runpod_lightweight_scanner.py" >/dev/null && echo ACTIVE || echo INACTIVE; printf "CHATGPT_SCANNER="; pgrep -af "chatgpt_medium_scanner_fleet.py|chatgpt_scanner_runtime.py" >/dev/null && echo ACTIVE || echo INACTIVE; printf "CHATGPT_FLEET_PROCESS="; pgrep -af "chatgpt_medium_scanner_fleet.py" >/dev/null && echo ACTIVE || echo INACTIVE; printf "CHATGPT_FLEET="; python3 - <<"PY"
 import json
 from pathlib import Path
 try:
-    value = json.loads((Path("/root/aibluechipstocks") / "data" / "chatgpt_medium_scanner_fleet.json").read_text())
+    value = json.loads((Path("/workspace/apex") / "data" / "chatgpt_medium_scanner_fleet.json").read_text())
     print(f"{value.get('status','UNKNOWN')}:{value.get('worker_count','UNKNOWN')}")
 except Exception:
     print("UNKNOWN:0")
@@ -28,7 +28,7 @@ printf "OPENAI_SDK="; python3 -c "import importlib.util; raise SystemExit(0 if i
 import json
 from pathlib import Path
 try:
-    value = json.loads((Path("/root/aibluechipstocks") / "data" / "runpod_lightweight_scanner_status.json").read_text())
+    value = json.loads((Path("/workspace/apex") / "data" / "runpod_lightweight_scanner_status.json").read_text())
     print(value.get("scanner_viable"))
 except Exception:
     print("UNKNOWN")

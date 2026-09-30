@@ -21,6 +21,7 @@ from pathlib import Path
 
 from project_root import ROOT
 from runpod_lightweight_scanner import iso_now, load_json, timestamp_age_seconds, write_json
+from quote_time_policy import quote_age_is_fresh
 
 CANDIDATES_PATH = ROOT / "data" / "volatile_crypto_candidates.json"
 # Real, currently-supported Robinhood Crypto symbols this script has live
@@ -59,7 +60,7 @@ def freshest_quote(symbol):
             continue
         timestamp = payload.get("quote_timestamp") or payload.get("timestamp") or payload.get("retrieved_at")
         age = timestamp_age_seconds(timestamp)
-        if age is None or age < 0 or age > MAX_QUOTE_AGE_SECONDS:
+        if not quote_age_is_fresh(age, MAX_QUOTE_AGE_SECONDS):
             continue
         if best is None or age < best[1]:
             best = (float(last), age)

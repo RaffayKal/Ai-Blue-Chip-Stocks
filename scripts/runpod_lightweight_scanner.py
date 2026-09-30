@@ -14,6 +14,7 @@ from project_root import ROOT
 sys.path.insert(0, str(ROOT / "algorithms"))
 import apex_micro_crypto_ledger as micro_ledger
 from capital_engine import evaluate as evaluate_capital_candidate
+from quote_time_policy import quote_age_is_fresh
 
 STATUS = ROOT / "data" / "runpod_lightweight_scanner_status.json"
 LOCK = ROOT / "data" / "runpod_lightweight_scanner.lock"
@@ -337,7 +338,7 @@ def load_crypto_quote(symbol):
         timestamp = payload.get("quote_timestamp") or payload.get("timestamp")
         age_seconds = timestamp_age_seconds(timestamp)
         has_quote = all(numeric(payload.get(field)) is not None for field in ("bid", "ask", "last"))
-        is_fresh = has_quote and age_seconds is not None and 0 <= age_seconds <= provider_max_age
+        is_fresh = has_quote and quote_age_is_fresh(age_seconds, provider_max_age)
         quote_sources.append({
             "path": str(path),
             "payload": payload,

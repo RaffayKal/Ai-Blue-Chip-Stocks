@@ -3,23 +3,45 @@
 
 import json
 import os
+import subprocess
 import ssl
+import sys
 import time
 import urllib.error
 import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
+KEYCHAIN_SERVICE = "AI BLUE CHIP STOCKS RunPod VLLM API Key"
+
+
+def keychain_secret(service: str) -> str:
+    if sys.platform != "darwin":
+        return ""
+    try:
+        result = subprocess.run(
+            ["security", "find-generic-password", "-a", os.environ.get("USER", ""),
+             "-s", service, "-w"],
+            capture_output=True, text=True, timeout=5, check=False,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return ""
+    return result.stdout.strip() if result.returncode == 0 else ""
 
 
 def main():
     config = json.loads((ROOT / "runpod_vllm_cpu_006.json").read_text())
     key = os.environ.get("VLLM_API_KEY", "")
     if not key:
-        for line in (ROOT / ".env.local").read_text().splitlines():
-            name, sep, value = line.partition("=")
-            if sep and name.strip() == "VLLM_API_KEY":
-                key = value.strip().strip("\"").strip("'")
+        key = keychain_secret(KEYCHAIN_SERVICE)
+    if not key:
+        try:
+            for line in (ROOT / ".env.local").read_text().splitlines():
+                name, sep, value = line.partition("=")
+                if sep and name.strip() == "VLLM_API_KEY":
+                    key = value.strip().strip("\"").strip("'")
+        except OSError:
+            pass
     if not key:
         raise SystemExit("VLLM_API_KEY is missing from the environment and .env.local")
     try:

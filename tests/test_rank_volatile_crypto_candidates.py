@@ -17,6 +17,10 @@ def iso_before(seconds):
     return (datetime.now(timezone.utc) - timedelta(seconds=seconds)).replace(microsecond=0).isoformat().replace("+00:00", "Z")
 
 
+def iso_after(seconds):
+    return (datetime.now(timezone.utc) + timedelta(seconds=seconds)).isoformat().replace("+00:00", "Z")
+
+
 class RankVolatileCryptoCandidatesTests(unittest.TestCase):
     def test_volatility_percent_requires_minimum_samples(self):
         self.assertIsNone(ranker.volatility_percent([(0, 100.0), (1, 101.0)]))
@@ -64,6 +68,18 @@ class RankVolatileCryptoCandidatesTests(unittest.TestCase):
                 price, age = ranker.freshest_quote("ETH")
             self.assertIsNone(price)
             self.assertIsNone(age)
+
+    def test_freshest_quote_accepts_small_broker_clock_skew(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            data_dir = Path(tmp) / "data"
+            data_dir.mkdir()
+            scanner.write_json(data_dir / "robinhood_crypto_quote_snapshot_BTC.json", {
+                "usable": True, "last": 100.0, "quote_timestamp": iso_after(20),
+            })
+            with patch.object(ranker, "ROOT", Path(tmp)):
+                price, age = ranker.freshest_quote("BTC")
+        self.assertEqual(price, 100.0)
+        self.assertLess(age, 0)
 
     def test_rank_once_prefers_highest_measured_volatility(self):
         history = {

@@ -30,11 +30,13 @@ SCANNER_CODE_FILES = (
     "algorithms/candidate_envelope_gate.py",
     "algorithms/apex_packet_monitor.py",
     "scripts/poll_robinhood_mcp_relay.py",
+    "scripts/quote_time_policy.py",
 )
 PUBLIC_QUOTE_FIELDS = frozenset({
     'symbol', 'asset_class', 'session', 'venue', 'broker_name',
     'timestamp', 'quote_timestamp', 'bid', 'ask', 'last',
     'source', 'routing', 'execution_authority',
+    'quote_received_at',
 })
 PRIVATE_RESTORE_EXCLUDES = frozenset({
     'rules/brokerage_intake.json',
@@ -174,6 +176,7 @@ from datetime import datetime,timezone
 root=pathlib.Path({REMOTE!r})/'data'
 root.mkdir(parents=True,exist_ok=True)
 payload=json.loads({json.dumps(payload)!r})
+max_future_skew_seconds=30.0
 count=0
 for name,data in payload.items():
     if '/' in name or not name.startswith('robinhood_crypto_'): raise ValueError('Invalid snapshot filename')
@@ -181,7 +184,7 @@ for name,data in payload.items():
         return datetime.fromisoformat((d.get('quote_timestamp') or '').replace('Z','+00:00'))
     incoming=stamp(data)
     age=(datetime.now(timezone.utc)-incoming).total_seconds()
-    if age<0 or age>180: continue
+    if age < -max_future_skew_seconds or age > 180: continue
     path=root/name
     if path.exists() and stamp(json.loads(path.read_text()))>=incoming: continue
     temporary=path.with_suffix('.json.'+str(os.getpid())+'.tmp')

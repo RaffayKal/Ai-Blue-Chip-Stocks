@@ -146,3 +146,12 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 
 - Removed the extra `EXECUTION_TICKET_ELIGIBILITY` report line at the user's direction.
 - Kept only the operational `ORDER_ELIGIBILITY: LOOKING FOR EXECUTION` label and the user-owned `APEX_FAIL_SAFE_RESULT` candidate result.
+
+### Codex acknowledgement — 2026-09-30 (RunPod bridge and startup repair)
+
+- Applied the bounded Robinhood public quote-clock tolerance, preserving broker original timestamps and never transferring private account data.
+- Corrected the live RunPod host/key, remote root, vLLM startup sequence, and canonical local fleet ceiling to 70 lanes; reloaded the repository launchd service.
+- Removed the confirmed orphaned 14-lane duplicate writer and verified one canonical 70-lane local pool remains.
+- Migrated local OpenAI and RunPod vLLM key lookup to macOS Keychain; no secrets were added to Git.
+- Verified public quote ingestion and quote-only RunPod sync, vLLM authenticated health/inference, and remote Robinhood source/quorum. No order was submitted.
+- Remote RunPod secret rotation remains a console-only follow-up because the connected management API exposes no secret-create operation; the working authenticated service was not overwritten with an unconfirmed reference.

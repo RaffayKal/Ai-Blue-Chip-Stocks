@@ -35,6 +35,11 @@ class PollRobinhoodRelayTests(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "stale"):
             relay.validated_public_snapshot(self.snapshot(age=421))
 
+    def test_small_future_clock_skew_is_accepted(self):
+        payload = self.snapshot(age=-20)
+        public = relay.validated_public_snapshot(payload)
+        self.assertEqual(public["quote_timestamp"], payload["quote_timestamp"])
+
     def test_wrong_source_and_missing_routing_are_rejected(self):
         value = self.snapshot()
         value["source"] = "unknown"

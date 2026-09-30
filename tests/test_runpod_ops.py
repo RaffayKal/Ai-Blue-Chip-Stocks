@@ -46,6 +46,15 @@ class RunPodOpsTests(unittest.TestCase):
             self.assertEqual(json.loads((Path(root)/'data/robinhood_crypto_quote_snapshot_BTC.json').read_text())['quote_timestamp'],recent)
             self.assertFalse((Path(root)/'data/robinhood_crypto_quote_snapshot_ETH.json').exists())
 
+    def test_sync_accepts_small_future_clock_skew_and_preserves_timestamp(self):
+        now = datetime.now(timezone.utc)
+        future = (now + timedelta(seconds=20)).isoformat()
+        with tempfile.TemporaryDirectory() as root, patch.object(ops, 'REMOTE', root):
+            with redirect_stdout(io.StringIO()):
+                exec(ops.sync_script({'robinhood_crypto_quote_snapshot_BTC.json': {'quote_timestamp': future}}), {})
+            saved = json.loads((Path(root) / 'data/robinhood_crypto_quote_snapshot_BTC.json').read_text())
+        self.assertEqual(saved['quote_timestamp'], future)
+
     def test_sync_does_not_allow_path_escape(self):
         with tempfile.TemporaryDirectory() as root, patch.object(ops,'REMOTE',root):
             with self.assertRaises(ValueError):

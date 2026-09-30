@@ -22,7 +22,7 @@
     <key>RUNPOD_SAFE_MEDIUM_WEIGHT_LANES</key>
     <string>70</string>
     <key>RUNPOD_MAX_MEDIUM_WEIGHT_LANES</key>
-    <string>13000</string>
+    <string>70</string>
     <key>RUNPOD_ALLOW_HIGH_MEDIUM_WEIGHT_FANOUT</key>
     <string>true</string>
     <key>MEDIUM_SCANNER_ENABLED</key>

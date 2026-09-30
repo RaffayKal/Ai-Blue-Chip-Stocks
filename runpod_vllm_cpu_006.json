@@ -19,14 +19,14 @@
   "container_startup": {
     "entrypoint": ["vllm", "serve"],
     "start_command_note": "RunPod args append to the image entrypoint. Do not prepend vllm or serve.",
-    "runpod_args_command": "facebook/opt-125m --host 0.0.0.0 --port 8000 --dtype bfloat16 --max-model-len 512 --max-num-seqs 1 --enforce-eager --kv-cache-memory-bytes 134217728",
+    "runpod_args_command": "facebook/opt-125m --host 0.0.0.0 --port 8000 --dtype bfloat16 --max-model-len 512 --max-num-seqs 7 --enforce-eager --kv-cache-memory-bytes 134217728",
     "args": [
       "facebook/opt-125m",
       "--host", "0.0.0.0",
       "--port", "8000",
       "--dtype", "bfloat16",
       "--max-model-len", "512",
-      "--max-num-seqs", "1",
+      "--max-num-seqs", "7",
       "--enforce-eager",
       "--kv-cache-memory-bytes", "134217728"
     ]
@@ -37,7 +37,7 @@
   },
   "ssh": {
     "user_host": "t3yz4nrfl1utcr-644117fc@ssh.runpod.io",
-    "identity_file": "/Users/raffaykal/.runpod/ssh/runpodctl-ssh-key",
+    "identity_file": "/Users/raffaykal/runpod_codex_bridge",
     "requires_pty": true
   },
   "exposed_port": "8000/http",
