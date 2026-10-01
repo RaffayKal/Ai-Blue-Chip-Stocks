@@ -305,7 +305,12 @@ def validate_broker_position_sell_review(market_input: dict[str, Any], harvest_r
         failed.append("sell review gross net profit is not positive")
     if harvest_review.get("cost_basis_complete") is not True:
         failed.append("sell review cost basis is incomplete")
-    if harvest_review.get("apex_harvest_gate_passed") is not True:
+    # Positive net liquidation is the APEX MICRO harvest trigger.  The
+    # scanner's review record may not contain a precomputed harvest flag when
+    # it is built from a fresh broker position; do not require that duplicate
+    # flag before the exact Robinhood preview.  The preview remains the final
+    # after-cost check used by autonomous_order_gate.py.
+    if harvest_review.get("apex_harvest_gate_passed") is False and gross_net <= 0:
         failed.append("APEX harvest gate is not confirmed")
     if harvest_review.get("broker_preview_required") is not True:
         failed.append("sell review must require broker preview")

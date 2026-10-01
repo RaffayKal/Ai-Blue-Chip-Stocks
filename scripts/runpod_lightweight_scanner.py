@@ -498,6 +498,11 @@ def select_local_sell_candidate(snapshot=None, quote_loader=None):
     This is a review trigger, not execution authority.  The live Robinhood
     preview must still prove exact-ticket positive net economics before the
     autonomous order gate may approve placement.
+
+    ``apex_harvest_gate_passed`` is optional position metadata, not a second
+    sell gate.  The APEX MICRO harvest trigger is a fresh, positive net
+    liquidation review; a missing or false precomputed flag must not discard
+    a broker-confirmed transferable position before the preview worker runs.
     """
     snapshot = snapshot if snapshot is not None else load_crypto_execution_snapshot()
     if not snapshot:
@@ -508,7 +513,6 @@ def select_local_sell_candidate(snapshot=None, quote_loader=None):
         if (
             not isinstance(position, dict)
             or position.get("cost_basis_complete") is not True
-            or position.get("apex_harvest_gate_passed") is not True
         ):
             continue
         symbol = str(position.get("symbol") or "").strip().upper()
@@ -1388,6 +1392,9 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
                 "maximum_position_size_usd",
                 "sellable_quantity",
                 "requested_quantity",
+                "direct_cost_basis_usd",
+                "broker_preview_required",
+                "expected_net_profit",
                 "position_status",
                 "position_source",
                 "position_timestamp",

@@ -47,7 +47,7 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
         self.assertGreater(candidate["harvest_review"]["gross_net_profit_usd"], 0)
         self.assertTrue(candidate["harvest_review"]["broker_preview_required"])
 
-    def test_positive_net_position_without_apex_harvest_gate_is_review_only(self):
+    def test_positive_net_position_without_precomputed_harvest_flag_is_selected(self):
         snapshot = {
             "retrieved_at": iso_before(1),
             "source": "Robinhood.get_portfolio+get_crypto_positions",
@@ -60,12 +60,14 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
                 "cost_basis_complete": True,
             }],
         }
-        self.assertIsNone(
-            scanner.select_local_sell_candidate(snapshot, lambda symbol: self.quote(
-                payload={"bid": 82240.98, "ask": 83787.01, "last": 83008.31,
-                         "routing": "Market Maker Routing"}
-            ))
-        )
+        candidate = scanner.select_local_sell_candidate(snapshot, lambda symbol: self.quote(
+            payload={"bid": 82240.98, "ask": 83787.01, "last": 83008.31,
+                     "routing": "Market Maker Routing"}
+        ))
+        self.assertIsNotNone(candidate)
+        self.assertEqual(candidate["symbol"], "BTC")
+        self.assertGreater(candidate["harvest_review"]["gross_net_profit_usd"], 0)
+        self.assertTrue(candidate["harvest_review"]["apex_harvest_gate_passed"])
 
     def test_incomplete_cost_basis_cannot_be_selected_for_profit_harvest(self):
         snapshot = {
@@ -249,6 +251,10 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
     def test_sell_candidate_carries_fresh_position_inputs_separately_from_buying_power(self):
         quote = self.quote(payload={
             "candidate_side": "SELL",
+            "bid": 82240.98,
+            "ask": 83787.01,
+            "last": 83008.31,
+            "routing": "Market Maker Routing",
             "sellable_quantity": 0.00006084,
             "position_status": "fresh",
             "position_source": "Robinhood.get_crypto_positions",
@@ -264,6 +270,9 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
         self.assertEqual(market_input["side"], "sell")
         self.assertEqual(market_input["crypto_buying_power_usd"], 0.0)
         self.assertEqual(market_input["sellable_quantity"], 0.00006084)
+        self.assertEqual(market_input["direct_cost_basis_usd"], 4.8)
+        self.assertTrue(market_input["broker_preview_required"])
+        self.assertGreater(market_input["expected_net_profit"], 0)
         self.assertEqual(market_input["position_source"], "Robinhood.get_crypto_positions")
         self.assertTrue(market_input["position_account_matches_verified_account"])
 

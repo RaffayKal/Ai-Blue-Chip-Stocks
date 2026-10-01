@@ -159,7 +159,7 @@ class ApexPacketMonitorTests(unittest.TestCase):
         self.assertTrue(packet["market_data"]["broker_preview_required"])
         self.assertEqual(packet["market_data"]["expected_net_profit"], 0.20)
 
-    def test_broker_position_sell_review_without_apex_harvest_gate_is_blocked(self):
+    def test_broker_position_sell_review_derives_harvest_from_positive_net(self):
         with tempfile.TemporaryDirectory() as raw:
             envelope = viable_envelope()
             envelope["candidate_decision"] = "SELL CANDIDATE"
@@ -186,8 +186,8 @@ class ApexPacketMonitorTests(unittest.TestCase):
                 "account_restricted": False,
             })
             gate = monitor.deterministic_gate(envelope, self.config(Path(raw)))
-        self.assertFalse(gate.viable)
-        self.assertIn("APEX harvest gate is not confirmed", gate.failed)
+        self.assertTrue(gate.viable, gate.failed)
+        self.assertEqual(gate.market_decision["RESULT"], "BROKER PREVIEW REQUIRED")
 
 
     def test_viable_packet_activates_but_still_requires_execution_gate(self):

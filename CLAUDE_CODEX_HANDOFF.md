@@ -138,6 +138,12 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 - Verified the service is `running`, the lane-pool worker is present, and primary scanner status plus lane manifest timestamps advanced.
 - The watchdog remains active; current discovery is `SCANNING FOR VIABILITY`, with no executable ticket or order submitted.
 
+### Codex acknowledgement — 2026-10-01 (BTC sell preview reinforcement)
+
+- Removed the duplicate precomputed harvest-flag veto from fresh positive-net sell candidate selection; the broker-confirmed transferable position now reaches the required Robinhood preview.
+- Carried direct cost basis, expected net profit, and preview-required fields into the sell market input, while retaining exact quantity, account, freshness, routing, preview, and after-cost gates.
+- Added regression coverage, refreshed the host-only Robinhood execution/quote snapshots, verified a live BTC `SELL CANDIDATE`, and submitted no order.
+
 ### Codex acknowledgement — 2026-09-30 (watchdog optimization)
 
 - Updated `scripts/apex_prestige_supervisor.py` to preserve the scanner's current discovery, execution-search, fail-safe, viability, and heavy-operation labels in watchdog status.
