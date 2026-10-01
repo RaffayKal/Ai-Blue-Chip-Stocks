@@ -1,8 +1,10 @@
 #!/usr/bin/env python3
-"""Reconnect, inspect, restore scanner files, or push quote-only broker snapshots.
+"""Reconnect, inspect, restore scanner files, or push broker snapshots.
 
-Uses the existing registered SSH key; never changes account access or trades.
-The SSH proxy requires a PTY. No third-party SSH library is required.
+Uses the existing registered SSH key and never changes account access. This
+utility transfers sanitized broker-derived state for the execution-capable
+scanner; Robinhood remains the only order-placement authority. The SSH proxy
+requires a PTY. No third-party SSH library is required.
 """
 import argparse
 import base64
@@ -37,6 +39,20 @@ PUBLIC_QUOTE_FIELDS = frozenset({
     'timestamp', 'quote_timestamp', 'bid', 'ask', 'last',
     'source', 'routing', 'execution_authority',
     'quote_received_at',
+})
+PUBLIC_QUOTE_GLOBS = (
+    'robinhood_crypto_quote_snapshot.json',
+    'robinhood_crypto_quote_snapshot_*.json',
+    'robinhood_equity_quote_snapshot_*.json',
+)
+PRIVATE_BROKER_SOURCES = {
+    'robinhood_private_crypto_execution_snapshot.json': 'robinhood_crypto_execution_snapshot.json',
+    'robinhood_private_crypto_capital_snapshot.json': 'robinhood_crypto_capital_snapshot.json',
+    'robinhood_private_execution_log.json': 'autonomous_execution_log.json',
+}
+PRIVATE_SECRET_KEYS = frozenset({
+    'password', 'token', 'oauth', 'oauth_token', 'access_token', 'refresh_token',
+    'api_key', 'apikey', 'secret', 'private_key', 'credentials', 'authorization',
 })
 PRIVATE_RESTORE_EXCLUDES = frozenset({
     'rules/brokerage_intake.json',
@@ -153,18 +169,37 @@ print(json.dumps(result,indent=2))
 
 
 def snapshot_payload():
-    # RunPod receives market quotes only. Account, buying-power, portfolio,
-    # position, and order data stay on the authenticated host MCP.
-    paths = sorted((ROOT / 'data').glob('robinhood_crypto_quote_snapshot_*.json'))
+    # RunPod receives broker-derived operational state needed by the
+    # execution-capable scanner. Authentication material remains host-only;
+    # this function never reads .env.local, keychains or OAuth data.
+    paths = sorted(
+        path
+        for pattern in PUBLIC_QUOTE_GLOBS
+        for path in (ROOT / 'data').glob(pattern)
+    )
     snapshots = {}
+    pool_path = ROOT / 'data' / 'robinhood_symbol_pool.json'
+    allowed_symbols = None
+    if pool_path.is_file():
+        pool = json.loads(pool_path.read_text())
+        pool_values = []
+        for key in ('symbols', 'crypto_symbols', 'equity_symbols'):
+            values = pool.get(key, [])
+            if isinstance(values, list):
+                pool_values.extend(values)
+        allowed_symbols = {
+            str(symbol).upper().replace('-USD', '')
+            for symbol in pool_values
+        }
     for path in paths:
         if not path.is_file():
             continue
         raw = json.loads(path.read_text())
         if not isinstance(raw, dict) or raw.get('broker_name') != 'Robinhood':
             continue
-        # A quote file can acquire additional local fields over time. Never
-        # send account, funding, position, or order fields to the pod.
+        symbol = str(raw.get('symbol') or '').upper().replace('-USD', '')
+        if allowed_symbols is not None and symbol and symbol not in allowed_symbols:
+            continue
         snapshots[path.name] = {key: raw[key] for key in PUBLIC_QUOTE_FIELDS if key in raw}
     aggregate_name = 'robinhood_crypto_quote_snapshot.json'
     aggregate = snapshots.get(aggregate_name)
@@ -180,10 +215,37 @@ def snapshot_payload():
     # factual by promoting the newest already-authenticated per-symbol quote,
     # rather than letting an older aggregate hide a fresh Robinhood feed.
     per_symbol = [data for name, data in snapshots.items()
-                  if name != aggregate_name and data.get('broker_name') == 'Robinhood']
+                  if name != aggregate_name
+                  and data.get('broker_name') == 'Robinhood'
+                  and data.get('asset_class', 'CRYPTO') == 'CRYPTO']
     newest = max(per_symbol, key=quote_time, default=None)
     if newest is not None and (aggregate is None or quote_time(newest) > quote_time(aggregate)):
         snapshots[aggregate_name] = newest
+
+    def sanitize(value):
+        if isinstance(value, dict):
+            return {key: sanitize(item) for key, item in value.items()
+                    if str(key).lower() not in PRIVATE_SECRET_KEYS}
+        if isinstance(value, list):
+            return [sanitize(item) for item in value]
+        return value
+
+    for destination, source in PRIVATE_BROKER_SOURCES.items():
+        path = ROOT / 'data' / source
+        if not path.is_file():
+            continue
+        raw = json.loads(path.read_text())
+        retrieved_at = raw.get('retrieved_at') if isinstance(raw, dict) else None
+        if not retrieved_at:
+            retrieved_at = datetime.fromtimestamp(
+                path.stat().st_mtime, tz=timezone.utc
+            ).isoformat().replace('+00:00', 'Z')
+        snapshots[destination] = {
+            'private_broker_data': True,
+            'source_file': source,
+            'retrieved_at': retrieved_at,
+            'data': sanitize(raw),
+        }
     return snapshots
 
 
@@ -196,20 +258,24 @@ root.mkdir(parents=True,exist_ok=True)
 payload=json.loads({json.dumps(payload)!r})
 max_future_skew_seconds=30.0
 count=0
+private_count=0
 for name,data in payload.items():
-    if '/' in name or not name.startswith('robinhood_crypto_'): raise ValueError('Invalid snapshot filename')
+    if '/' in name or not name.startswith('robinhood_'): raise ValueError('Invalid snapshot filename')
+    is_private=bool(data.get('private_broker_data'))
     def stamp(d):
-        return datetime.fromisoformat((d.get('quote_timestamp') or '').replace('Z','+00:00'))
+        field='retrieved_at' if is_private else 'quote_timestamp'
+        return datetime.fromisoformat((d.get(field) or '').replace('Z','+00:00'))
     incoming=stamp(data)
     age=(datetime.now(timezone.utc)-incoming).total_seconds()
-    if age < -max_future_skew_seconds or age > 180: continue
+    if age < -max_future_skew_seconds or age > (420 if is_private else 180): continue
     path=root/name
     if path.exists() and stamp(json.loads(path.read_text()))>=incoming: continue
     temporary=path.with_suffix('.json.'+str(os.getpid())+'.tmp')
     temporary.write_text(json.dumps(data,indent=2)+'\\n')
     temporary.replace(path)
     count+=1
-print(json.dumps({{'snapshots_written':count,'timestamps_preserved':True}}))
+    if is_private: private_count+=1
+print(json.dumps({{'snapshots_written':count,'private_broker_snapshots_written':private_count,'timestamps_preserved':True,'authentication_material_transferred':False}}))
 """
 
 

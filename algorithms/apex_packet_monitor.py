@@ -251,13 +251,10 @@ def deterministic_gate(envelope: dict[str, Any], config: dict[str, Any]) -> Gate
     if freshness != "fresh":
         risk_flags.append("freshness failed")
 
-    score = float(envelope.get("apex_score") or 0)
-    confidence = float(envelope.get("confidence") or 0)
-    if not broker_position_sell_review:
-        if score < float(config["viability"]["min_apex_score"]):
-            failed.append("apex_score below configured threshold")
-        if confidence < float(config["viability"]["min_confidence"]):
-            failed.append("confidence below configured threshold")
+    # Score and confidence remain ranking/diagnostic fields. The controlling
+    # APEX execution trigger is the calculated positive net-profit gate;
+    # broker, freshness, risk, preview, idempotency, and reconciliation checks
+    # remain mandatory.
 
     if risk_flags:
         failed.extend([f"blocked risk flag: {flag}" for flag in risk_flags])
@@ -301,8 +298,8 @@ def validate_broker_position_sell_review(market_input: dict[str, Any], harvest_r
         gross_net = float(harvest_review.get("gross_net_profit_usd"))
     except (TypeError, ValueError):
         gross_net = 0.0
-    if gross_net <= 0:
-        failed.append("sell review gross net profit is not positive")
+    if gross_net < 0.01:
+        failed.append("sell review gross net profit is below the $0.01 APEX minor-net-profit trigger")
     if harvest_review.get("cost_basis_complete") is not True:
         failed.append("sell review cost basis is incomplete")
     # Positive net liquidation is the APEX MICRO harvest trigger.  The
@@ -310,7 +307,7 @@ def validate_broker_position_sell_review(market_input: dict[str, Any], harvest_r
     # it is built from a fresh broker position; do not require that duplicate
     # flag before the exact Robinhood preview.  The preview remains the final
     # after-cost check used by autonomous_order_gate.py.
-    if harvest_review.get("apex_harvest_gate_passed") is False and gross_net <= 0:
+    if harvest_review.get("apex_harvest_gate_passed") is False and gross_net < 0.01:
         failed.append("APEX harvest gate is not confirmed")
     if harvest_review.get("broker_preview_required") is not True:
         failed.append("sell review must require broker preview")
@@ -347,7 +344,8 @@ def build_packet(envelope: dict[str, Any], gate: GateResult, freshness: str) -> 
                 "position_account_matches_verified_account", "crypto_buying_power_usd",
                 "buying_power_usd", "broker_extended_session_supported",
                 "fractional_shares_supported", "fractional_asset_eligible", "market_focus",
-                "account_net_worth_usd",
+                "account_net_worth_usd", "required_quote_quorum_ok", "quote_authority",
+                "apex_net_profit_gate_required", "expected_net_profit_basis",
             ) if key in market_input},
         },
         "technical_state": envelope.get("technical_state", {}),

@@ -34,9 +34,12 @@ Read `rules/BROKERAGE_RULES.md` and `rules/ROBINHOOD_RULES.md` before treating a
 
 ## Operating Mode
 
-Current operations policy: keep the 3-minute watchdog and authorized scanning
-active 24/7 regardless of buying power. The watchdog verifies continuous feed
-and scanner freshness between wakes; a scheduled wake is not a live feed.
+Current operations policy: keep the autonomous execution-capable watchdog and
+authorized scanning active 24/7 regardless of buying power. The watchdog
+verifies continuous feed and scanner freshness between wakes; a scheduled wake
+is not a live feed. When the existing gates pass, it may complete the Robinhood
+preview, placement, fill polling and reconciliation sequence without a new
+interactive approval.
 Crypto opportunities may be evaluated at any hour, including weekends.
 Blue-chip/stock opportunities may be scanned at any hour, but execution remains
 limited to the actual broker-supported session and instrument. No buying power

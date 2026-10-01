@@ -43,7 +43,7 @@
   "ssh_fallbacks": [
     {
       "user_host": "root@205.196.19.132",
-      "port": 11053,
+      "port": 11360,
       "identity_file": "/Users/raffaykal/.ssh/id_ed25519",
       "strict_host_key_checking": "yes"
     }

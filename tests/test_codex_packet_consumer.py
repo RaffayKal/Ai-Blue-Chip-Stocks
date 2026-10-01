@@ -139,13 +139,15 @@ class ConsumerTests(unittest.TestCase):
                  patch.object(consumer.subprocess, "run", return_value=response) as run:
                 self.assertTrue(consumer.default_workflow(market_path, ticket_path, False)[0])
             argv = run.call_args.args[0]
-            self.assertNotIn("--ignore-user-config", argv)
+            self.assertIn("--ignore-user-config", argv)
             self.assertNotIn("env", run.call_args.kwargs)
+            self.assertEqual(argv[argv.index("--model") + 1], consumer.DEFAULT_EXECUTION_MODEL)
+            self.assertEqual(run.call_args.kwargs["timeout"], consumer.DEFAULT_EXECUTION_TIMEOUT_SECONDS)
             prompt = argv[-1]
-            self.assertLess(
-                prompt.index("For a SELL, preview the exact broker-confirmed quantity first"),
-                prompt.index("Then run the existing project gate"),
-            )
+            self.assertIn("MCP-only execution handoff", prompt)
+            self.assertIn("preview net proceeds minus the direct cost basis to be at least $0.01", prompt)
+            self.assertIn("do not edit", prompt)
+            self.assertIn("place tool immediately", prompt)
 
     def test_end_to_end_monitor_to_consumer_shadow(self):
         with tempfile.TemporaryDirectory() as raw:

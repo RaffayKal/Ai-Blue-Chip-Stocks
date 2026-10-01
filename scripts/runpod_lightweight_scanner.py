@@ -817,6 +817,40 @@ def apex_minor_net_profit(payload):
     return None
 
 
+def calculate_expected_buy_net_profit(payload, projection, micro_trade_value, requested_notional):
+    """Calculate the buy-side APEX net-profit estimate from existing facts.
+
+    The medium scanner already publishes a normalized net_opportunity_score
+    (0..100). Treating that score as a forecast edge is the existing APEX
+    projection contract; it is not a realized profit or an order authority.
+    Convert it to dollars for the configured ticket and subtract only explicit
+    execution friction plus the live Robinhood spread. A broker preview must
+    still replace this estimate before placement.
+    """
+    explicit = apex_minor_net_profit(payload)
+    if explicit is not None:
+        return round(explicit, 8), "EXPLICIT_APEX_NET_PROFIT"
+    if requested_notional is None or requested_notional <= 0:
+        return None, "APEX_NET_PROFIT_NOTIONAL_MISSING"
+    scores = ((projection or {}).get("crypto") or {}).get("projection_scores") or {}
+    score = numeric(scores.get("net_opportunity_score"))
+    spread_decimal = numeric((micro_trade_value or {}).get("spread_decimal"))
+    if score is None or spread_decimal is None:
+        return None, "APEX_NET_PROFIT_PROJECTION_INPUTS_MISSING"
+
+    # expected_total_cost is an absolute ticket cost when supplied. The
+    # legacy fees_and_slippage field is also absolute; never add both.
+    additional_cost = numeric(payload.get("expected_total_cost"))
+    if additional_cost is None:
+        additional_cost = numeric(payload.get("fees_and_slippage")) or 0.0
+    expected_edge_usd = requested_notional * (score / 100.0)
+    spread_cost_usd = requested_notional * spread_decimal
+    expected_net = expected_edge_usd - spread_cost_usd - additional_cost
+    if not math.isfinite(expected_net):
+        return None, "APEX_NET_PROFIT_CALCULATION_INVALID"
+    return round(expected_net, 8), "APEX_MEDIUM8_NET_OPPORTUNITY_AFTER_VERIFIED_FRICTION"
+
+
 def source_price_signature(record, digits=8):
     bid = record.get("bid")
     ask = record.get("ask")
@@ -1274,6 +1308,13 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
     if not plugin_symbol_matches(tradingcursor_analysis, crypto_symbol):
         tradingcursor_analysis = {"usable": False, "status": "symbol_mismatch"}
     settings = load_json(USER_SETTINGS, {})
+    brokerage_intake = load_json(ROOT / "rules" / "brokerage_intake.json", {})
+    verified_account = brokerage_intake.get("verified_agentic_account") if isinstance(brokerage_intake, dict) else {}
+    verified_account_number = (
+        verified_account.get("account_number")
+        if isinstance(verified_account, dict)
+        else None
+    )
 
     # Preserve a ranked active symbol for the primary decision, but publish
     # every fresh tracked candidate so downstream consumers do not mistake
@@ -1289,22 +1330,27 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             seen_assets.add(key)
             asset_universe.append({"symbol": symbol_name, "asset_class": asset_class})
     candidate_records = []
-    for candidate_symbol in candidate_symbols:
-        candidate_quote = load_crypto_quote(candidate_symbol)
-        payload = candidate_quote.get("payload") or {}
-        candidate_records.append({
-            "symbol": candidate_symbol,
-            "active": candidate_symbol == crypto_symbol,
-            "quote_timestamp": candidate_quote.get("timestamp"),
-            "quote_source_path": candidate_quote.get("path"),
-            "provider": candidate_quote.get("provider"),
-            "bid": payload.get("bid"),
-            "ask": payload.get("ask"),
-            "last": payload.get("last"),
-            "fresh": candidate_quote.get("fresh") is True,
-            "required_quote_quorum_ok": candidate_quote.get("required_quote_quorum_ok") is True,
-            "missing_required_quote_sources": candidate_quote.get("missing_required_quote_sources", []),
-        })
+    # The primary lane publishes the full tracked-universe diagnostic.  The
+    # redundant synergy lanes evaluate the same active candidate and gates;
+    # rereading every per-symbol artifact in every lane turns a 58-symbol
+    # refresh into an avoidable O(lanes * symbols) disk storm.
+    if lane == "primary":
+        for candidate_symbol in candidate_symbols:
+            candidate_quote = load_crypto_quote(candidate_symbol)
+            payload = candidate_quote.get("payload") or {}
+            candidate_records.append({
+                "symbol": candidate_symbol,
+                "active": candidate_symbol == crypto_symbol,
+                "quote_timestamp": candidate_quote.get("timestamp"),
+                "quote_source_path": candidate_quote.get("path"),
+                "provider": candidate_quote.get("provider"),
+                "bid": payload.get("bid"),
+                "ask": payload.get("ask"),
+                "last": payload.get("last"),
+                "fresh": candidate_quote.get("fresh") is True,
+                "required_quote_quorum_ok": candidate_quote.get("required_quote_quorum_ok") is True,
+                "missing_required_quote_sources": candidate_quote.get("missing_required_quote_sources", []),
+            })
 
     symbol = crypto_symbol
     required_quote_sources = crypto_quote.get("required_quote_sources") or {}
@@ -1404,6 +1450,12 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             "allocation_percentage": (settings.get("asset_limits") or {}).get("crypto_max_allocation_decimal"),
             "dynamic_sizing": True,
         }
+    if requested_notional is not None:
+        crypto_quote["payload"]["requested_notional_usd"] = requested_notional
+        crypto_quote["payload"]["requested_notional_source"] = requested_notional_source
+    # Rebuild this after APEX sizing so the spread cost and allocation cap are
+    # based on the actual live ticket, not the pre-sizing null amount.
+    micro_trade_value = build_micro_trade_value(crypto_quote)
     # Medium scanners do not need a precomputed order amount to publish a
     # market candidate. Exact notional is an APEX/Codex calculation from fresh
     # broker capital, risk, entry, invalidation, and allocation inputs. Keep the
@@ -1438,6 +1490,13 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "blue_chips": blue_chip_projection,
         "blue_chip_status": "ACTIVE_WHEN_EQUITY_MARKET_VERIFIED_OPEN" if market_open else "WATCH_ONLY_UNTIL_EQUITY_MARKET_VERIFIED_OPEN",
     }
+    expected_net_profit, expected_net_profit_basis = calculate_expected_buy_net_profit(
+        crypto_quote["payload"], projection, micro_trade_value, requested_notional
+    )
+    if candidate_side == "BUY" and expected_net_profit is not None:
+        crypto_quote["payload"]["expected_net_profit"] = expected_net_profit
+        crypto_quote["payload"]["expected_net_profit_usd"] = expected_net_profit
+        crypto_quote["payload"]["expected_net_profit_basis"] = expected_net_profit_basis
     aum_score_input = {
         **crypto_quote["payload"],
         # Ranking proxy only; never a realized ledger event or AUM credit.
@@ -1478,6 +1537,8 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
                 "direct_cost_basis_usd",
                 "broker_preview_required",
                 "expected_net_profit",
+                "expected_net_profit_usd",
+                "expected_net_profit_basis",
                 "position_status",
                 "position_source",
                 "position_timestamp",
@@ -1520,11 +1581,16 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "data_status": "fresh" if crypto_quote.get("required_quote_quorum_ok") else "stale" if crypto_quote["has_bid_ask_last"] else "unusable",
         "risk_status": risk_status,
         "source_count": fresh_count,
+        "required_quote_quorum_ok": crypto_quote.get("required_quote_quorum_ok"),
+        "quote_authority": ROBINHOOD_FRONTLINE_PROVIDER,
         "source_conflict": False,
         "buying_power_usd": crypto_quote["payload"].get("buying_power_usd"),
         "crypto_buying_power_usd": crypto_quote["payload"].get("crypto_buying_power_usd"),
         "crypto_capital_source": crypto_quote["payload"].get("crypto_capital_source"),
         "crypto_capital_retrieved_at": crypto_quote["payload"].get("crypto_capital_retrieved_at"),
+        "broker_capital_source": "Robinhood.get_portfolio",
+        "broker_capital_retrieved_at": crypto_quote["payload"].get("crypto_capital_retrieved_at"),
+        "broker_account_number": verified_account_number,
         "requested_notional_usd": requested_notional,
         "requested_notional_source": requested_notional_source,
         "requested_notional_retrieved_at": iso_now(),
@@ -1541,6 +1607,8 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         "margin_approved": False,
         "account_net_worth_usd": crypto_quote["payload"].get("account_net_worth_usd"),
         "explicit_execution_authorization": explicit_execution_authorization,
+        "apex_net_profit_gate_required": True,
+        "expected_net_profit_basis": expected_net_profit_basis,
     }
     micro_payload = {
         "current_aum": crypto_quote["payload"].get("account_net_worth_usd"),

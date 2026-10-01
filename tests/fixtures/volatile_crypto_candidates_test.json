@@ -1,0 +1,6 @@
+{
+  "active_symbol": "NEAR",
+  "fallback_symbol": "BTC",
+  "ranked_symbols": [{"symbol": "SUI"}, {"symbol": "UNI"}, {"symbol": "DOT"}],
+  "fresh_symbols": ["ADA"]
+}

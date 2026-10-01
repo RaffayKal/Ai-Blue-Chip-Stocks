@@ -15,6 +15,7 @@ from pathlib import Path
 from project_root import ROOT
 
 SNAPSHOT = ROOT / "data" / "robinhood_crypto_execution_snapshot.json"
+CAPITAL_SNAPSHOT = ROOT / "data" / "robinhood_crypto_capital_snapshot.json"
 
 
 def decimal_value(value, name):
@@ -109,6 +110,17 @@ def main():
         raise SystemExit("BLOCKED: command is not running inside AI BLUE CHIP STOCKS")
     snapshot = normalize(json.load(sys.stdin))
     write_snapshot(SNAPSHOT, snapshot)
+    write_snapshot(
+        CAPITAL_SNAPSHOT,
+        {
+            "retrieved_at": snapshot["retrieved_at"],
+            "crypto_buying_power_usd": snapshot["crypto_buying_power_usd"],
+            "crypto_capital_source": "robinhood.get_portfolio.crypto_buying_power.buying_power",
+            "crypto_capital_retrieved_at": snapshot["retrieved_at"],
+            "host_only": True,
+            "runpod_private_data_transferred": False,
+        },
+    )
     print(f"ROBINHOOD_EXECUTION_SNAPSHOT: {len(snapshot['positions'])} position(s) written host-only")
 
 

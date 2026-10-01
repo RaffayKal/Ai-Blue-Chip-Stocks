@@ -3,35 +3,36 @@
 <plist version="1.0">
 <dict>
   <key>Label</key>
-  <string>com.raffaykal.codex-execution-worker-live</string>
+  <string>com.raffaykal.robinhood-quote-refresh</string>
   <key>ProgramArguments</key>
   <array>
     <string>/Library/Frameworks/Python.framework/Versions/3.13/bin/python3</string>
-    <string>/Users/raffaykal/AI BLUE CHIP STOCKS/scripts/codex_packet_consumer.py</string>
-    <string>--live</string>
+    <string>/Users/raffaykal/AI BLUE CHIP STOCKS/scripts/robinhood_mcp_quote_refresh_daemon.py</string>
+    <string>--interval-seconds</string>
+    <string>240</string>
+    <string>--timeout-seconds</string>
+    <string>150</string>
   </array>
   <key>WorkingDirectory</key>
   <string>/Users/raffaykal/AI BLUE CHIP STOCKS</string>
   <key>EnvironmentVariables</key>
   <dict>
-    <key>SHADOW_MODE</key>
-    <string>false</string>
-    <key>AUTONOMOUS_LIVE_EXECUTION_ENABLED</key>
-    <string>true</string>
     <key>CODEX_EXECUTION_MODEL</key>
     <string>gpt-5.6-luna</string>
     <key>PATH</key>
-    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/usr/sbin:/sbin</string>
+    <string>/opt/homebrew/bin:/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin</string>
   </dict>
   <key>RunAtLoad</key>
   <true/>
   <key>KeepAlive</key>
   <true/>
+  <key>ThrottleInterval</key>
+  <integer>5</integer>
   <key>ProcessType</key>
   <string>Background</string>
   <key>StandardOutPath</key>
-  <string>/Users/raffaykal/AI BLUE CHIP STOCKS/logs/codex_packet_consumer_live.launchd.out.log</string>
+  <string>/Users/raffaykal/AI BLUE CHIP STOCKS/logs/robinhood_quote_refresh.launchd.out.log</string>
   <key>StandardErrorPath</key>
-  <string>/Users/raffaykal/AI BLUE CHIP STOCKS/logs/codex_packet_consumer_live.launchd.err.log</string>
+  <string>/Users/raffaykal/AI BLUE CHIP STOCKS/logs/robinhood_quote_refresh.launchd.err.log</string>
 </dict>
 </plist>

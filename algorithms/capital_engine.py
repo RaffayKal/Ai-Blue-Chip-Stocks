@@ -155,10 +155,19 @@ def evaluate(data: dict) -> dict:
     bid = number(data.get("bid"), "bid", failed)
     ask = number(data.get("ask"), "ask", failed)
     last = number(data.get("last"), "last", failed)
-    exact_sell_preview = side == "sell" and data.get("broker_preview_confirmed") is True
-    liquidity = None if exact_sell_preview and data.get("liquidity_usd") is None else number(
-        data.get("liquidity_usd"), "liquidity_usd", failed
+    broker_name = str(data.get("broker_name") or "Robinhood").strip().lower()
+    robinhood_crypto_quorum = (
+        asset_class == "CRYPTO"
+        and broker_name == "robinhood"
+        and data.get("quote_authority") == "Robinhood"
+        and data.get("required_quote_quorum_ok") is True
     )
+    exact_sell_preview = side == "sell" and data.get("broker_preview_confirmed") is True
+    liquidity = None
+    if data.get("liquidity_usd") is not None:
+        liquidity = number(data.get("liquidity_usd"), "liquidity_usd", failed)
+    elif not (exact_sell_preview or robinhood_crypto_quorum):
+        failed.append("missing liquidity_usd")
 
     if bid is not None and ask is not None:
         if bid <= 0:
@@ -204,7 +213,6 @@ def evaluate(data: dict) -> dict:
         # Conservative liquidation mark: use the live bid, never the last or
         # mid, when a sell ticket's notional was not precomputed.
         requested_notional = requested_quantity * bid
-    broker_name = str(data.get("broker_name") or "Robinhood").strip().lower()
     margin_requested = data.get("margin_requested") is True
     margin_approved = data.get("margin_approved") is True
     account_net_worth = number(data.get("account_net_worth_usd"), "account_net_worth_usd", failed) if data.get("account_net_worth_usd") is not None else None
@@ -253,8 +261,12 @@ def evaluate(data: dict) -> dict:
         failed.append("data not fresh")
     if data.get("source_conflict") is True:
         failed.append("source conflict")
-    if int(data.get("source_count") or 0) < 2:
+    if int(data.get("source_count") or 0) < 2 and not robinhood_crypto_quorum:
         failed.append("less than two source confirmations")
+    if data.get("apex_net_profit_gate_required") is True:
+        expected_net_profit = number(data.get("expected_net_profit"), "expected_net_profit", failed)
+        if expected_net_profit is not None and expected_net_profit < 0.01:
+            failed.append("expected net profit is below the $0.01 APEX minor-net-profit trigger")
     if not explicit_execution_authorization:
         watch_only.append("explicit execution authorization required before real order")
 

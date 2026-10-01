@@ -35,6 +35,24 @@ class RunpodOpsPrivacyTests(unittest.TestCase):
             self.assertEqual(payload["robinhood_crypto_quote_snapshot.json"]["symbol"], "BTC")
             self.assertFalse({"account_number", "crypto_buying_power_usd", "positions"} & set(payload["robinhood_crypto_quote_snapshot_BTC.json"]))
 
+    def test_private_broker_state_is_handoff_allowed_but_secrets_are_stripped(self):
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            data = root / "data"
+            data.mkdir()
+            (data / "robinhood_crypto_execution_snapshot.json").write_text(json.dumps({
+                "retrieved_at": "2026-10-01T19:00:00Z",
+                "crypto_buying_power_usd": 7.11,
+                "positions": [{"quantity_transferable": "0.1"}],
+                "oauth_token": "must-not-transfer",
+            }))
+            with patch.object(runpod_ops, "ROOT", root):
+                payload = runpod_ops.snapshot_payload()
+            private = payload["robinhood_private_crypto_execution_snapshot.json"]
+            self.assertTrue(private["private_broker_data"])
+            self.assertEqual(private["data"]["crypto_buying_power_usd"], 7.11)
+            self.assertNotIn("oauth_token", json.dumps(private))
+
     def test_scanner_code_deploy_excludes_rules_and_data(self):
         self.assertTrue(runpod_ops.SCANNER_CODE_FILES)
         self.assertTrue(all(name.startswith(("scripts/", "algorithms/")) for name in runpod_ops.SCANNER_CODE_FILES))

@@ -73,6 +73,29 @@ def ticket_exhausted(path, counts):
     return counts.get(ticket_id, 0) >= max_executions
 
 
+def refresh_active_symbol(path, counts):
+    """Keep the reusable active ticket bound to the scanner's current symbol.
+
+    The active symbol rotates continuously.  Leaving a prior symbol in the
+    ticket creates a deterministic handoff mismatch even when the fresh
+    envelope is otherwise executable.  Preserve the ticket id and its
+    idempotency history; only refresh the symbol when the current ticket is
+    still within its existing execution limit.
+    """
+    if not path.exists():
+        return False
+    ticket = load_json(path)
+    ticket_id = ticket.get('ticket_id')
+    if not isinstance(ticket_id, str) or counts.get(ticket_id, 0) >= int(ticket.get('max_executions', 0) or 0):
+        return False
+    symbol = active_crypto_symbol()
+    if ticket.get('symbol') == symbol:
+        return False
+    ticket['symbol'] = symbol
+    write_json(path, ticket)
+    return True
+
+
 def buy_ticket(seq):
     return {
         'autonomous_execution': True,
@@ -124,12 +147,16 @@ def main():
             seq += 1
         write_json(BUY_ACTIVE, buy_ticket(seq))
         changed.append(f'BUY={BUY_ACTIVE.name}:crypto_market_buy_auto_max_{seq:06d}')
+    elif refresh_active_symbol(BUY_ACTIVE, counts):
+        changed.append(f'BUY={BUY_ACTIVE.name}:symbol_refreshed')
     if ticket_exhausted(SELL_ACTIVE, counts):
         seq = next_sequence('crypto_market_sell_position_auto', used)
         while f'crypto_market_sell_position_auto_{seq:06d}' in used:
             seq += 1
         write_json(SELL_ACTIVE, sell_ticket(seq))
         changed.append(f'SELL={SELL_ACTIVE.name}:crypto_market_sell_position_auto_{seq:06d}')
+    elif refresh_active_symbol(SELL_ACTIVE, counts):
+        changed.append(f'SELL={SELL_ACTIVE.name}:symbol_refreshed')
     if changed:
         print('AUTONOMOUS_TICKET_RELOAD: UPDATED')
         for item in changed:

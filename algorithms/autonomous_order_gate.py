@@ -17,6 +17,7 @@ USER_ALGORITHM_ID = "APEX_110_BLUE_CHIP_CRYPTO_COMPOUNDING"
 EXECUTABLE_ASSET_CLASSES = {"CRYPTO", "US_EQUITY", "ETF"}
 EQUITY_ASSET_CLASSES = {"US_EQUITY", "ETF"}
 MAX_BROKER_CAPITAL_AGE_SECONDS = 420
+MINOR_NET_PROFIT_USD = Decimal("0.01")
 
 
 def decimal_value(value, field_name, failed):
@@ -65,8 +66,8 @@ def validate_exact_sell_preview(market_input, order_ticket, failed):
         return
     if preview_quantity <= 0 or preview_quantity != sellable_quantity:
         failed.append("sell preview quantity does not match broker-confirmed sellable quantity")
-    if preview_net <= cost_basis:
-        failed.append("sell preview does not prove positive net profit after cost basis")
+    if preview_net - cost_basis < MINOR_NET_PROFIT_USD:
+        failed.append("sell preview does not prove the $0.01 APEX minor-net-profit trigger after cost basis")
 
 
 def runtime_buying_power(market_input, verified_account, asset_class, failed):
@@ -110,7 +111,14 @@ def logged_net_symbol_notional(executions, symbol):
 
 def verify_algorithm_sources(failed):
     manifest = load_json(ALGORITHM_SOURCES)
-    if Path(manifest.get("root", "")) != ROOT:
+    manifest_root = Path(manifest.get("root", ""))
+    # The checked-in manifest intentionally uses the project-relative root.
+    # Resolve it from the project cwd before comparing it with the absolute
+    # runtime root; otherwise every otherwise-valid ticket fails this existing
+    # source-integrity check with "algorithm source root mismatch".
+    if not manifest_root.is_absolute():
+        manifest_root = (ROOT / manifest_root).resolve()
+    if manifest_root != ROOT.resolve():
         failed.append("algorithm source root mismatch")
     for relative_path in manifest.get("required_algorithm_files", []):
         path = ROOT / relative_path

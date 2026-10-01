@@ -46,8 +46,10 @@ def normalize_result(result):
         raise SystemExit(f"BLOCKED: invalid quote timestamp: {exc}") from exc
     # Keep this adapter strictly factual. Liquidity, source quorum, risk,
     # account restrictions, and buying power come from their own live sources;
-    # a quote response cannot establish them.
-    return {
+    # a quote response cannot establish them. Preserve optional broker fields
+    # when Robinhood actually returns them so downstream gates can use the
+    # original fact without synthesizing liquidity.
+    normalized = {
         "symbol": symbol,
         "asset_class": "CRYPTO",
         "session": "CRYPTO_24_7",
@@ -66,6 +68,16 @@ def normalize_result(result):
         "execution_authority": "robinhood",
         "explicit_execution_authorization": False,
     }
+    for key in ("volume", "volume_24h", "liquidity_usd"):
+        value = result.get(key)
+        if value is not None:
+            try:
+                parsed = float(value)
+            except (TypeError, ValueError):
+                continue
+            if parsed > 0:
+                normalized[key] = parsed
+    return normalized
 
 
 def normalize_many(payload):

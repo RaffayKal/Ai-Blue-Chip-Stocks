@@ -10,8 +10,9 @@ availability; equity execution requires the actual broker-supported session
 and instrument eligibility. Buys require fresh spendable buying power. Sells
 require fresh broker-confirmed transferable quantity and sell eligibility.
 Holdings, projected profit and unsettled proceeds are not spendable cash.
-The watchdog maintains infrastructure and prepares the handoff; it never
-submits orders. The existing authorized execution worker performs candidate
+The watchdog is execution-capable after the existing gates pass. The quote
+refresh daemon prepares the handoff, while the authorized execution worker
+performs candidate
 revalidation, preview, exact-ticket placement and broker reconciliation.
 Codex and Claude authorization does not permit competing order writers or
 reuse of another runtime's credentials. Preserve existing idempotency.
@@ -56,10 +57,11 @@ sell-side funding evidence = fresh broker-confirmed transferable quantity and se
 
 RunPod does not need a direct Robinhood relay to scan. When its own direct
 connection is verified, use that connection for fresh public market inputs;
-otherwise retain the documented public quote-only handoff. Never copy OAuth
-tokens or private broker/account records between runtimes to establish access.
-Codex retains the existing envelope viability gate; a direct connection does
-not broaden execution authorization. No
+otherwise use the routed handoff. Sanitized broker-derived operational state
+may be handed to the execution scanner; never copy OAuth tokens, API keys,
+private keys or other authentication material between runtimes to establish
+access. Codex retains the existing envelope viability gate; a direct
+connection does not broaden execution authorization. No
 cached Robinhood quote, heartbeat, or prior account snapshot may authorize a
 new preview or order.
 
@@ -96,7 +98,7 @@ Default state:
 
 ```text
 AI_USAGE = ZERO
-BROKERAGE_EXECUTION = DISABLED
+BROKERAGE_EXECUTION = ENABLED_AFTER_GATE_PASS
 SCANNER = ON
 FULL_AGENT = OFF
 LIGHTWEIGHT_WATCHER = ON
@@ -106,7 +108,7 @@ The always-on runtime must not keep Superpowers, Apex reasoning, TradingCursor, 
 
 Cheap confirmation may use Longbridge market confirmation, 2+2 Calculator arithmetic checks, Precise Special Functions only when actually relevant, and authorized stock/account data only when needed. If the event is no longer viable, return `NO ACTION` and resume scanning.
 
-RunPod-first runtime does not authorize scanner/plugin brokerage execution by itself. After Codex validates a qualified envelope and prints `AUTONOMOUS_BUY_SELL: ENABLED_AFTER_GATE_PASS`, live autonomous order placement still requires the active ticket, validated Apex algorithm ID, exact Robinhood preview, buying-power or sellable-quantity confirmation, cost-basis and net-profit checks for sells, execution limit checks, configured autonomous execution authorization, idempotency, execution logging, and an authorized execution connector. If the authorized execution connector is unavailable or rejects preview, output `NO ACTION`.
+RunPod-first runtime does not authorize scanner/plugin brokerage execution by itself. After the authorized watchdog validates a qualified envelope and prints `AUTONOMOUS_BUY_SELL: ENABLED_AFTER_GATE_PASS`, live autonomous order placement still requires the active ticket, validated Apex algorithm ID, exact Robinhood preview, buying-power or sellable-quantity confirmation, cost-basis and net-profit checks for sells, execution limit checks, configured autonomous execution authorization, idempotency, execution logging, and an authorized execution connector. If the authorized execution connector is unavailable or rejects preview, output `NO ACTION`.
 
 ## Multi-Plugin Workflow Gate
 
@@ -123,7 +125,11 @@ FULL_AGENT = OFF
 LIGHTWEIGHT_WATCHER = ON
 ```
 
-The watcher may monitor and calculate market conditions. It must not place an order. It may wake the full agent only when confirmed market movement, appreciation potential, and execution economics produce viable positive expected net-profit trade value.
+The quote-refresh watcher may monitor and calculate market conditions. The
+execution-capable watchdog may wake the authorized execution worker and place
+an order only after every existing live gate and Robinhood preview pass.
+Confirmed market movement, appreciation potential, and execution economics
+must still produce viable positive expected net-profit trade value.
 
 If viable trade value is false, the valid result is `NO ACTION`; keep the full agent off and continue lightweight monitoring.
 
@@ -134,12 +140,12 @@ When the full agent wakes, it must still pass every autonomous gate, Robinhood p
 Current autonomous scope:
 
 - broker: Robinhood
-- asset class: crypto
+- asset class: top crypto and blue-chip equities
 - account: verified agent-accessible account in `rules/brokerage_intake.json`
 - capital: cash-backed only
 - margin: blocked
 - options: blocked
-- equities: blocked until regular-market session and exact broker tradability are live-confirmed
+- equities: allowed only when the broker-supported session and exact broker tradability are live-confirmed
 
 ## Required Files
 
@@ -208,7 +214,7 @@ If projected upside remains clear and viable, the result is `HOLD / LET IT RUN`;
 
 ## Blue-Chip Capital Exposure Gate
 
-High-risk / high-reward blue-chip mode may maintain compounding exposure within the configured 3%-20% tactical allocation band when high-conviction upside remains viable. Blue-chip execution remains blocked in this automation until a separate equity execution gate exists and approves the exact order.
+High-risk / high-reward blue-chip mode may maintain compounding exposure within the configured 3%-20% tactical allocation band when high-conviction upside remains viable. Blue-chip execution uses the same existing APEX and Robinhood execution gates, plus confirmed equity session, tradability, quote and account checks for the exact order. It is not crypto-only.
 
 ## Autonomous Gate
 
@@ -329,9 +335,9 @@ If the current envelope is missing, stale, sample-only, `scanner_viable: false`,
 
 `data/sample_qualified_candidate_envelope.json` is test data only and must never be used as the live autonomous activation source.
 
-## Event-Trigger Only / No Codex Timer Watcher
+## Continuous Watchdog / Event-Driven Order Attempts
 
-Codex must not run a 24/7 watcher and must not wake every minute just to check the market. Autonomous buy/sell is event-trigger only.
+The continuous watchdog may run 24/7 and refresh the 95-symbol universe. Order attempts remain event-driven: a fresh qualifying envelope triggers the existing execution sequence, while non-qualifying cycles continue scanning.
 
 Allowed activation path:
 

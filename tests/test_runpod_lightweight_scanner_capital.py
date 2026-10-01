@@ -395,6 +395,45 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
         self.assertNotIn("Stocktwits sentiment is not positive", envelope["failed_checks"])
         self.assertNotIn("APEX_HAS_NO_NUMERIC_NOTIONAL_OUTPUT", envelope["failed_checks"])
 
+    def test_buy_net_profit_is_calculated_from_existing_projection_and_spread(self):
+        payload = {
+            "bid": 100.0,
+            "ask": 102.0,
+            "last": 101.0,
+            "fees_and_slippage": 0.01,
+        }
+        projection = {
+            "crypto": {
+                "projection_scores": {
+                    "net_opportunity_score": 10.0,
+                }
+            }
+        }
+        micro_trade_value = {"spread_decimal": 0.02}
+        expected, basis = scanner.calculate_expected_buy_net_profit(
+            payload, projection, micro_trade_value, 1.00
+        )
+        self.assertEqual(expected, 0.07)
+        self.assertEqual(
+            basis,
+            "APEX_MEDIUM8_NET_OPPORTUNITY_AFTER_VERIFIED_FRICTION",
+        )
+
+        expected, basis = scanner.calculate_expected_buy_net_profit(
+            payload,
+            {
+                "crypto": {
+                    "projection_scores": {
+                        "net_opportunity_score": 1.0,
+                    }
+                }
+            },
+            {"spread_decimal": 0.02},
+            1.00,
+        )
+        self.assertEqual(expected, -0.02)
+        self.assertEqual(basis, "APEX_MEDIUM8_NET_OPPORTUNITY_AFTER_VERIFIED_FRICTION")
+
     def test_sentiment_records_do_not_count_as_crypto_quote_sources(self):
         quote = {
             "fresh": True,
@@ -722,7 +761,11 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
 
     def test_viable_watch_state_is_labeled_looking_without_capital(self):
         with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
-             patch.object(scanner, "load_crypto_quote", return_value=self.quote()), \
+             patch.object(
+                 scanner,
+                 "load_crypto_quote",
+                 return_value=self.quote(payload={"crypto_buying_power_usd": None}),
+             ), \
              patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
             envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
         self.assertTrue(envelope["scanner_viable"])

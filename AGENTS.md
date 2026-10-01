@@ -88,6 +88,13 @@ This rule applies to every agent (Codex and Claude) at all times, whether or not
   - Major spike: sell 75% of net profit and keep 25%.
   - Retained 25% position that grew 10% or more, with further upside not viable: sell the grown percentage.
 
+The active autonomous watchdog is execution-capable. After the existing APEX,
+Robinhood, source, freshness, routing, spread, liquidity, risk, allocation,
+exact-ticket, preview, confirmation, idempotency, authorization, session and
+broker-reconciliation gates pass, it may submit through Robinhood and must poll
+and log the result. The quote-refresh daemon remains quote-only; it supplies
+fresh evidence to the execution worker and is not itself the order writer.
+
 ## Plugin Use Rule
 
 Use market-data and social-data plugins only as data inputs, never as final authority.

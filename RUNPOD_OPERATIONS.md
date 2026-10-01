@@ -104,11 +104,13 @@ without resolving the user's $0.06/hour spending constraint.
   remain a possible SELL funding path, not spendable cash.
 - Preserve broker routing and original timestamps when ingesting quotes.
   Never infer liquidity, eligibility, risk or quorum from a quote alone.
-- `runpod_ops.py sync-quotes` now transfers only routed Robinhood market-quote
-  snapshots, preserving the broker timestamps. Buying power, portfolio value,
-  positions, orders, and other private account data remain on the authenticated
-  host MCP and are never copied to RunPod by this path. Do not relabel stale
-  snapshots as fresh or expand freshness windows.
+- `runpod_ops.py sync-quotes` transfers routed Robinhood market-quote snapshots
+  plus sanitized broker-derived operational state required by the execution
+  scanner, preserving the broker timestamps. Buying power, portfolio value,
+  positions, sellable quantities and order/fill state may be transferred as
+  broker evidence; credentials, OAuth tokens, API keys, private keys and other
+  authentication material remain host-only. Do not relabel stale snapshots as
+  fresh or expand freshness windows.
 - A Codex-hosted MCP connection is not a persistent Robinhood connection inside
   the pod. Report actual snapshot ingestion separately from connection status.
 - RunPod Claude can have its own independently authenticated Robinhood MCP.
@@ -225,15 +227,15 @@ sellable quantity. A running consumer, successful OAuth probe, or scanner
 viability still does not establish an executable ticket, submitted order, or
 fill; inspect the exact packet, gate, preview, broker order, and reconciliation.
 
-`python3 scripts/runpod_ops.py sync-quotes` sends public routed quote
-snapshots only. Before upload it promotes the newest factual per-symbol
-Robinhood snapshot into the aggregate snapshot consumed by the required-source
-gate, so an older aggregate file cannot mask a fresh Robinhood feed. It never
-promotes account, portfolio, position, buying-power or order data.
+`python3 scripts/runpod_ops.py sync-quotes` sends routed quote snapshots and
+sanitized broker-derived execution state. Before upload it promotes the newest
+factual per-symbol Robinhood snapshot into the aggregate snapshot consumed by
+the required-source gate, so an older aggregate file cannot mask a fresh
+Robinhood feed. Authentication material is never included.
 
-These automations monitor, refresh local broker evidence, and perform authorized
-same-pod recovery; they do not submit orders. Routine unchanged results stay
-quiet. Host availability still affects Codex heartbeat execution; do not
+The quote-refresh daemon only refreshes evidence, while the autonomous
+watchdog/worker may submit Robinhood orders after the existing gates pass and
+must reconcile fills. Routine unchanged results stay quiet. Host availability still affects Codex heartbeat execution; do not
 describe this as a cloud scheduler or proof of continuous broker ingestion.
 
 ### Latest recovery checkpoint: September 25, approximately 18:42 UTC
