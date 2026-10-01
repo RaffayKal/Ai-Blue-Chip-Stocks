@@ -248,6 +248,26 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             "robinhood.get_portfolio.crypto_buying_power.buying_power",
         )
 
+    def test_fresh_host_execution_state_confirms_robinhood_account_in_envelope(self):
+        quote = self.quote(payload={"crypto_account_confirmed": None})
+        execution = {
+            "retrieved_at": iso_before(1),
+            "account_match_confirmed": True,
+            "crypto_account_confirmed": True,
+            "crypto_buying_power_usd": 10.0,
+        }
+        with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {})), \
+             patch.object(scanner, "load_crypto_quote", return_value=quote), \
+             patch.object(scanner, "load_crypto_execution_snapshot", return_value=execution), \
+             patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
+            envelope = scanner.build_non_executable_envelope([], {}, "UNKNOWN", "primary")
+        self.assertTrue(envelope["market_input"]["crypto_account_confirmed"])
+        self.assertEqual(envelope["market_input"]["crypto_buying_power_usd"], 10.0)
+        self.assertEqual(
+            envelope["market_input"]["crypto_capital_source"],
+            "robinhood.get_portfolio.crypto_buying_power.buying_power",
+        )
+
     def test_sell_candidate_carries_fresh_position_inputs_separately_from_buying_power(self):
         quote = self.quote(payload={
             "candidate_side": "SELL",
@@ -342,7 +362,7 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
         self.assertTrue(envelope["requested_codex_activation"])
         self.assertTrue(envelope["market_input"]["explicit_execution_authorization"])
 
-    def test_requested_notional_remains_null_without_quote_input_policy(self):
+    def test_dynamic_buy_notional_uses_fresh_buying_power_when_apex_model_size_is_absent(self):
         quote = {
             "fresh": True,
             "timestamp": iso_before(1),
@@ -367,7 +387,11 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
              patch.object(scanner, "load_crypto_quote", return_value=quote), \
              patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
             envelope = scanner.build_non_executable_envelope([], sources, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
-        self.assertIsNone(envelope["market_input"]["requested_notional_usd"])
+        self.assertEqual(envelope["market_input"]["requested_notional_usd"], 2.19)
+        self.assertEqual(
+            envelope["market_input"]["requested_notional_source"],
+            "APEX_DYNAMIC_CAPITAL_BOUNDARY",
+        )
         self.assertNotIn("Stocktwits sentiment is not positive", envelope["failed_checks"])
         self.assertNotIn("APEX_HAS_NO_NUMERIC_NOTIONAL_OUTPUT", envelope["failed_checks"])
 

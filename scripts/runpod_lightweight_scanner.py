@@ -474,6 +474,32 @@ def load_crypto_capital_snapshot():
     }
 
 
+def merge_host_execution_state(payload, execution_snapshot, capital_snapshot):
+    """Join fresh host-only Robinhood state into the active candidate.
+
+    Public quote files intentionally contain no private account fields.  The
+    scanner nevertheless builds the live envelope from the quote payload, so
+    a fresh host account read must be joined before the capital/account gates
+    run.  Only normalized broker facts are copied; the private snapshot itself
+    never leaves the host.
+    """
+    if not isinstance(payload, dict):
+        return payload
+    if isinstance(capital_snapshot, dict):
+        payload.update(capital_snapshot)
+    if not isinstance(execution_snapshot, dict):
+        return payload
+    if execution_snapshot.get("crypto_account_confirmed") is True:
+        payload["crypto_account_confirmed"] = True
+    if execution_snapshot.get("account_match_confirmed") is True:
+        payload["account_match_confirmed"] = True
+    if execution_snapshot.get("crypto_buying_power_usd") is not None:
+        payload["crypto_buying_power_usd"] = execution_snapshot["crypto_buying_power_usd"]
+        payload["crypto_capital_source"] = "robinhood.get_portfolio.crypto_buying_power.buying_power"
+        payload["crypto_capital_retrieved_at"] = execution_snapshot.get("retrieved_at")
+    return payload
+
+
 def load_crypto_execution_snapshot():
     snapshot = load_json(ROBINHOOD_CRYPTO_EXECUTION, {})
     if not isinstance(snapshot, dict):
@@ -493,7 +519,7 @@ def load_crypto_execution_snapshot():
 
 
 def select_local_sell_candidate(snapshot=None, quote_loader=None):
-    """Return a host-only positive-gross-net position for broker preview.
+    """Return a host-only position meeting the APEX $0.01 net trigger.
 
     This is a review trigger, not execution authority.  The live Robinhood
     preview must still prove exact-ticket positive net economics before the
@@ -537,7 +563,7 @@ def select_local_sell_candidate(snapshot=None, quote_loader=None):
             continue
         gross_proceeds = quantity * bid
         gross_net_profit = gross_proceeds - cost_basis
-        if gross_net_profit <= 0:
+        if gross_net_profit < 0.01:
             continue
         candidates.append({
             "symbol": symbol,
@@ -741,6 +767,54 @@ def apex_requested_notional(payload, settings, asset_class):
         "maximum_allowed_notional": round(max_allowed, 6),
         "minimum_position_size_usd": minimum,
     }
+
+
+def dynamic_buy_notional(payload, settings, asset_class):
+    """Derive a bounded buy ticket when APEX has no model-sized notional.
+
+    This is sizing only, not a profit decision.  The exact Robinhood preview,
+    allocation, and order gate remain authoritative before placement.
+    """
+    if asset_class == "CRYPTO":
+        capital = valid_positive_number(payload.get("crypto_buying_power_usd"))
+        allocation_key = "crypto_max_allocation_decimal"
+        routing = str(payload.get("routing") or "").strip().lower()
+        if routing == "market maker routing":
+            broker_minimum = 0.01
+        elif routing == "smart exchange routing":
+            broker_minimum = 0.03
+        else:
+            broker_minimum = 0.03
+    else:
+        capital = valid_positive_number(payload.get("buying_power_usd"))
+        allocation_key = "us_equity_max_allocation_decimal"
+        broker_minimum = 1.0
+    limits = settings.get("asset_limits") if isinstance(settings, dict) else {}
+    allocation = valid_positive_number((limits or {}).get(allocation_key))
+    if capital is None or allocation is None:
+        return None, "APEX_DYNAMIC_SIZING_INPUTS_MISSING"
+    notional = min(capital, capital * allocation)
+    if notional < broker_minimum:
+        return None, "APEX_DYNAMIC_NOTIONAL_BELOW_BROKER_MINIMUM"
+    return round(notional, 2), "APEX_DYNAMIC_CAPITAL_BOUNDARY"
+
+
+def apex_minor_net_profit(payload):
+    """Return the explicitly calculated APEX net-profit trigger, if present."""
+    for key in (
+        "expected_net_profit",
+        "expected_net_profit_usd",
+        "estimated_net_profit",
+        "estimated_net_profit_usd",
+    ):
+        value = payload.get(key)
+        try:
+            parsed = float(value)
+        except (TypeError, ValueError):
+            continue
+        if math.isfinite(parsed):
+            return parsed
+    return None
 
 
 def source_price_signature(record, digits=8):
@@ -1183,8 +1257,8 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         crypto_quote["payload"].update(local_sell_candidate["market_fields"])
         harvest_review = local_sell_candidate["harvest_review"]
     crypto_capital = load_crypto_capital_snapshot()
-    if crypto_capital:
-        crypto_quote["payload"].update(crypto_capital)
+    crypto_execution = load_crypto_execution_snapshot()
+    merge_host_execution_state(crypto_quote["payload"], crypto_execution, crypto_capital)
     longbridge = sources.get("Longbridge", {})
     stocktwits = sources.get("Stocktwits", {})
     tradingcursor = sources.get("TradingCursor", {})
@@ -1310,11 +1384,26 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         failed.append("chatgpt medium-scanner reinforcement is missing, stale, or failed")
     micro_trade_value = build_micro_trade_value(crypto_quote)
     derive_spot_break_even_invalidation(crypto_quote["payload"])
+    requested_side = str(
+        crypto_quote["payload"].get("candidate_side")
+        or crypto_quote["payload"].get("side")
+        or "BUY"
+    ).upper()
+    candidate_side = requested_side if requested_side in {"BUY", "SELL"} else "BUY"
     requested_notional, requested_notional_source, sizing_inputs = apex_requested_notional(
         crypto_quote["payload"],
         settings,
         "CRYPTO",
     )
+    if requested_notional is None and candidate_side != "SELL":
+        requested_notional, requested_notional_source = dynamic_buy_notional(
+            crypto_quote["payload"], settings, "CRYPTO"
+        )
+        sizing_inputs = {
+            "available_broker_capital": crypto_quote["payload"].get("crypto_buying_power_usd"),
+            "allocation_percentage": (settings.get("asset_limits") or {}).get("crypto_max_allocation_decimal"),
+            "dynamic_sizing": True,
+        }
     # Medium scanners do not need a precomputed order amount to publish a
     # market candidate. Exact notional is an APEX/Codex calculation from fresh
     # broker capital, risk, entry, invalidation, and allocation inputs. Keep the
@@ -1364,12 +1453,6 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
         and broker_settings.get("explicit_execution_authorization") is True
     )
 
-    requested_side = str(
-        crypto_quote["payload"].get("candidate_side")
-        or crypto_quote["payload"].get("side")
-        or "BUY"
-    ).upper()
-    candidate_side = requested_side if requested_side in {"BUY", "SELL"} else "BUY"
     market_input = {
         **{
             key: crypto_quote["payload"].get(key)
@@ -1499,10 +1582,17 @@ def build_non_executable_envelope(symbols, sources, codex_heavy_state, lane):
             sell_decision = evaluate_capital_candidate(market_input)
             apex_sizing_viable = sell_decision.get("RESULT") == "VALIDATED SETUP"
     else:
-        # Fresh quotes alone are not an executable buy candidate. Missing APEX
-        # sizing inputs keep the envelope non-viable, not merely watchlistable.
+        # The user-defined APEX economic trigger is the explicit calculated
+        # net-profit threshold.  Sizing is derived separately from fresh
+        # Robinhood buying power; the final exact-ticket and preview gates
+        # remain mandatory before placement.
         sell_decision = None
-        apex_sizing_viable = micro_math.get("RESULT") in {"PASS", "SIZED CANDIDATE"}
+        expected_net_profit = apex_minor_net_profit(crypto_quote["payload"])
+        apex_sizing_viable = (
+            requested_notional is not None
+            and expected_net_profit is not None
+            and expected_net_profit >= 0.01
+        )
     execution_viable = viable and apex_sizing_viable
     envelope = {
         "architecture": ARCHITECTURE_NAME,
