@@ -32,7 +32,7 @@
     ]
   },
   "container_environment": {
-    "VLLM_API_KEY": "read from macOS Keychain service AI BLUE CHIP STOCKS RunPod VLLM API Key",
+    "VLLM_API_KEY": "RunPod secret reference: VLLM_API_KEY_20261001",
     "VLLM_CPU_NUM_OF_RESERVED_CPU": "1"
   },
   "ssh": {
@@ -43,7 +43,7 @@
   "ssh_fallbacks": [
     {
       "user_host": "root@205.196.19.132",
-      "port": 12018,
+      "port": 11053,
       "identity_file": "/Users/raffaykal/.ssh/id_ed25519",
       "strict_host_key_checking": "yes"
     }

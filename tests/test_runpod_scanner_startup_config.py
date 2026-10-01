@@ -22,7 +22,7 @@ class RunpodScannerStartupConfigTests(unittest.TestCase):
 
     def test_vllm_secret_source_is_keychain_not_project_env(self):
         config = (ROOT / "runpod_vllm_cpu_006.json").read_text(encoding="utf-8")
-        self.assertIn("macOS Keychain service AI BLUE CHIP STOCKS RunPod VLLM API Key", config)
+        self.assertIn('"VLLM_API_KEY": "RunPod secret reference: VLLM_API_KEY_20261001"', config)
         self.assertNotIn('"VLLM_API_KEY": "read from ignored .env.local"', config)
         checker = (ROOT / "scripts" / "check_vllm_service.py").read_text(encoding="utf-8")
         self.assertIn('KEYCHAIN_SERVICE = "AI BLUE CHIP STOCKS RunPod VLLM API Key"', checker)

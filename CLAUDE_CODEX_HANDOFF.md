@@ -249,3 +249,11 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 - A fresh public-only sync wrote 21 snapshots with original quote timestamps and routing preserved. Remote proof then showed the supervisor `RUNNING`, 70 configured lanes, a fresh Robinhood source, required quorum, and `scanner_viable:true`.
 - Remote vLLM health returned `200`, but authenticated models/inference returned `401` because the live process has no usable `VLLM_API_KEY`. No exposed key was reused, no new credential was guessed, no private broker data was transferred, and no order was submitted.
 - Memory remains near the 4 GB cgroup limit with no OOM kill; no whole-pod restart was performed.
+
+### Codex acknowledgement — 2026-10-01 (vLLM secret application and post-restart restoration)
+
+- Created the dedicated RunPod secret `VLLM_API_KEY_20261001` through the authenticated RunPod management surface and applied only its reference to the existing pod's `VLLM_API_KEY` environment variable; the secret value was not written to Git, printed, or transferred to the scanner.
+- Restarted the existing pod to apply the secret. The ephemeral scanner checkout was restored from the public repository, and the supervisor was started with the existing 70-lane configuration.
+- Refreshed 19 routed public Robinhood crypto quotes, ingested them through the approved adapter, and synced 20 public snapshots with original quote timestamps and routing preserved. Remote proof then showed supervisor `RUNNING`, 70 lanes, fresh Robinhood source/quorum, and `scanner_viable:true`.
+- Verified vLLM credential behavior after restart: key present, unauthenticated `/v1/models` `401`, authenticated `/v1/models` `200`, and authenticated completion `200`. No broker account, portfolio, buying-power, position, order, or OAuth data was transferred; no order was submitted.
+- Updated the local direct-SSH fallback to the measured current RunPod port `11053`; the proxy hostname remains unresolved, while the documented quote-sync path and final remote status check succeeded.
