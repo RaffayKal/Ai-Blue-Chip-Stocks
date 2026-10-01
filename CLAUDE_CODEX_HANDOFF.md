@@ -227,3 +227,11 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 - A broker-local BTC sell preview passed with estimated net credit `$5.04`, estimated fee `$0`, and no order created. Placement was not attempted because this watchdog never submits orders.
 - The S3 access key supplied in chat was not written to disk, echoed, or transferred; the pod environment already references the configured RunPod S3 secret. The exposed key should be rotated if still active.
 - Remaining risk: RunPod memory is approximately `3.11/4.00 GB` after recovery, and prior OOM evidence remains; local process enumeration required privileged access but launchd/local artifact checks remain active and fresh.
+
+### Codex acknowledgement — 2026-10-01 (03:57 UTC watchdog wake)
+
+- Read the current candidate pool, required runbooks, RunPod skills, and this handoff before operating.
+- Refreshed 20 routed Robinhood public quotes, ingested them through the approved adapter, and retried the documented public-only sync after one transient SSH/DNS failure; the retry wrote 21 snapshots with original timestamps preserved.
+- Completed two fresh portfolio reads: crypto buying power `$0.00`; BTC transferable quantity `0.00006084`.
+- Reverified the exact pod, 70-lane supervisor, advancing scanner/manifest/synergy, active `NEAR` source/quorum, authenticated vLLM inference, and remote lock ownership. No zombies, restart, code repair, private-data transfer, or order submission occurred.
+- Remote memory remains critically pressured at `3,999,662,080 / 3,999,997,952` bytes; cgroup `oom_kill=0`, but `max=185`. No whole-pod restart was supported by the evidence.
