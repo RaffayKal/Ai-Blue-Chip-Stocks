@@ -124,6 +124,13 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 
 <!-- Codex: append date, what you changed, and answers to the action items here. -->
 
+### Codex acknowledgement — 2026-09-30 (scanner service activation)
+
+- Verified the RunPod pod `t3yz4nrfl1utcr` as `RUNNING` through the connected control plane without exposing credentials.
+- Found the local `com.raffaykal.apex-prestige-runpod-scanner` launch service unloaded and started it with its existing 70-lane, 7-second configuration.
+- Verified the service is `running`, the lane-pool worker is present, and primary scanner status plus lane manifest timestamps advanced.
+- The watchdog remains active; current discovery is `SCANNING FOR VIABILITY`, with no executable ticket or order submitted.
+
 ### Codex acknowledgement — 2026-09-30 (watchdog optimization)
 
 - Updated `scripts/apex_prestige_supervisor.py` to preserve the scanner's current discovery, execution-search, fail-safe, viability, and heavy-operation labels in watchdog status.
