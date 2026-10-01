@@ -4,19 +4,17 @@ Autonomous execution is allowed only when every gate in this file passes.
 
 ## CURRENT CONDITIONAL OPERATIONS POLICY
 
-The daily operations start is 4:00 AM America/New_York. Two consecutive fresh
-Robinhood MCP reads must confirm positive, spendable crypto buying power before
-the scanner/runtime is allowed to operate 24/7. Until that condition is
-confirmed, RunPod, ChatGPT, Codex and Claude heavy/scanner layers operate only
-on actual U.S. trading days from 4:00 AM through 8:00 PM ET, including early,
-regular and late sessions; they are dormant or paused outside that window.
-Equity buying power, total portfolio value, unsold holdings, projected profit,
-promised deposits and RunPod/OpenAI credits do not unlock 24/7 mode.
-
-When funding is absent outside the market window, pause the monitor and heavy
-agent layers. Do not stop a RunPod resource unless a safe reversible pause and
-autonomous resume are actually exposed and verified; a provider `stop` action
-is not equivalent to pause and may clear ephemeral state.
+Authorized scanning, feed maintenance and the three-minute watchdog operate
+24/7 regardless of buying power. Crypto execution requires confirmed crypto
+availability; equity execution requires the actual broker-supported session
+and instrument eligibility. Buys require fresh spendable buying power. Sells
+require fresh broker-confirmed transferable quantity and sell eligibility.
+Holdings, projected profit and unsettled proceeds are not spendable cash.
+The watchdog maintains infrastructure and prepares the handoff; it never
+submits orders. The existing authorized execution worker performs candidate
+revalidation, preview, exact-ticket placement and broker reconciliation.
+Codex and Claude authorization does not permit competing order writers or
+reuse of another runtime's credentials. Preserve existing idempotency.
 
 ## CONTROLLING VERBATIM PROCEDURE
 
