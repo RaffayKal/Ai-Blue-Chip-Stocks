@@ -44,13 +44,20 @@ PRIVATE_RESTORE_EXCLUDES = frozenset({
 })
 
 
-def remote(script, timeout=90):
-    config = json.loads((ROOT / "runpod_vllm_cpu_006.json").read_text())
-    ssh = config["ssh"]
+def ssh_candidates(config):
+    """Return the configured proxy first, then explicitly registered fallbacks."""
+    candidates = [config["ssh"]]
+    candidates.extend(config.get("ssh_fallbacks", []))
+    return candidates
+
+
+def _remote_once(script, timeout, ssh):
     process = subprocess.Popen(
         ["ssh", "-tt", "-o", "BatchMode=yes", "-o", "ConnectTimeout=10",
-         "-o", "StrictHostKeyChecking=yes", "-o", "IdentitiesOnly=yes",
-         "-i", ssh["identity_file"], ssh["user_host"]],
+         "-o", f"StrictHostKeyChecking={ssh.get('strict_host_key_checking', 'yes')}",
+         "-o", "IdentitiesOnly=yes", "-i", ssh["identity_file"]]
+        + (["-p", str(ssh["port"])] if ssh.get("port") else [])
+        + [ssh["user_host"]],
         stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.STDOUT,
     )
     nonce = uuid.uuid4().hex
@@ -95,6 +102,17 @@ def remote(script, timeout=90):
         except subprocess.TimeoutExpired:
             process.terminate()
             process.wait(timeout=3)
+
+
+def remote(script, timeout=90):
+    config = json.loads((ROOT / "runpod_vllm_cpu_006.json").read_text())
+    errors = []
+    for ssh in ssh_candidates(config):
+        try:
+            return _remote_once(script, timeout, ssh)
+        except (OSError, RuntimeError, TimeoutError) as exc:
+            errors.append(f"{ssh['user_host']}: {exc}")
+    raise RuntimeError("All configured RunPod SSH paths failed: " + " | ".join(errors))
 
 
 def status_script():

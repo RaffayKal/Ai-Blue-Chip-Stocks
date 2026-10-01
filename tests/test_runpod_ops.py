@@ -19,6 +19,14 @@ spec.loader.exec_module(ops)
 
 
 class RunPodOpsTests(unittest.TestCase):
+    def test_ssh_candidates_keep_proxy_first_and_allow_explicit_fallbacks(self):
+        config = {
+            'ssh': {'user_host': 'proxy', 'identity_file': 'proxy-key'},
+            'ssh_fallbacks': [{'user_host': 'direct', 'identity_file': 'direct-key'}],
+        }
+        self.assertEqual([item['user_host'] for item in ops.ssh_candidates(config)],
+                         ['proxy', 'direct'])
+
     def test_restore_contains_required_fixture_but_no_credentials_or_live_accounts(self):
         source=ast.parse(ops.deployment_script())
         call=next(node.value for node in source.body if isinstance(node,ast.Assign)

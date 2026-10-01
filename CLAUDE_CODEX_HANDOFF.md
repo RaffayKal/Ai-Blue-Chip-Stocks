@@ -241,3 +241,11 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 - Completed two fresh portfolio reads: crypto buying power `$0.00`; BTC transferable quantity `0.00006084`.
 - Reverified the exact pod, 70-lane supervisor, advancing scanner/manifest/synergy, active `NEAR` source/quorum, authenticated vLLM inference, and remote lock ownership. No zombies, restart, code repair, private-data transfer, or order submission occurred.
 - Remote memory remains critically pressured at `3,999,662,080 / 3,999,997,952` bytes; cgroup `oom_kill=0`, but `max=185`. No whole-pod restart was supported by the evidence.
+
+### Codex acknowledgement — 2026-10-01 (RunPod SSH fallback and quote-relay repair)
+
+- Verified that the RunPod proxy DNS path was failing while the live pod's direct SSH endpoint accepted the existing trusted `id_ed25519` identity with strict host-key checking.
+- Added a proxy-first, explicit direct-SSH fallback to the approved public quote-sync/audit path and covered the fallback ordering with a regression test.
+- A fresh public-only sync wrote 21 snapshots with original quote timestamps and routing preserved. Remote proof then showed the supervisor `RUNNING`, 70 configured lanes, a fresh Robinhood source, required quorum, and `scanner_viable:true`.
+- Remote vLLM health returned `200`, but authenticated models/inference returned `401` because the live process has no usable `VLLM_API_KEY`. No exposed key was reused, no new credential was guessed, no private broker data was transferred, and no order was submitted.
+- Memory remains near the 4 GB cgroup limit with no OOM kill; no whole-pod restart was performed.

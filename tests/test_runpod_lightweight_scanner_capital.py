@@ -262,8 +262,32 @@ class RunpodLightweightScannerCapitalTests(unittest.TestCase):
             "position_account_matches_verified_account": True,
             "crypto_buying_power_usd": 0.0,
         })
+        sell_candidate = {
+            "symbol": "BTC",
+            "quote": quote,
+            "market_fields": {
+                "candidate_side": "SELL",
+                "side": "sell",
+                "requested_quantity": 0.00006084,
+                "sellable_quantity": 0.00006084,
+                "position_status": "fresh",
+                "position_source": "Robinhood.get_crypto_positions",
+                "position_timestamp": iso_before(1),
+                "position_account_matches_verified_account": True,
+                "crypto_account_confirmed": True,
+                "crypto_buying_power_usd": 0.0,
+                "direct_cost_basis_usd": 4.8,
+                "broker_preview_required": True,
+                "expected_net_profit": 0.2,
+            },
+            "harvest_review": {
+                "gross_net_profit_usd": 0.2,
+                "broker_preview_required": True,
+            },
+        }
         with patch.object(scanner, "load_active_crypto_symbol", return_value=("BTC", {"active_symbol_reason": "test"})), \
              patch.object(scanner, "load_crypto_quote", return_value=quote), \
+             patch.object(scanner, "select_local_sell_candidate", return_value=sell_candidate), \
              patch.object(scanner, "load_crypto_capital_snapshot", return_value={}):
             envelope = scanner.build_non_executable_envelope([], {}, "AVAILABLE_IF_VIABILITY_GATES_TRUE", "primary")
         market_input = envelope["market_input"]
