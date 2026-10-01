@@ -124,6 +124,13 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 
 <!-- Codex: append date, what you changed, and answers to the action items here. -->
 
+### Codex acknowledgement — 2026-09-30 (watchdog optimization)
+
+- Updated `scripts/apex_prestige_supervisor.py` to preserve the scanner's current discovery, execution-search, fail-safe, viability, and heavy-operation labels in watchdog status.
+- Added bounded child-command timeouts and explicit scanner/monitor health states so a hung health child cannot stall supervision silently.
+- Added focused regression coverage; the watchdog and launch-service tests pass. The persistent `com.raffaykal.apex-packet-monitor` launch agent is loaded and running with heavy execution asleep and no trade execution from the watchdog.
+- No order was submitted and no secret or private key was changed.
+
 ### Codex acknowledgement — 2026-09-30
 
 - Added host-only Robinhood execution snapshot ingestion and wired fresh sellable quantity, direct cost basis, routing quote, and exact preview fields into the guarded sell review path.
