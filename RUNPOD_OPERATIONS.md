@@ -111,6 +111,12 @@ without resolving the user's $0.06/hour spending constraint.
   snapshots as fresh or expand freshness windows.
 - A Codex-hosted MCP connection is not a persistent Robinhood connection inside
   the pod. Report actual snapshot ingestion separately from connection status.
+- RunPod Claude can have its own independently authenticated Robinhood MCP.
+  On September 30, RunPod `claude mcp list` reported `robinhood` Connected;
+  local Claude reported `robinhood-trading` Connected. These are independent
+  connection-health checks only, not a broker read,
+  continuous quote producer, order eligibility, or permission to copy tokens.
+  Verify each runtime independently before replacing the public quote fallback.
 - OpenAI reinforcement returned HTTP 429 `credit_balance_exhausted`. The local
   and pod workers use clearly labeled deterministic fallback. Funding RunPod
   does not replenish OpenAI credits.

@@ -37,22 +37,31 @@ idempotency, and broker reconciliation remain mandatory. The agent uses the
 direct placement path after those gates and does not wait for a second
 interactive confirmation.
 
-## Codex Robinhood MCP Freshness Authority
+## Per-Agent Robinhood MCP Freshness Authority
 
-Codex has the direct Robinhood MCP connection and is the broker-data authority.
+Robinhood is the broker-data authority. Codex, local Claude, and RunPod Claude
+may use their own independently authenticated direct Robinhood MCP connection.
+Each runtime must verify its own connection and fresh broker reads; another
+runtime's connected status or snapshot does not prove its connection is live.
 Robinhood data must be refreshed at every candidate-processing and final broker
 revalidation step. The data is not considered permanently live merely because
 the MCP is connected.
 
 ```text
-fresh Codex Robinhood MCP refresh = required for each candidate
+fresh Robinhood MCP refresh on the processing runtime = required for each candidate
 stale, missing, contradictory, or failed refresh = NO ACTION
-positive fresh crypto buying power = 24/7 scanner mode
-zero, stale, missing, or contradictory crypto buying power = market-window mode
+scanning and feed maintenance = 24/7 regardless of buying power
+positive fresh crypto buying power = buy-side funding evidence only
+zero, stale, missing, or contradictory crypto buying power = buy blocked, scanning continues
+sell-side funding evidence = fresh broker-confirmed transferable quantity and sell eligibility
 ```
 
-RunPod does not need a direct Robinhood relay to scan. Codex performs the live
-Robinhood refresh, enriches the envelope, and owns the viability gate. No
+RunPod does not need a direct Robinhood relay to scan. When its own direct
+connection is verified, use that connection for fresh public market inputs;
+otherwise retain the documented public quote-only handoff. Never copy OAuth
+tokens or private broker/account records between runtimes to establish access.
+Codex retains the existing envelope viability gate; a direct connection does
+not broaden execution authorization. No
 cached Robinhood quote, heartbeat, or prior account snapshot may authorize a
 new preview or order.
 

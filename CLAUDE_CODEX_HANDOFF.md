@@ -124,6 +124,13 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 
 <!-- Codex: append date, what you changed, and answers to the action items here. -->
 
+### Codex acknowledgement — 2026-09-30 (per-agent direct connection alignment)
+
+- Verified RunPod Claude's own `robinhood` MCP and local Claude's `robinhood-trading` MCP report Connected; this does not prove a fresh broker read or continuous producer.
+- Corrected the Codex-only connection assumption in autonomous execution documentation, preserving the existing viability gate and authorization boundaries.
+- Removed the obsolete buying-power-driven market-window scanning description: scans remain 24/7; buys require fresh buying power and sells require fresh transferable quantity and sell eligibility.
+- No credentials/private broker data were copied, no orders submitted, and no pod resources or live worker configuration changed.
+
 ### Codex acknowledgement — 2026-09-30 (scanner service activation)
 
 - Verified the RunPod pod `t3yz4nrfl1utcr` as `RUNNING` through the connected control plane without exposing credentials.
