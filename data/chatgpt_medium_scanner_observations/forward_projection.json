@@ -2,36 +2,36 @@
   "candidate_decision": "SCANNING FOR VIABILITY",
   "execution_authority": false,
   "fallback_source": "RUNPOD_MEDIUM_WEIGHT_SCANNER_DETERMINISTIC",
-  "input_fingerprint": "c5c35331f5080e3a7dd521777f035f92a113d2ffc1b19834eb5865fc145fa2fc",
+  "input_fingerprint": "2858efe31ba5918f59e38f22100c366e96e6ffc8d958822cbbd18c17c3a3c6ac",
   "missing_facts": [],
   "openai_error": "RuntimeError: OpenAI HTTP 429: {\n  \"error\": {\n    \"message\": \"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"credit_balance_exhausted\"\n  }\n}",
   "projection": {
     "blue_chips": {
-      "capital_fit_score": 0.0,
-      "continuation_probability": 32.7,
-      "freshness_score": 50.0,
+      "capital_fit_score": 100.0,
+      "continuation_probability": 59.7,
+      "freshness_score": 100.0,
       "market_temperature_score": 41.0,
-      "net_opportunity_score": 4.77,
+      "net_opportunity_score": 45.805,
       "sentiment_score": 50.0,
       "session_confirmation_score": 0.0,
-      "source_depth_score": 20.0,
-      "spread_priority": "BLOCKED"
+      "source_depth_score": 40.0,
+      "spread_priority": "TACTICAL_PASS"
     },
     "crypto": {
-      "capital_fit_score": 0.0,
-      "continuation_probability": 47.7,
-      "freshness_score": 50.0,
+      "capital_fit_score": 100.0,
+      "continuation_probability": 74.7,
+      "freshness_score": 100.0,
       "market_temperature_score": 41.0,
-      "net_opportunity_score": 25.02,
+      "net_opportunity_score": 66.055,
       "sentiment_score": 50.0,
       "session_confirmation_score": 100.0,
-      "source_depth_score": 20.0,
-      "spread_priority": "BLOCKED"
+      "source_depth_score": 40.0,
+      "spread_priority": "TACTICAL_PASS"
     }
   },
   "reason": "RunPod deterministic fallback: identical medium8 forward-projection math the scanner already computes every cycle.",
   "role": "forward_projection",
-  "scanner_viable": false,
+  "scanner_viable": true,
   "status": "OK_DETERMINISTIC_FALLBACK",
-  "timestamp": "2026-09-30T15:07:45.933078Z"
+  "timestamp": "2026-09-30T22:21:30.736604Z"
 }

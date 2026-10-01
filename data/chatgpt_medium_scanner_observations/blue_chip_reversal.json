@@ -2,16 +2,16 @@
   "candidate_decision": "SCANNING FOR VIABILITY",
   "execution_authority": false,
   "fallback_source": "RUNPOD_MEDIUM_WEIGHT_SCANNER_DETERMINISTIC",
-  "input_fingerprint": "c5c35331f5080e3a7dd521777f035f92a113d2ffc1b19834eb5865fc145fa2fc",
+  "input_fingerprint": "2858efe31ba5918f59e38f22100c366e96e6ffc8d958822cbbd18c17c3a3c6ac",
   "missing_facts": [],
   "openai_error": "RuntimeError: OpenAI HTTP 429: {\n  \"error\": {\n    \"message\": \"You have no credits remaining. Add credits to continue using the API at https://platform.openai.com/settings/organization/billing/.\",\n    \"type\": \"insufficient_quota\",\n    \"param\": null,\n    \"code\": \"credit_balance_exhausted\"\n  }\n}",
   "projection": {
-    "reversal_risk_score": 79.8,
-    "stale_penalty_score": 50.0
+    "reversal_risk_score": 40.3,
+    "stale_penalty_score": 0.0
   },
   "reason": "RunPod deterministic fallback: blue-chip reversal-risk score from the scanner's own medium8 projection.",
   "role": "blue_chip_reversal",
-  "scanner_viable": false,
+  "scanner_viable": true,
   "status": "OK_DETERMINISTIC_FALLBACK",
-  "timestamp": "2026-09-30T15:07:46.224800Z"
+  "timestamp": "2026-09-30T22:21:32.080037Z"
 }
