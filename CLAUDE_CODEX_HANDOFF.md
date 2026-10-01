@@ -257,3 +257,11 @@ Treat it as the user's explicit order to move from "viable" to **actual orders**
 - Refreshed 19 routed public Robinhood crypto quotes, ingested them through the approved adapter, and synced 20 public snapshots with original quote timestamps and routing preserved. Remote proof then showed supervisor `RUNNING`, 70 lanes, fresh Robinhood source/quorum, and `scanner_viable:true`.
 - Verified vLLM credential behavior after restart: key present, unauthenticated `/v1/models` `401`, authenticated `/v1/models` `200`, and authenticated completion `200`. No broker account, portfolio, buying-power, position, order, or OAuth data was transferred; no order was submitted.
 - Updated the local direct-SSH fallback to the measured current RunPod port `11053`; the proxy hostname remains unresolved, while the documented quote-sync path and final remote status check succeeded.
+
+### Codex acknowledgement — 2026-10-01 (10:52 UTC watchdog wake)
+
+- Read the current volatile candidate pool and required operational runbooks before work; the local active symbol was `UNI`, fallback `BTC`, and the ranked pool contained 19 verified symbols.
+- Refreshed 20 routed public Robinhood quotes, ingested them through the approved adapter, and retried the documented public-only sync after the first remote freshness check measured the snapshot outside its window; the retry wrote 21 snapshots with original timestamps preserved.
+- Completed fresh Robinhood account, portfolio, and crypto-position reads: crypto buying power `$2.00`; BTC transferable quantity `0.00006084`; quantity held for sell `0`; no private broker data was transferred to RunPod and no order was submitted.
+- Reverified the exact pod as `RUNNING`, remote supervisor/scanner/manifest/synergy with 70 lanes, rotating remote active symbol `SUI`, fresh Robinhood source and required quorum, local scanner viability and 70-lane launch service, and authenticated vLLM inference (`200`) with unauthenticated models rejected (`401`).
+- Native web terminal remains unverified and unavailable at HTTP `502`; no whole-pod restart or unsupported repair was applied because the scanner/model/pod layers are healthy and the console session is not authenticated.
