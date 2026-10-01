@@ -2,6 +2,7 @@
 import argparse
 import fcntl
 import json
+import os
 import subprocess
 import sys
 import time
@@ -16,6 +17,19 @@ STATUS = ROOT / "data" / "apex_prestige_supervisor_status.json"
 LOG = ROOT / "logs" / "apex_prestige_supervisor.jsonl"
 ARCHITECTURE_NAME = "ABSOLUTE INFINITE +775% TACTICAL APPRECIATION OPERATIONS COMPOUNDING — APEX PRESTIGE ARCHITECTURE"
 HEALTH_LANE = "supervisor_health"
+COMMAND_TIMEOUT_SECONDS = 120.0
+
+RUNTIME_STATUS_LABELS = {
+    "CODEX_HEAVY_STATE": "codex_heavy_state",
+    "DISCOVERY_STATE": "discovery_state",
+    "EXECUTION_GATE_DECISION": "execution_gate_decision",
+    "APEX_EXECUTION_SEARCH_STATE": "apex_execution_search_state",
+    "APEX_FAIL_SAFE_RESULT": "apex_fail_safe_result",
+    "CANDIDATE_DECISION": "candidate_decision",
+    "SCANNER_VIABLE": "scanner_viable",
+    "TRADE_EXECUTION_ALLOWED": "trade_execution_allowed",
+    "HEAVY_OPERATIONS_DEFAULT": "heavy_operations_default",
+}
 
 
 def iso_now():
@@ -44,9 +58,59 @@ def log(event, **fields):
     return record
 
 
-def run_command(args):
-    result = subprocess.run(args, cwd=ROOT, text=True, stdout=subprocess.PIPE, stderr=subprocess.STDOUT, check=False)
-    return result.returncode, result.stdout
+def run_command(args, timeout=COMMAND_TIMEOUT_SECONDS):
+    try:
+        result = subprocess.run(
+            args,
+            cwd=ROOT,
+            text=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.STDOUT,
+            check=False,
+            timeout=timeout,
+        )
+        return result.returncode, result.stdout
+    except subprocess.TimeoutExpired as exc:
+        output = exc.stdout or ""
+        if isinstance(output, bytes):
+            output = output.decode("utf-8", errors="replace")
+        return 124, f"{output}WATCHDOG_COMMAND_TIMEOUT: {timeout:.1f}s\n"
+
+
+def extract_runtime_state(output):
+    """Preserve the scanner's current operational labels in watchdog status."""
+    state = {}
+    for line in output.splitlines():
+        if ":" not in line:
+            continue
+        label, value = line.split(":", 1)
+        key = RUNTIME_STATUS_LABELS.get(label.strip())
+        if key is None:
+            continue
+        value = value.strip()
+        if key in {"scanner_viable", "trade_execution_allowed"}:
+            state[key] = value.lower() == "true"
+        else:
+            state[key] = value
+    return state
+
+
+def health_fields(scanner_output, monitor_output="", scanner_exit=0, monitor_exit=None):
+    """Build a compact, current-cycle health view for status and recovery."""
+    state = extract_runtime_state(scanner_output)
+    state.update({
+        "scanner_health": "PASS" if scanner_exit == 0 else "FAILED",
+        "monitor_health": (
+            "PASS" if monitor_exit == 0 else
+            "SKIPPED" if monitor_exit is None else
+            "FAILED"
+        ),
+        "watchdog_command_timeout_seconds": COMMAND_TIMEOUT_SECONDS,
+        "zero_trade_execution": True,
+    })
+    if monitor_output:
+        state.update({k: v for k, v in extract_runtime_state(monitor_output).items() if k not in state})
+    return state
 
 
 def load_interval(config_path):
@@ -63,7 +127,7 @@ def acquire_lock():
         return None
     handle.seek(0)
     handle.truncate()
-    handle.write(str(__import__("os").getpid()))
+    handle.write(str(os.getpid()))
     handle.flush()
     return handle
 
@@ -94,6 +158,7 @@ def supervisor_once(config_path):
             "last_governor_exit": gov_code,
             "last_scanner_exit": scan_code,
         }
+        status.update(health_fields(scan_output, scanner_exit=scan_code))
         write_json(STATUS, status)
         log("codex_heavy_frozen_scanner_active", governor_exit=gov_code, scanner_exit=scan_code, governor_output=gov_output, scanner_output=scan_output)
         print(gov_output, end="")
@@ -153,6 +218,7 @@ def supervisor_once(config_path):
         "last_scanner_exit": scan_code,
         "last_monitor_exit": monitor_code,
     }
+    status.update(health_fields(scan_output, monitor_output, scan_code, monitor_code))
     write_json(STATUS, status)
     log("light_health_check_only", governor_exit=gov_code, scanner_exit=scan_code,
         monitor_exit=monitor_code, scanner_output=scan_output, monitor_output=monitor_output)
